@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 15, 2026 at 07:18 AM
+-- Generation Time: Aug 22, 2026 at 03:21 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.30
 
@@ -258,6 +258,7 @@ CREATE TABLE `activity_log` (
 
 CREATE TABLE `attributes` (
   `id` bigint UNSIGNED NOT NULL,
+  `attribute_group_id` bigint UNSIGNED DEFAULT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `input_type` enum('text','textarea','number','select','multi_select','boolean','date','color') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -271,6 +272,24 @@ CREATE TABLE `attributes` (
   `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `attribute_groups`
+--
+
+CREATE TABLE `attribute_groups` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -2355,7 +2374,16 @@ ALTER TABLE `attributes`
   ADD KEY `attributes_is_filterable_index` (`is_filterable`),
   ADD KEY `attributes_is_variant_index` (`is_variant`),
   ADD KEY `attributes_is_active_sort_order_index` (`is_active`,`sort_order`),
-  ADD KEY `attributes_unit_id_foreign` (`unit_id`);
+  ADD KEY `attributes_unit_id_foreign` (`unit_id`),
+  ADD KEY `attributes_attribute_group_id_index` (`attribute_group_id`);
+
+--
+-- Indexes for table `attribute_groups`
+--
+ALTER TABLE `attribute_groups`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `attribute_groups_slug_unique` (`slug`),
+  ADD KEY `attribute_groups_is_active_sort_order_index` (`is_active`,`sort_order`);
 
 --
 -- Indexes for table `attribute_suggestions`
@@ -3281,6 +3309,12 @@ ALTER TABLE `attributes`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `attribute_groups`
+--
+ALTER TABLE `attribute_groups`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `attribute_suggestions`
 --
 ALTER TABLE `attribute_suggestions`
@@ -3846,6 +3880,7 @@ ALTER TABLE `account_type_changes`
 -- Constraints for table `attributes`
 --
 ALTER TABLE `attributes`
+  ADD CONSTRAINT `attributes_attribute_group_id_foreign` FOREIGN KEY (`attribute_group_id`) REFERENCES `attribute_groups` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `attributes_unit_id_foreign` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL;
 
 --

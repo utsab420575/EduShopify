@@ -88,6 +88,7 @@
                 <a href="{{ route('admin.catalog.exhibitions.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.exhibitions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Exhibitions</a>
                 @endcan
                 @can('platform.attributes.manage')
+                <a href="{{ route('admin.catalog.attribute-groups.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.attribute-groups.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Attribute Groups</a>
                 <a href="{{ route('admin.catalog.attributes.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.attributes.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Attributes</a>
                 <a href="{{ route('admin.catalog.units.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.units.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Units</a>
                 @endcan

@@ -17,8 +17,10 @@ use App\Http\Controllers\Backend\Admin\Billing\SubscriptionController as AdminSu
 use App\Http\Controllers\Backend\Admin\Billing\SubscriptionPaymentController;
 use App\Http\Controllers\Backend\Admin\Billing\SubscriptionPlanController;
 use App\Http\Controllers\Backend\Admin\Catalog\AttributeController;
+use App\Http\Controllers\Backend\Admin\Catalog\AttributeGroupController;
 use App\Http\Controllers\Backend\Admin\Catalog\BrandController;
 use App\Http\Controllers\Backend\Admin\Catalog\BuyerTypeController;
+use App\Http\Controllers\Backend\Admin\Catalog\CategoryAttributeController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryController;
 use App\Http\Controllers\Backend\Admin\Catalog\DocumentTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\ExhibitionController;
@@ -113,6 +115,17 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::resource('categories', CategoryController::class)->except(['show']);
             Route::post('/categories/suggestions/{suggestion}/approve', [CategoryController::class, 'approveSuggestion'])->name('categories.suggestions.approve');
             Route::post('/categories/suggestions/{suggestion}/reject', [CategoryController::class, 'rejectSuggestion'])->name('categories.suggestions.reject');
+
+            // Category Attributes / Specifications Mapping
+            Route::get('/categories/{category}/attributes', [CategoryAttributeController::class, 'index'])->name('categories.attributes.index');
+            Route::post('/categories/{category}/attributes', [CategoryAttributeController::class, 'store'])->name('categories.attributes.store');
+            Route::post('/categories/{category}/attributes/bulk', [CategoryAttributeController::class, 'bulkStore'])->name('categories.attributes.bulk-store');
+            Route::put('/categories/{category}/attributes/{attribute}', [CategoryAttributeController::class, 'update'])->name('categories.attributes.update');
+            Route::delete('/categories/{category}/attributes/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('categories.attributes.destroy');
+
+            // Attribute Groups
+            Route::resource('attribute-groups', AttributeGroupController::class)->except(['show']);
+            Route::post('/attribute-groups/{attributeGroup}/toggle-active', [AttributeGroupController::class, 'toggleActive'])->name('attribute-groups.toggle-active');
 
             Route::resource('attributes', AttributeController::class)->except(['show']);
             Route::post('/attributes/suggestions/{suggestion}/approve', [AttributeController::class, 'approveSuggestion'])->name('attributes.suggestions.approve');

@@ -87,6 +87,11 @@ class Category extends Model
             ->withTimestamps();
     }
 
+    public function attributes(): BelongsToMany
+    {
+        return $this->productAttributes();
+    }
+
     public function categoryAttributes(): HasMany
     {
         return $this->hasMany(CategoryAttribute::class, 'category_id');

@@ -24,7 +24,7 @@ class CategoryController extends Controller
         $categories = Category::query()
             ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->string('search').'%'))
             ->with('parent')
-            ->withCount('children')
+            ->withCount(['children', 'attributes'])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate(20)

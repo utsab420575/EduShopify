@@ -92,6 +92,11 @@ class Attribute extends Model
         return $query->where('is_active', true)->orderBy('sort_order');
     }
 
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query->orderBy('sort_order')->orderBy('name');
+    }
+
     public function scopeFilterable(Builder $query): Builder
     {
         return $query->where('is_filterable', true);
