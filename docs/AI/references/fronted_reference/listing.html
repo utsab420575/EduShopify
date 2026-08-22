@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Digital Microscope 4K — EduShopify</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+<style>
+:root{
+    --brand-primary:#216C50;
+    --brand-primary-hover:#2D8A67;
+    --brand-primary-soft:#E7F3EE;
+
+    --fe-text:#0F172A;
+    --fe-text-muted:#475569;
+    --fe-text-subtle:#94A3B8;
+    --fe-border:#E2E8F0;
+    --fe-bg:#F8FAFC;
+    --fe-surface:#FFFFFF;
+
+    --fe-rating:#F59E0B;
+    --fe-warning-bg:#FFFBEB;
+    --fe-warning-text:#92400E;
+    --fe-danger:#DC2626;
+    --fe-success:#16A34A;
+}
+html,body{ font-family:'Inter',sans-serif; color:var(--fe-text); background:var(--fe-bg); }
+.font-heading{ font-family:'Outfit',sans-serif; }
+[x-cloak]{ display:none !important; }
+
+.btn-brand{ background:var(--brand-primary); color:#fff; transition:background-color .15s ease; }
+.btn-brand:hover{ background:var(--brand-primary-hover); }
+.btn-outline{ border:1px solid var(--fe-border); color:var(--fe-text); background:#fff; transition:background-color .15s ease; }
+.btn-outline:hover{ background:var(--fe-bg); }
+
+.badge-brand{ background:var(--brand-primary-soft); color:var(--brand-primary); }
+.text-brand{ color:var(--brand-primary); }
+.border-brand{ border-color:var(--brand-primary); }
+
+.focus-brand:focus{ outline:none; border-color:var(--brand-primary); box-shadow:0 0 0 3px var(--brand-primary-soft); }
+
+.star{ color:var(--fe-rating); }
+
+.nav-link{ color:var(--fe-text-muted); transition:color .15s ease; }
+.nav-link:hover{ color:var(--brand-primary); }
+.nav-link.active{ color:var(--brand-primary); font-weight:600; }
+
+.card-hover{ transition:box-shadow .2s ease, transform .2s ease; }
+.card-hover:hover{ box-shadow:0 8px 24px -8px rgba(15,23,42,.12); transform:translateY(-2px); }
+</style>
+
+
+</head>
+<body x-data="{ mobileMenu:false }">
+
+<header class="bg-white border-b sticky top-0 z-40" style="border-color:var(--fe-border)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6">
+        <div class="h-20 flex items-center justify-between gap-6">
+
+            <div class="flex items-center gap-8 min-w-0">
+                <a href="home.html" class="flex items-center gap-2 shrink-0">
+                    <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                    <span class="font-heading font-bold text-lg text-gray-900 hidden sm:block">EduShopify</span>
+                </a>
+
+                <nav class="hidden lg:flex items-center gap-6 text-sm">
+                    <div class="relative" x-data="{ open:false }" @click.outside="open=false">
+                        <button @click="open=!open" class="nav-link flex items-center gap-1">
+                            Categories <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div x-show="open" x-transition x-cloak class="absolute left-0 mt-3 w-72 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-1 gap-0.5" style="border-color:var(--fe-border)">
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-flask w-4 text-brand"></i> Science Lab Equipment</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-book w-4 text-brand"></i> Textbooks & Publications</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-chair w-4 text-brand"></i> Classroom Furniture</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-computer w-4 text-brand"></i> Computer & IT Equipment</a>
+                            <a href="catalog.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium text-brand mt-1 border-t" style="border-color:var(--fe-border)">Browse all categories →</a>
+                        </div>
+                    </div>
+                    <a href="catalog.html" class="nav-link active">Marketplace</a>
+                    <a href="suppliers.html" class="nav-link">Suppliers</a>
+                    <a href="rfqs.html" class="nav-link">Opportunities</a>
+                    <a href="pricing.html" class="nav-link">Pricing</a>
+                </nav>
+            </div>
+
+            <div class="hidden md:flex items-center flex-1 max-w-md relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input type="text" placeholder="Search products, services, suppliers..."
+                    class="focus-brand w-full pl-10 pr-3 py-2.5 text-sm rounded-full border" style="border-color:var(--fe-border); background:var(--fe-bg)">
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="#" class="hidden sm:block text-sm font-medium px-4 py-2 rounded-lg nav-link">Login</a>
+                <a href="#" class="btn-brand text-sm font-semibold px-4 py-2.5 rounded-lg">Join Free</a>
+                <button class="lg:hidden text-gray-500 p-2"><i class="fa-solid fa-bars"></i></button>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+<div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
+
+    <p class="text-xs text-gray-400 mb-5">
+        <a href="home.html" class="hover:text-brand">Home</a> <i class="fa-solid fa-chevron-right text-[8px] mx-1.5"></i>
+        <a href="catalog.html" class="hover:text-brand">Lab Equipment</a> <i class="fa-solid fa-chevron-right text-[8px] mx-1.5"></i>
+        <a href="catalog.html" class="hover:text-brand">Microscopes</a> <i class="fa-solid fa-chevron-right text-[8px] mx-1.5"></i>
+        <span class="text-gray-600">Digital Microscope 4K</span>
+    </p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- MEDIA GALLERY -->
+        <div class="lg:col-span-4">
+            <div class="bg-white border rounded-2xl aspect-square flex items-center justify-center mb-3" style="border-color:var(--fe-border)">
+                <i class="fa-solid fa-microscope text-7xl text-gray-200"></i>
+            </div>
+            <div class="grid grid-cols-4 gap-2">
+                <div class="bg-white border rounded-xl aspect-square flex items-center justify-center" style="border-color:var(--brand-primary)"><i class="fa-solid fa-microscope text-gray-300"></i></div>
+                <div class="bg-white border rounded-xl aspect-square flex items-center justify-center" style="border-color:var(--fe-border)"><i class="fa-solid fa-box text-gray-300"></i></div>
+                <div class="bg-white border rounded-xl aspect-square flex items-center justify-center" style="border-color:var(--fe-border)"><i class="fa-solid fa-circle-play text-gray-300"></i></div>
+                <div class="bg-white border rounded-xl aspect-square flex items-center justify-center" style="border-color:var(--fe-border)"><i class="fa-solid fa-image text-gray-300"></i></div>
+            </div>
+        </div>
+
+        <!-- COMMERCIALS & SPECS -->
+        <div class="lg:col-span-5">
+            <span class="badge-brand text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 mb-3"><i class="fa-solid fa-circle-check"></i> Verified Supplier</span>
+            <h1 class="font-heading text-2xl font-bold text-gray-900 leading-snug">Digital Microscope 4K — Classroom Series</h1>
+            <p class="text-sm text-gray-400 mt-1.5">Model: DM-4021 · Brand: Prime Optics · SKU: LAB-4021</p>
+
+            <!-- VARIANT SELECTOR (Section 2.4 — only shown for product_type = variable) -->
+            <div class="mt-6 pt-6 border-t" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-2.5">Select Configuration</p>
+                <div class="grid grid-cols-3 gap-2" x-data="{ variant: '1000x' }">
+                    <button @click="variant='400x'" :class="variant==='400x' ? 'border-brand badge-brand' : 'btn-outline'" class="text-xs font-semibold py-2.5 rounded-lg border">40x–400x</button>
+                    <button @click="variant='1000x'" :class="variant==='1000x' ? 'border-brand badge-brand' : 'btn-outline'" class="text-xs font-semibold py-2.5 rounded-lg border">400x–1000x</button>
+                    <button @click="variant='digital'" :class="variant==='digital' ? 'border-brand badge-brand' : 'btn-outline'" class="text-xs font-semibold py-2.5 rounded-lg border">1000x+ Digital</button>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">Price, stock, and lead time update based on your selection.</p>
+            </div>
+
+            <!-- TIER PRICING TABLE -->
+            <div class="mt-6 pt-6 border-t" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Volume Pricing</p>
+                <div class="bg-white border rounded-xl overflow-hidden" style="border-color:var(--fe-border)">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Quantity</th>
+                                <th class="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Unit Price</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y" style="border-color:var(--fe-border)">
+                            <tr><td class="px-4 py-2.5 text-gray-700">1 – 49 units</td><td class="px-4 py-2.5 text-right font-semibold text-gray-900">$250.00</td></tr>
+                            <tr class="badge-brand"><td class="px-4 py-2.5 font-medium">50 – 199 units</td><td class="px-4 py-2.5 text-right font-bold">$220.00</td></tr>
+                            <tr><td class="px-4 py-2.5 text-gray-700">200+ units</td><td class="px-4 py-2.5 text-right font-semibold text-gray-900">$195.00</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t grid grid-cols-3 gap-4 text-sm" style="border-color:var(--fe-border)">
+                <div><p class="text-xs text-gray-400 mb-1">Stock Status</p><p class="font-semibold text-green-600"><i class="fa-solid fa-circle text-[6px] mr-1"></i>In Stock</p></div>
+                <div><p class="text-xs text-gray-400 mb-1">Lead Time</p><p class="font-semibold text-gray-800">7–10 days</p></div>
+                <div><p class="text-xs text-gray-400 mb-1">Warranty</p><p class="font-semibold text-gray-800">2 Years</p></div>
+            </div>
+
+            <!-- TABS -->
+            <div class="mt-8" x-data="{ tab: 'description' }">
+                <div class="flex gap-6 border-b" style="border-color:var(--fe-border)">
+                    <button @click="tab='description'" :class="tab==='description' && 'text-brand border-brand'" class="text-sm font-medium pb-3 border-b-2 border-transparent text-gray-500">Description</button>
+                    <button @click="tab='specs'" :class="tab==='specs' && 'text-brand border-brand'" class="text-sm font-medium pb-3 border-b-2 border-transparent text-gray-500">Specifications</button>
+                    <button @click="tab='shipping'" :class="tab==='shipping' && 'text-brand border-brand'" class="text-sm font-medium pb-3 border-b-2 border-transparent text-gray-500">Shipping</button>
+                </div>
+                <div class="py-5 text-sm text-gray-600 leading-relaxed">
+                    <div x-show="tab==='description'">A high-resolution digital microscope designed for classroom biology and physical science instruction, with HDMI output for group demonstrations and a rugged housing built for daily student use.</div>
+                    <div x-show="tab==='specs'" x-cloak>Magnification: 40x–1000x · Output: HDMI + USB · Power: 100–240V · Weight: 2.1kg · Includes: 5 prepared slides, calibration tool, dust cover.</div>
+                    <div x-show="tab==='shipping'" x-cloak>Ships from Tashkent warehouse. Delivery coverage: Uzbekistan, Kazakhstan, Kyrgyzstan. Bulk freight quotes available on request.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUPPLIER CARD + QUOTE CALCULATOR -->
+        <div class="lg:col-span-3 space-y-5">
+
+            <div class="bg-white border rounded-2xl p-5 sticky top-24" style="border-color:var(--fe-border)">
+                <p class="text-2xl font-bold text-gray-900">$195<span class="text-sm font-normal text-gray-400"> – $250 / unit</span></p>
+                <p class="text-xs text-gray-400 mb-4">Price varies by quantity and configuration</p>
+
+                <label class="text-xs font-medium text-gray-600 block mb-1.5">Quantity</label>
+                <div class="flex items-center border rounded-lg mb-4" style="border-color:var(--fe-border)">
+                    <button class="w-10 h-10 text-gray-500 hover:bg-gray-50">−</button>
+                    <input type="text" value="50" class="w-full text-center text-sm font-semibold border-0 focus:ring-0">
+                    <button class="w-10 h-10 text-gray-500 hover:bg-gray-50">+</button>
+                </div>
+
+                <button class="btn-brand w-full text-sm font-semibold py-3 rounded-lg mb-2.5 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-invoice"></i> Request Quotation
+                </button>
+                <button class="btn-outline w-full text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
+                    <i class="fa-regular fa-comment"></i> Contact Supplier
+                </button>
+                <p class="text-[11px] text-gray-400 text-center mt-3">
+                    <i class="fa-solid fa-circle-info mr-1"></i> Login required to request a quote — your selection will be saved.
+                </p>
+            </div>
+
+            <a href="supplier.html" class="bg-white border rounded-2xl p-5 block card-hover" style="border-color:var(--fe-border)">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-building text-gray-400"></i></div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-gray-900 truncate">Prime Optics Uzbekistan</p>
+                        <span class="badge-brand text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 mt-1"><i class="fa-solid fa-circle-check"></i> Verified · 5 yrs</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-xs text-gray-500 pt-3 border-t" style="border-color:var(--fe-border)">
+                    <span class="flex items-center gap-1"><i class="fa-solid fa-star star"></i> 4.9 (128 reviews)</span>
+                    <span>~2h response</span>
+                </div>
+                <p class="text-xs font-semibold text-brand mt-3">View Full Storefront →</p>
+            </a>
+        </div>
+    </div>
+</div>
+
+
+<footer class="bg-gray-900 text-gray-300 mt-16">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
+        <div class="col-span-2">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                <span class="font-heading font-bold text-lg text-white">EduShopify</span>
+            </div>
+            <p class="text-sm text-gray-400 leading-relaxed max-w-xs">The B2B marketplace connecting schools, universities, and institutions with verified educational suppliers worldwide.</p>
+            <div class="flex items-center gap-3 mt-5">
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-linkedin-in text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-x-twitter text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-facebook-f text-xs"></i></a>
+            </div>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Marketplace</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="catalog.html" class="hover:text-white">Browse Catalog</a></li>
+                <li><a href="suppliers.html" class="hover:text-white">Suppliers</a></li>
+                <li><a href="rfqs.html" class="hover:text-white">Opportunities</a></li>
+                <li><a href="pricing.html" class="hover:text-white">Pricing</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Company</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">How It Works</a></li>
+                <li><a href="#" class="hover:text-white">About Us</a></li>
+                <li><a href="#" class="hover:text-white">Contact</a></li>
+                <li><a href="#" class="hover:text-white">FAQs</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Legal</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">Terms of Service</a></li>
+                <li><a href="#" class="hover:text-white">Privacy Policy</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-gray-800 py-5 text-center text-xs text-gray-500">© 2026 EduShopify. All rights reserved.</div>
+</footer>
+
+</body>
+</html>

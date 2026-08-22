@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Marketplace Catalog — EduShopify</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+<style>
+:root{
+    --brand-primary:#216C50;
+    --brand-primary-hover:#2D8A67;
+    --brand-primary-soft:#E7F3EE;
+
+    --fe-text:#0F172A;
+    --fe-text-muted:#475569;
+    --fe-text-subtle:#94A3B8;
+    --fe-border:#E2E8F0;
+    --fe-bg:#F8FAFC;
+    --fe-surface:#FFFFFF;
+
+    --fe-rating:#F59E0B;
+    --fe-warning-bg:#FFFBEB;
+    --fe-warning-text:#92400E;
+    --fe-danger:#DC2626;
+    --fe-success:#16A34A;
+}
+html,body{ font-family:'Inter',sans-serif; color:var(--fe-text); background:var(--fe-bg); }
+.font-heading{ font-family:'Outfit',sans-serif; }
+[x-cloak]{ display:none !important; }
+
+.btn-brand{ background:var(--brand-primary); color:#fff; transition:background-color .15s ease; }
+.btn-brand:hover{ background:var(--brand-primary-hover); }
+.btn-outline{ border:1px solid var(--fe-border); color:var(--fe-text); background:#fff; transition:background-color .15s ease; }
+.btn-outline:hover{ background:var(--fe-bg); }
+
+.badge-brand{ background:var(--brand-primary-soft); color:var(--brand-primary); }
+.text-brand{ color:var(--brand-primary); }
+.border-brand{ border-color:var(--brand-primary); }
+
+.focus-brand:focus{ outline:none; border-color:var(--brand-primary); box-shadow:0 0 0 3px var(--brand-primary-soft); }
+
+.star{ color:var(--fe-rating); }
+
+.nav-link{ color:var(--fe-text-muted); transition:color .15s ease; }
+.nav-link:hover{ color:var(--brand-primary); }
+.nav-link.active{ color:var(--brand-primary); font-weight:600; }
+
+.card-hover{ transition:box-shadow .2s ease, transform .2s ease; }
+.card-hover:hover{ box-shadow:0 8px 24px -8px rgba(15,23,42,.12); transform:translateY(-2px); }
+</style>
+
+
+</head>
+<body x-data="{ mobileMenu:false }">
+
+<header class="bg-white border-b sticky top-0 z-40" style="border-color:var(--fe-border)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6">
+        <div class="h-20 flex items-center justify-between gap-6">
+
+            <div class="flex items-center gap-8 min-w-0">
+                <a href="home.html" class="flex items-center gap-2 shrink-0">
+                    <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                    <span class="font-heading font-bold text-lg text-gray-900 hidden sm:block">EduShopify</span>
+                </a>
+
+                <nav class="hidden lg:flex items-center gap-6 text-sm">
+                    <div class="relative" x-data="{ open:false }" @click.outside="open=false">
+                        <button @click="open=!open" class="nav-link flex items-center gap-1">
+                            Categories <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div x-show="open" x-transition x-cloak class="absolute left-0 mt-3 w-72 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-1 gap-0.5" style="border-color:var(--fe-border)">
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-flask w-4 text-brand"></i> Science Lab Equipment</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-book w-4 text-brand"></i> Textbooks & Publications</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-chair w-4 text-brand"></i> Classroom Furniture</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-computer w-4 text-brand"></i> Computer & IT Equipment</a>
+                            <a href="catalog.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium text-brand mt-1 border-t" style="border-color:var(--fe-border)">Browse all categories →</a>
+                        </div>
+                    </div>
+                    <a href="catalog.html" class="nav-link active">Marketplace</a>
+                    <a href="suppliers.html" class="nav-link">Suppliers</a>
+                    <a href="rfqs.html" class="nav-link">Opportunities</a>
+                    <a href="pricing.html" class="nav-link">Pricing</a>
+                </nav>
+            </div>
+
+            <div class="hidden md:flex items-center flex-1 max-w-md relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input type="text" placeholder="Search products, services, suppliers..."
+                    class="focus-brand w-full pl-10 pr-3 py-2.5 text-sm rounded-full border" style="border-color:var(--fe-border); background:var(--fe-bg)">
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="#" class="hidden sm:block text-sm font-medium px-4 py-2 rounded-lg nav-link">Login</a>
+                <a href="#" class="btn-brand text-sm font-semibold px-4 py-2.5 rounded-lg">Join Free</a>
+                <button class="lg:hidden text-gray-500 p-2"><i class="fa-solid fa-bars"></i></button>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+<div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
+
+    <!-- Breadcrumb -->
+    <p class="text-xs text-gray-400 mb-4">
+        <a href="home.html" class="hover:text-brand">Home</a>
+        <i class="fa-solid fa-chevron-right text-[8px] mx-1.5"></i>
+        <span class="text-gray-600">Marketplace Catalog</span>
+    </p>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div>
+            <h1 class="font-heading text-2xl font-bold text-gray-900">Marketplace Catalog</h1>
+            <p class="text-sm text-gray-500 mt-1">312 products and services from verified suppliers</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <select class="focus-brand text-sm rounded-lg border px-3 py-2 bg-white" style="border-color:var(--fe-border)">
+                <option>Sort: Most Relevant</option>
+                <option>Price: Low to High</option>
+                <option>Price: High to Low</option>
+                <option>Highest Rated</option>
+                <option>Newest First</option>
+            </select>
+            <button class="lg:hidden btn-outline text-sm font-medium px-3 py-2 rounded-lg"><i class="fa-solid fa-sliders"></i></button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+        <!-- FILTER SIDEBAR (dynamic attribute-aware, Section 2.3) -->
+        <aside class="lg:col-span-1 space-y-5">
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Category</p>
+                <div class="space-y-2 text-sm">
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" checked class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Science Lab Equipment <span class="text-gray-400">(84)</span></span></label>
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Textbooks & Publications <span class="text-gray-400">(56)</span></span></label>
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Classroom Furniture <span class="text-gray-400">(41)</span></span></label>
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Computer & IT <span class="text-gray-400">(38)</span></span></label>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Listing Type</p>
+                <div class="flex gap-2">
+                    <button class="flex-1 text-xs font-semibold py-2 rounded-lg badge-brand">Products</button>
+                    <button class="flex-1 text-xs font-medium py-2 rounded-lg btn-outline">Services</button>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Price Range</p>
+                <div class="flex items-center gap-2">
+                    <input type="text" placeholder="Min" class="focus-brand w-full text-sm rounded-lg border px-3 py-2" style="border-color:var(--fe-border)">
+                    <span class="text-gray-300">—</span>
+                    <input type="text" placeholder="Max" class="focus-brand w-full text-sm rounded-lg border px-3 py-2" style="border-color:var(--fe-border)">
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Minimum Order Quantity</p>
+                <div class="space-y-2 text-sm">
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="radio" name="moq" class="text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Any MOQ</span></label>
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="radio" name="moq" checked class="text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Low MOQ (&lt; 10 units)</span></label>
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="radio" name="moq" class="text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Bulk only</span></label>
+                </div>
+            </div>
+
+            <!-- Dynamic category-attribute filter — only rendered when a category is selected -->
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-1">Magnification</p>
+                <p class="text-[11px] text-gray-400 mb-3">Attribute specific to Science Lab Equipment</p>
+                <div class="space-y-2 text-sm">
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">40x – 400x</span></label>
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">400x – 1000x</span></label>
+                    <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">1000x+ (Digital)</span></label>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Supplier Location</p>
+                <select class="focus-brand w-full text-sm rounded-lg border px-3 py-2 bg-white" style="border-color:var(--fe-border)">
+                    <option>All Countries</option>
+                    <option>Uzbekistan</option>
+                    <option>Kazakhstan</option>
+                    <option>Kyrgyzstan</option>
+                </select>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Verification</p>
+                <label class="flex items-center gap-2.5 cursor-pointer text-sm"><input type="checkbox" checked class="rounded border-gray-300 text-[color:var(--brand-primary)] focus:ring-[color:var(--brand-primary)]"> <span class="text-gray-700">Verified Suppliers Only</span></label>
+            </div>
+
+        </aside>
+
+        <!-- PRODUCT GRID -->
+        <div class="lg:col-span-3">
+            <div class="flex flex-wrap items-center gap-2 mb-5">
+                <span class="text-xs text-gray-400">Active filters:</span>
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium badge-brand px-2.5 py-1 rounded-full">Science Lab Equipment <i class="fa-solid fa-xmark text-[10px]"></i></span>
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium badge-brand px-2.5 py-1 rounded-full">Low MOQ <i class="fa-solid fa-xmark text-[10px]"></i></span>
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium badge-brand px-2.5 py-1 rounded-full">Verified Only <i class="fa-solid fa-xmark text-[10px]"></i></span>
+                <button class="text-xs font-medium text-gray-400 hover:text-gray-600 ml-1">Clear all</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+
+                <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                    <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-microscope text-4xl text-gray-300"></i>
+                        <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 1 — Classroom Series</p>
+                        <p class="text-xs text-gray-400 mt-1">SKU: LAB-401 · Prime Optics</p>
+                        <p class="text-base font-bold text-gray-900 mt-2">$158.00 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                        <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                            <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                            <span class="text-xs text-gray-500 truncate">Prime Optics Uzbekistan</span>
+                            <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.1</span>
+                        </div>
+                    </div>
+                </a>
+                <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                    <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-microscope text-4xl text-gray-300"></i>
+                        <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 2 — Classroom Series</p>
+                        <p class="text-xs text-gray-400 mt-1">SKU: LAB-402 · Prime Optics</p>
+                        <p class="text-base font-bold text-gray-900 mt-2">$166.00 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                        <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                            <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                            <span class="text-xs text-gray-500 truncate">Prime Optics Uzbekistan</span>
+                            <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.2</span>
+                        </div>
+                    </div>
+                </a>
+                <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                    <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-microscope text-4xl text-gray-300"></i>
+                        <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 3 — Classroom Series</p>
+                        <p class="text-xs text-gray-400 mt-1">SKU: LAB-403 · Prime Optics</p>
+                        <p class="text-base font-bold text-gray-900 mt-2">$174.00 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                        <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                            <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                            <span class="text-xs text-gray-500 truncate">Prime Optics Uzbekistan</span>
+                            <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.3</span>
+                        </div>
+                    </div>
+                </a>
+                <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                    <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-microscope text-4xl text-gray-300"></i>
+                        <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 4 — Classroom Series</p>
+                        <p class="text-xs text-gray-400 mt-1">SKU: LAB-404 · Prime Optics</p>
+                        <p class="text-base font-bold text-gray-900 mt-2">$182.00 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                        <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                            <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                            <span class="text-xs text-gray-500 truncate">Prime Optics Uzbekistan</span>
+                            <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.4</span>
+                        </div>
+                    </div>
+                </a>
+                <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                    <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-microscope text-4xl text-gray-300"></i>
+                        <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 5 — Classroom Series</p>
+                        <p class="text-xs text-gray-400 mt-1">SKU: LAB-405 · Prime Optics</p>
+                        <p class="text-base font-bold text-gray-900 mt-2">$190.00 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                        <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                            <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                            <span class="text-xs text-gray-500 truncate">Prime Optics Uzbekistan</span>
+                            <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.5</span>
+                        </div>
+                    </div>
+                </a>
+                <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                    <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-microscope text-4xl text-gray-300"></i>
+                        <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 6 — Classroom Series</p>
+                        <p class="text-xs text-gray-400 mt-1">SKU: LAB-406 · Prime Optics</p>
+                        <p class="text-base font-bold text-gray-900 mt-2">$198.00 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                        <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                            <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                            <span class="text-xs text-gray-500 truncate">Prime Optics Uzbekistan</span>
+                            <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.6</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="flex items-center justify-center gap-1.5 mt-10">
+                <button class="w-9 h-9 rounded-lg btn-outline text-sm flex items-center justify-center"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                <button class="w-9 h-9 rounded-lg btn-brand text-sm font-semibold">1</button>
+                <button class="w-9 h-9 rounded-lg btn-outline text-sm font-medium">2</button>
+                <button class="w-9 h-9 rounded-lg btn-outline text-sm font-medium">3</button>
+                <span class="text-gray-300 px-1">…</span>
+                <button class="w-9 h-9 rounded-lg btn-outline text-sm font-medium">18</button>
+                <button class="w-9 h-9 rounded-lg btn-outline text-sm flex items-center justify-center"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<footer class="bg-gray-900 text-gray-300 mt-16">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
+        <div class="col-span-2">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                <span class="font-heading font-bold text-lg text-white">EduShopify</span>
+            </div>
+            <p class="text-sm text-gray-400 leading-relaxed max-w-xs">The B2B marketplace connecting schools, universities, and institutions with verified educational suppliers worldwide.</p>
+            <div class="flex items-center gap-3 mt-5">
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-linkedin-in text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-x-twitter text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-facebook-f text-xs"></i></a>
+            </div>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Marketplace</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="catalog.html" class="hover:text-white">Browse Catalog</a></li>
+                <li><a href="suppliers.html" class="hover:text-white">Suppliers</a></li>
+                <li><a href="rfqs.html" class="hover:text-white">Opportunities</a></li>
+                <li><a href="pricing.html" class="hover:text-white">Pricing</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Company</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">How It Works</a></li>
+                <li><a href="#" class="hover:text-white">About Us</a></li>
+                <li><a href="#" class="hover:text-white">Contact</a></li>
+                <li><a href="#" class="hover:text-white">FAQs</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Legal</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">Terms of Service</a></li>
+                <li><a href="#" class="hover:text-white">Privacy Policy</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-gray-800 py-5 text-center text-xs text-gray-500">© 2026 EduShopify. All rights reserved.</div>
+</footer>
+
+</body>
+</html>

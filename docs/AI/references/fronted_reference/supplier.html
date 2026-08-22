@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Prime Optics Uzbekistan — EduShopify</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+<style>
+:root{
+    --brand-primary:#216C50;
+    --brand-primary-hover:#2D8A67;
+    --brand-primary-soft:#E7F3EE;
+
+    --fe-text:#0F172A;
+    --fe-text-muted:#475569;
+    --fe-text-subtle:#94A3B8;
+    --fe-border:#E2E8F0;
+    --fe-bg:#F8FAFC;
+    --fe-surface:#FFFFFF;
+
+    --fe-rating:#F59E0B;
+    --fe-warning-bg:#FFFBEB;
+    --fe-warning-text:#92400E;
+    --fe-danger:#DC2626;
+    --fe-success:#16A34A;
+}
+html,body{ font-family:'Inter',sans-serif; color:var(--fe-text); background:var(--fe-bg); }
+.font-heading{ font-family:'Outfit',sans-serif; }
+[x-cloak]{ display:none !important; }
+
+.btn-brand{ background:var(--brand-primary); color:#fff; transition:background-color .15s ease; }
+.btn-brand:hover{ background:var(--brand-primary-hover); }
+.btn-outline{ border:1px solid var(--fe-border); color:var(--fe-text); background:#fff; transition:background-color .15s ease; }
+.btn-outline:hover{ background:var(--fe-bg); }
+
+.badge-brand{ background:var(--brand-primary-soft); color:var(--brand-primary); }
+.text-brand{ color:var(--brand-primary); }
+.border-brand{ border-color:var(--brand-primary); }
+
+.focus-brand:focus{ outline:none; border-color:var(--brand-primary); box-shadow:0 0 0 3px var(--brand-primary-soft); }
+
+.star{ color:var(--fe-rating); }
+
+.nav-link{ color:var(--fe-text-muted); transition:color .15s ease; }
+.nav-link:hover{ color:var(--brand-primary); }
+.nav-link.active{ color:var(--brand-primary); font-weight:600; }
+
+.card-hover{ transition:box-shadow .2s ease, transform .2s ease; }
+.card-hover:hover{ box-shadow:0 8px 24px -8px rgba(15,23,42,.12); transform:translateY(-2px); }
+</style>
+
+
+</head>
+<body x-data="{ mobileMenu:false }">
+
+<header class="bg-white border-b sticky top-0 z-40" style="border-color:var(--fe-border)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6">
+        <div class="h-20 flex items-center justify-between gap-6">
+
+            <div class="flex items-center gap-8 min-w-0">
+                <a href="home.html" class="flex items-center gap-2 shrink-0">
+                    <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                    <span class="font-heading font-bold text-lg text-gray-900 hidden sm:block">EduShopify</span>
+                </a>
+
+                <nav class="hidden lg:flex items-center gap-6 text-sm">
+                    <div class="relative" x-data="{ open:false }" @click.outside="open=false">
+                        <button @click="open=!open" class="nav-link flex items-center gap-1">
+                            Categories <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div x-show="open" x-transition x-cloak class="absolute left-0 mt-3 w-72 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-1 gap-0.5" style="border-color:var(--fe-border)">
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-flask w-4 text-brand"></i> Science Lab Equipment</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-book w-4 text-brand"></i> Textbooks & Publications</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-chair w-4 text-brand"></i> Classroom Furniture</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-computer w-4 text-brand"></i> Computer & IT Equipment</a>
+                            <a href="catalog.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium text-brand mt-1 border-t" style="border-color:var(--fe-border)">Browse all categories →</a>
+                        </div>
+                    </div>
+                    <a href="catalog.html" class="nav-link">Marketplace</a>
+                    <a href="suppliers.html" class="nav-link active">Suppliers</a>
+                    <a href="rfqs.html" class="nav-link">Opportunities</a>
+                    <a href="pricing.html" class="nav-link">Pricing</a>
+                </nav>
+            </div>
+
+            <div class="hidden md:flex items-center flex-1 max-w-md relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input type="text" placeholder="Search products, services, suppliers..."
+                    class="focus-brand w-full pl-10 pr-3 py-2.5 text-sm rounded-full border" style="border-color:var(--fe-border); background:var(--fe-bg)">
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="#" class="hidden sm:block text-sm font-medium px-4 py-2 rounded-lg nav-link">Login</a>
+                <a href="#" class="btn-brand text-sm font-semibold px-4 py-2.5 rounded-lg">Join Free</a>
+                <button class="lg:hidden text-gray-500 p-2"><i class="fa-solid fa-bars"></i></button>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+<!-- Banner -->
+<div class="h-40 bg-gradient-to-r from-emerald-800 to-emerald-600"></div>
+
+<div class="max-w-7xl mx-auto px-4 lg:px-6">
+    <div class="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12 mb-6">
+        <div class="w-24 h-24 rounded-2xl bg-white border-4 border-white shadow-md flex items-center justify-center shrink-0" style="border-color:white">
+            <i class="fa-solid fa-building text-3xl text-gray-300"></i>
+        </div>
+        <div class="flex-1 pb-1">
+            <div class="flex items-center gap-2 flex-wrap">
+                <h1 class="font-heading text-xl font-bold text-gray-900">Prime Optics Uzbekistan</h1>
+                <span class="badge-brand text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified</span>
+            </div>
+            <p class="text-sm text-gray-500 mt-1">🇺🇿 Tashkent, Uzbekistan · Manufacturer · Est. 2019</p>
+        </div>
+        <div class="flex items-center gap-2 pb-1">
+            <button class="btn-outline text-sm font-semibold px-4 py-2.5 rounded-lg"><i class="fa-regular fa-bookmark mr-1.5"></i>Save</button>
+            <button class="btn-brand text-sm font-semibold px-4 py-2.5 rounded-lg"><i class="fa-regular fa-comment mr-1.5"></i>Contact Supplier</button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 pb-16">
+
+        <!-- LEFT: Company Info -->
+        <div class="lg:col-span-1 space-y-5">
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Company Overview</p>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between"><span class="text-gray-400">Founded</span><span class="text-gray-700 font-medium">2019</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Employees</span><span class="text-gray-700 font-medium">50–100</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Response Time</span><span class="text-gray-700 font-medium">~2 hours</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Response Rate</span><span class="text-gray-700 font-medium">98%</span></div>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Certifications</p>
+                <div class="space-y-2">
+                    <span class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-certificate text-brand"></i> ISO 9001:2015</span>
+                    <span class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-certificate text-brand"></i> Trade License Verified</span>
+                    <span class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-certificate text-brand"></i> Tax Registration Verified</span>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Service Areas</p>
+                <div class="flex flex-wrap gap-1.5">
+                    <span class="text-xs font-medium badge-brand px-2.5 py-1 rounded-full">Tashkent</span>
+                    <span class="text-xs font-medium badge-brand px-2.5 py-1 rounded-full">Samarkand</span>
+                    <span class="text-xs font-medium badge-brand px-2.5 py-1 rounded-full">Bukhara</span>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                <p class="text-sm font-semibold text-gray-900 mb-3">Business Hours</p>
+                <div class="space-y-1.5 text-xs text-gray-600">
+                    <div class="flex justify-between"><span>Mon – Fri</span><span class="font-medium">9:00 – 18:00</span></div>
+                    <div class="flex justify-between"><span>Saturday</span><span class="font-medium">10:00 – 15:00</span></div>
+                    <div class="flex justify-between"><span>Sunday</span><span class="text-gray-400">Closed</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Catalog + Reviews -->
+        <div class="lg:col-span-3" x-data="{ tab: 'catalog' }">
+            <div class="flex gap-6 border-b mb-6" style="border-color:var(--fe-border)">
+                <button @click="tab='catalog'" :class="tab==='catalog' && 'text-brand border-brand'" class="text-sm font-semibold pb-3 border-b-2 border-transparent text-gray-500">Catalog (24)</button>
+                <button @click="tab='about'" :class="tab==='about' && 'text-brand border-brand'" class="text-sm font-semibold pb-3 border-b-2 border-transparent text-gray-500">About</button>
+                <button @click="tab='reviews'" :class="tab==='reviews' && 'text-brand border-brand'" class="text-sm font-semibold pb-3 border-b-2 border-transparent text-gray-500">Reviews (128)</button>
+            </div>
+
+            <div x-show="tab==='catalog'">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+
+                    <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                        <div class="h-32 bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-microscope text-3xl text-gray-300"></i></div>
+                        <div class="p-3.5">
+                            <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 1 Series</p>
+                            <p class="text-sm font-bold text-gray-900 mt-2">$190.00</p>
+                        </div>
+                    </a>
+                    <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                        <div class="h-32 bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-microscope text-3xl text-gray-300"></i></div>
+                        <div class="p-3.5">
+                            <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 2 Series</p>
+                            <p class="text-sm font-bold text-gray-900 mt-2">$200.00</p>
+                        </div>
+                    </a>
+                    <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                        <div class="h-32 bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-microscope text-3xl text-gray-300"></i></div>
+                        <div class="p-3.5">
+                            <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 3 Series</p>
+                            <p class="text-sm font-bold text-gray-900 mt-2">$210.00</p>
+                        </div>
+                    </a>
+                    <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                        <div class="h-32 bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-microscope text-3xl text-gray-300"></i></div>
+                        <div class="p-3.5">
+                            <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 4 Series</p>
+                            <p class="text-sm font-bold text-gray-900 mt-2">$220.00</p>
+                        </div>
+                    </a>
+                    <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                        <div class="h-32 bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-microscope text-3xl text-gray-300"></i></div>
+                        <div class="p-3.5">
+                            <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 5 Series</p>
+                            <p class="text-sm font-bold text-gray-900 mt-2">$230.00</p>
+                        </div>
+                    </a>
+                    <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                        <div class="h-32 bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-microscope text-3xl text-gray-300"></i></div>
+                        <div class="p-3.5">
+                            <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 6 Series</p>
+                            <p class="text-sm font-bold text-gray-900 mt-2">$240.00</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div x-show="tab==='about'" x-cloak class="bg-white border rounded-2xl p-6 text-sm text-gray-600 leading-relaxed" style="border-color:var(--fe-border)">
+                Prime Optics Uzbekistan has been supplying precision scientific instruments to schools and universities across Central Asia since 2019. We specialize in classroom-ready microscopy equipment built for durability and ease of use in student environments.
+            </div>
+
+            <div x-show="tab==='reviews'" x-cloak class="space-y-4">
+                <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-semibold text-gray-900">Tashkent State University</p>
+                        <span class="text-xs text-gray-400">2 weeks ago</span>
+                    </div>
+                    <p class="text-xs star mb-2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></p>
+                    <p class="text-sm text-gray-600">Excellent quality microscopes and fast delivery. Supplier was responsive throughout the quotation process.</p>
+                </div>
+                <div class="bg-white border rounded-2xl p-5" style="border-color:var(--fe-border)">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-semibold text-gray-900">Samarkand International School</p>
+                        <span class="text-xs text-gray-400">1 month ago</span>
+                    </div>
+                    <p class="text-xs star mb-2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i></p>
+                    <p class="text-sm text-gray-600">Good products overall, minor delay in shipping but supplier communicated proactively.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<footer class="bg-gray-900 text-gray-300 mt-16">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
+        <div class="col-span-2">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                <span class="font-heading font-bold text-lg text-white">EduShopify</span>
+            </div>
+            <p class="text-sm text-gray-400 leading-relaxed max-w-xs">The B2B marketplace connecting schools, universities, and institutions with verified educational suppliers worldwide.</p>
+            <div class="flex items-center gap-3 mt-5">
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-linkedin-in text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-x-twitter text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-facebook-f text-xs"></i></a>
+            </div>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Marketplace</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="catalog.html" class="hover:text-white">Browse Catalog</a></li>
+                <li><a href="suppliers.html" class="hover:text-white">Suppliers</a></li>
+                <li><a href="rfqs.html" class="hover:text-white">Opportunities</a></li>
+                <li><a href="pricing.html" class="hover:text-white">Pricing</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Company</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">How It Works</a></li>
+                <li><a href="#" class="hover:text-white">About Us</a></li>
+                <li><a href="#" class="hover:text-white">Contact</a></li>
+                <li><a href="#" class="hover:text-white">FAQs</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Legal</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">Terms of Service</a></li>
+                <li><a href="#" class="hover:text-white">Privacy Policy</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-gray-800 py-5 text-center text-xs text-gray-500">© 2026 EduShopify. All rights reserved.</div>
+</footer>
+
+</body>
+</html>

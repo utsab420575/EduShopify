@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edushopify Clone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .shadow-soft { box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08); }
+    .card-shadow { box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08); }
+    .hero-overlay {
+      background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.55) 45%, rgba(0,0,0,.20) 100%);
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800">
+
+  <!-- Top Nav -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div class="max-w-[1400px] mx-auto px-4 lg:px-8 h-16 flex items-center gap-4">
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-2 shrink-0">
+        <div class="grid grid-cols-3 gap-1.5 p-1">
+          <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-sky-500"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-cyan-400"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-teal-500"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-emerald-300"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-cyan-500"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-sky-400"></span>
+          <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+        </div>
+        <div class="leading-tight">
+          <div class="font-extrabold text-[18px] text-slate-900">Edushopify</div>
+          <div class="text-[10px] text-slate-400 -mt-0.5">Connecting Education</div>
+        </div>
+      </a>
+
+      <!-- Search -->
+      <div class="flex-1 max-w-[560px] hidden md:block">
+        <div class="flex items-center bg-slate-100 border border-slate-200 rounded-full overflow-hidden shadow-sm">
+          <input type="text" placeholder="Search suppliers, products, categories..." class="w-full bg-transparent px-5 py-2.5 text-sm outline-none placeholder:text-slate-400">
+          <button class="px-4 py-2.5 bg-emerald-500 text-white hover:bg-emerald-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m1.35-5.15A7.5 7.5 0 1 1 6 6a7.5 7.5 0 0 1 12 5.5Z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nav Links -->
+      <nav class="hidden lg:flex items-center gap-7 text-[15px] font-medium text-slate-700">
+        <a href="#" class="hover:text-emerald-600">Categories</a>
+        <a href="#" class="hover:text-emerald-600">RFQ</a>
+        <a href="#" class="hover:text-emerald-600">Suppliers</a>
+        <a href="#" class="hover:text-emerald-600">Resources</a>
+      </nav>
+
+      <!-- Icons -->
+      <div class="hidden md:flex items-center gap-3 text-slate-600">
+        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.9-2.91-5.25-6.5-5.25-2.19 0-4.11.89-5.25 2.25C8.11 3.89 6.19 3 4 3 1.24 3 0 5.05 0 8.25c0 6.25 10.5 12.75 10.5 12.75S21 14.5 21 8.25Z"/>
+          </svg>
+        </button>
+        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 19.5h9M5 4.5h14a1 1 0 0 1 1 1v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-10a1 1 0 0 1 1-1Z"/>
+          </svg>
+        </button>
+        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 6.75a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0ZM4.5 20.25a7.5 7.5 0 0 1 15 0"/>
+          </svg>
+        </button>
+      </div>
+
+      <a href="#" class="text-sm font-semibold text-slate-700 hidden md:block">Sign In</a>
+      <a href="#" class="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600">Register</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="relative h-[380px] md:h-[430px] bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1800&q=80');">
+    <div class="absolute inset-0 hero-overlay"></div>
+    <div class="relative max-w-[1400px] mx-auto px-4 lg:px-8 h-full flex items-center">
+      <div class="max-w-2xl text-white">
+        <h1 class="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
+          Global Suppliers for<br>
+          Education. All in One Place.
+        </h1>
+        <p class="mt-4 text-base md:text-lg text-slate-200 max-w-xl">
+          Connect with verified education suppliers worldwide
+        </p>
+        <div class="mt-7 flex gap-3">
+          <a href="#" class="px-5 py-3 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100">Find Suppliers</a>
+          <a href="#" class="px-5 py-3 rounded-lg bg-emerald-500 text-white font-semibold hover:bg-emerald-600">Post an RFQ</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured suppliers -->
+  <section class="max-w-[1400px] mx-auto px-4 lg:px-8 py-10">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-xl md:text-2xl font-bold text-slate-900">Featured Suppliers</h2>
+      <a href="#" class="text-emerald-600 font-medium text-sm">See all</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <!-- Card -->
+      <div class="bg-white rounded-xl overflow-hidden card-shadow border border-slate-200">
+        <div class="relative h-44 bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1527977966376-1c8408f9f108?auto=format&fit=crop&w=1200&q=80');">
+          <div class="absolute inset-0 bg-black/20"></div>
+          <span class="absolute top-3 left-3 text-[11px] font-bold tracking-wide text-white bg-black/35 px-2.5 py-1 rounded">MANUFACTURER</span>
+          <button class="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-slate-500">♡</button>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold text-slate-900">LEGO Education</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Manufacturer • Publisher</p>
+          <div class="flex flex-wrap gap-2 mt-3 text-xs">
+            <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+            <span class="px-2 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">ISE Exhibitor</span>
+          </div>
+          <div class="mt-3 flex justify-between text-sm text-slate-600">
+            <span>★ 4.9 (56)</span><span>◎ Denmark</span>
+          </div>
+          <div class="mt-2 flex justify-between text-sm text-slate-600">
+            <span>80+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl overflow-hidden card-shadow border border-slate-200">
+        <div class="relative h-44 bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80');">
+          <span class="absolute top-3 left-3 text-[11px] font-bold tracking-wide text-white bg-black/35 px-2.5 py-1 rounded">MANUFACTURER</span>
+          <button class="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-slate-500">♡</button>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold text-slate-900">ViewSonic Education</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Manufacturer • OEM</p>
+          <div class="flex flex-wrap gap-2 mt-3 text-xs">
+            <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Founding Supplier</span>
+            <span class="px-2 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">ISE Exhibitor</span>
+          </div>
+          <div class="mt-3 flex justify-between text-sm text-slate-600">
+            <span>★ 4.8 (24)</span><span>◎ United States</span>
+          </div>
+          <div class="mt-2 flex justify-between text-sm text-slate-600">
+            <span>120+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl overflow-hidden card-shadow border border-slate-200">
+        <div class="relative h-44 bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80');">
+          <span class="absolute top-3 left-3 text-[11px] font-bold tracking-wide text-white bg-black/35 px-2.5 py-1 rounded">MANUFACTURER</span>
+          <button class="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-slate-500">♡</button>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold text-slate-900">Promethean World</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Manufacturer • Service Provider</p>
+          <div class="flex flex-wrap gap-2 mt-3 text-xs">
+            <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+            <span class="px-2 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">ISE Exhibitor</span>
+          </div>
+          <div class="mt-3 flex justify-between text-sm text-slate-600">
+            <span>★ 4.7 (31)</span><span>◎ United Kingdom</span>
+          </div>
+          <div class="mt-2 flex justify-between text-sm text-slate-600">
+            <span>80+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl overflow-hidden card-shadow border border-slate-200">
+        <div class="relative h-44 bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80');">
+          <span class="absolute top-3 left-3 text-[11px] font-bold tracking-wide text-white bg-black/35 px-2.5 py-1 rounded">MANUFACTURER</span>
+          <button class="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-slate-500">♡</button>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold text-slate-900">SMART Technologies</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Manufacturer • Service Provider</p>
+          <div class="flex flex-wrap gap-2 mt-3 text-xs">
+            <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Founding Supplier</span>
+            <span class="px-2 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">ISE Exhibitor</span>
+          </div>
+          <div class="mt-3 flex justify-between text-sm text-slate-600">
+            <span>★ 4.6 (18)</span><span>◎ Canada</span>
+          </div>
+          <div class="mt-2 flex justify-between text-sm text-slate-600">
+            <span>120+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- All suppliers -->
+  <section class="max-w-[1400px] mx-auto px-4 lg:px-8 pb-12">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl md:text-2xl font-bold text-slate-900">All Suppliers</h2>
+      <a href="#" class="text-emerald-600 font-medium text-sm">View all →</a>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 mb-5">
+      <button class="px-4 py-2 rounded-full bg-slate-900 text-white text-sm font-medium">All Categories</button>
+      <button class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-600 text-sm">STEM & Robotics</button>
+      <button class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-600 text-sm">AV & Display</button>
+      <button class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-600 text-sm">Furniture</button>
+      <button class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-600 text-sm">Lab Equipment</button>
+      <button class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-600 text-sm">Software & LMS</button>
+      <div class="ml-auto">
+        <button class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-600 text-sm">Filter</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <!-- supplier mini cards -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">L</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">LEGO Education</h3>
+              <p class="text-xs text-slate-500">Manufacturer • Publisher</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.9 (56)</span><span>◎ Denmark</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>80+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">V</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">ViewSonic Education</h3>
+              <p class="text-xs text-slate-500">Manufacturer • OEM</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+          <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Founding</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.8 (24)</span><span>◎ United States</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>120+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">P</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">Promethean World</h3>
+              <p class="text-xs text-slate-500">Manufacturer • Service Provider</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+          <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Founding</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.7 (31)</span><span>◎ United Kingdom</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>80+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">S</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">SMART Technologies</h3>
+              <p class="text-xs text-slate-500">Manufacturer • Service Provider</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+          <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Founding</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.6 (18)</span><span>◎ Canada</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>120+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">S</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">Steelcase Education</h3>
+              <p class="text-xs text-slate-500">Manufacturer • Distributor</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.5 (12)</span><span>◎ United States</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>80+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">F</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">Flinn Scientific</h3>
+              <p class="text-xs text-slate-500">Manufacturer • OEM</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.4 (27)</span><span>◎ United States</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>20+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">B</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">Britannica Education</h3>
+              <p class="text-xs text-slate-500">Publisher • Service Provider</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.3 (8)</span><span>◎ United Kingdom</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>20+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 card-shadow">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">N</div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">Nasco Education</h3>
+              <p class="text-xs text-slate-500">Distributor • Publisher</p>
+            </div>
+          </div>
+          <span class="text-slate-400">♡</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Verified</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 flex justify-between"><span>★ 4.2 (19)</span><span>◎ United States</span></div>
+        <div class="mt-2 text-xs text-slate-600 flex justify-between"><span>20+ Products</span><a href="#" class="text-emerald-600 font-semibold">View Profile →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Advantage -->
+  <section class="max-w-[1400px] mx-auto px-4 lg:px-8 py-16 border-t border-slate-200">
+    <div class="text-center">
+      <p class="text-emerald-500 font-bold tracking-[0.2em] text-xs">OUR ADVANTAGE</p>
+      <h2 class="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900">Why Choose <span class="text-emerald-500">Edushopify</span></h2>
+      <p class="mt-3 text-slate-500 max-w-2xl mx-auto">
+        The trusted platform for education procurement — connecting buyers with verified suppliers worldwide.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mt-10">
+      <div class="bg-white rounded-2xl p-8 text-center border border-slate-200 shadow-soft">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-2xl">🛡️</div>
+        <h3 class="mt-4 font-bold text-slate-900">Verified Suppliers</h3>
+        <p class="mt-1 text-sm text-slate-500">Trusted & Verified</p>
+      </div>
+      <div class="bg-white rounded-2xl p-8 text-center border border-slate-200 shadow-soft">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-2xl">🌐</div>
+        <h3 class="mt-4 font-bold text-slate-900">Global Reach</h3>
+        <p class="mt-1 text-sm text-slate-500">Suppliers in 50+ Countries</p>
+      </div>
+      <div class="bg-white rounded-2xl p-8 text-center border border-slate-200 shadow-soft">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-2xl">📄</div>
+        <h3 class="mt-4 font-bold text-slate-900">RFQ Opportunities</h3>
+        <p class="mt-1 text-sm text-slate-500">Get Relevant Business</p>
+      </div>
+      <div class="bg-white rounded-2xl p-8 text-center border border-slate-200 shadow-soft">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-2xl">🔒</div>
+        <h3 class="mt-4 font-bold text-slate-900">Secure & Reliable</h3>
+        <p class="mt-1 text-sm text-slate-500">Safe Communication</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Events -->
+  <section class="max-w-[1400px] mx-auto px-4 lg:px-8 pb-16">
+    <div class="text-center">
+      <p class="text-emerald-500 font-bold tracking-[0.2em] text-xs">DON'T MISS OUT</p>
+      <h2 class="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900">Education <span class="text-emerald-500">STEM & Robotics</span> Events</h2>
+      <p class="mt-3 text-slate-500 max-w-2xl mx-auto">
+        Discover the world's top education and technology exhibitions — all in one place.
+      </p>
+    </div>
+
+    <div class="flex justify-end mt-4 mb-4">
+      <a href="#" class="text-emerald-600 font-medium text-sm">View all →</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <div class="rounded-2xl overflow-hidden card-shadow bg-white border border-slate-200">
+        <div class="h-40 relative bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80');">
+          <div class="absolute inset-0 bg-blue-700/65"></div>
+          <span class="absolute top-3 left-3 text-xs px-2 py-1 rounded-full bg-white/20 text-white">EdTech</span>
+          <div class="absolute bottom-3 left-3 text-white font-bold text-lg">BETT 2025</div>
+        </div>
+        <div class="p-4">
+          <div class="text-sm font-semibold text-slate-900">Jan 22–24, 2026</div>
+          <div class="text-sm text-slate-500 mt-1">📍 London, UK</div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl overflow-hidden card-shadow bg-white border border-slate-200">
+        <div class="h-40 relative bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80');">
+          <div class="absolute inset-0 bg-emerald-700/60"></div>
+          <span class="absolute top-3 left-3 text-xs px-2 py-1 rounded-full bg-white/20 text-white">STEM</span>
+          <div class="absolute bottom-3 left-3 text-white font-bold text-lg">STEM Education Summit</div>
+        </div>
+        <div class="p-4">
+          <div class="text-sm font-semibold text-slate-900">Mar 10–12, 2026</div>
+          <div class="text-sm text-slate-500 mt-1">📍 Dubai, UAE</div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl overflow-hidden card-shadow bg-white border border-slate-200">
+        <div class="h-40 relative bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80');">
+          <div class="absolute inset-0 bg-purple-700/65"></div>
+          <span class="absolute top-3 left-3 text-xs px-2 py-1 rounded-full bg-white/20 text-white">Robotics</span>
+          <div class="absolute bottom-3 left-3 text-white font-bold text-lg">World Robot Olympiad</div>
+        </div>
+        <div class="p-4">
+          <div class="text-sm font-semibold text-slate-900">Apr 5–7, 2026</div>
+          <div class="text-sm text-slate-500 mt-1">📍 Singapore</div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl overflow-hidden card-shadow bg-white border border-slate-200">
+        <div class="h-40 relative bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80');">
+          <div class="absolute inset-0 bg-orange-700/65"></div>
+          <span class="absolute top-3 left-3 text-xs px-2 py-1 rounded-full bg-white/20 text-white">AV & Display</span>
+          <div class="absolute bottom-3 left-3 text-white font-bold text-lg">ISE 2026</div>
+        </div>
+        <div class="p-4">
+          <div class="text-sm font-semibold text-slate-900">Feb 3–6, 2026</div>
+          <div class="text-sm text-slate-500 mt-1">📍 Barcelona, Spain</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-[1400px] mx-auto px-4 lg:px-8 py-14">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-10">
+        <div class="md:col-span-2">
+          <a href="#" class="flex items-center gap-2">
+            <div class="grid grid-cols-3 gap-1.5 p-1">
+              <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-sky-500"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-cyan-400"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-teal-500"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-emerald-300"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-cyan-500"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-sky-400"></span>
+              <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+            </div>
+            <div class="leading-tight">
+              <div class="font-extrabold text-[18px] text-slate-900">Edushopify</div>
+              <div class="text-[10px] text-slate-400 -mt-0.5">Connecting Education</div>
+            </div>
+          </a>
+          <p class="mt-5 text-slate-500 max-w-sm">
+            The B2B education procurement marketplace connecting institutional buyers with verified suppliers worldwide.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-900">Marketplace</h4>
+          <ul class="mt-4 space-y-3 text-slate-500">
+            <li><a href="#" class="hover:text-emerald-600">Browse Suppliers</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Products</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Categories</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Request Quote</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-900">Company</h4>
+          <ul class="mt-4 space-y-3 text-slate-500">
+            <li><a href="#" class="hover:text-emerald-600">About Us</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Blog</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Contact</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Careers</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-900">Support</h4>
+          <ul class="mt-4 space-y-3 text-slate-500">
+            <li><a href="#" class="hover:text-emerald-600">Help Center</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Pricing</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Terms of Service</a></li>
+            <li><a href="#" class="hover:text-emerald-600">Privacy Policy</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-10 pt-6 border-t border-slate-200 flex flex-col md:flex-row gap-3 items-center justify-between text-sm text-slate-500">
+        <p>© 2026 Edushopify. All rights reserved.</p>
+        <div class="flex gap-6">
+          <a href="#" class="hover:text-emerald-600">Terms</a>
+          <a href="#" class="hover:text-emerald-600">Privacy</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

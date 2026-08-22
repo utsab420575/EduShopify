@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Home — EduShopify</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+<style>
+:root{
+    --brand-primary:#216C50;
+    --brand-primary-hover:#2D8A67;
+    --brand-primary-soft:#E7F3EE;
+
+    --fe-text:#0F172A;
+    --fe-text-muted:#475569;
+    --fe-text-subtle:#94A3B8;
+    --fe-border:#E2E8F0;
+    --fe-bg:#F8FAFC;
+    --fe-surface:#FFFFFF;
+
+    --fe-rating:#F59E0B;
+    --fe-warning-bg:#FFFBEB;
+    --fe-warning-text:#92400E;
+    --fe-danger:#DC2626;
+    --fe-success:#16A34A;
+}
+html,body{ font-family:'Inter',sans-serif; color:var(--fe-text); background:var(--fe-bg); }
+.font-heading{ font-family:'Outfit',sans-serif; }
+[x-cloak]{ display:none !important; }
+
+.btn-brand{ background:var(--brand-primary); color:#fff; transition:background-color .15s ease; }
+.btn-brand:hover{ background:var(--brand-primary-hover); }
+.btn-outline{ border:1px solid var(--fe-border); color:var(--fe-text); background:#fff; transition:background-color .15s ease; }
+.btn-outline:hover{ background:var(--fe-bg); }
+
+.badge-brand{ background:var(--brand-primary-soft); color:var(--brand-primary); }
+.text-brand{ color:var(--brand-primary); }
+.border-brand{ border-color:var(--brand-primary); }
+
+.focus-brand:focus{ outline:none; border-color:var(--brand-primary); box-shadow:0 0 0 3px var(--brand-primary-soft); }
+
+.star{ color:var(--fe-rating); }
+
+.nav-link{ color:var(--fe-text-muted); transition:color .15s ease; }
+.nav-link:hover{ color:var(--brand-primary); }
+.nav-link.active{ color:var(--brand-primary); font-weight:600; }
+
+.card-hover{ transition:box-shadow .2s ease, transform .2s ease; }
+.card-hover:hover{ box-shadow:0 8px 24px -8px rgba(15,23,42,.12); transform:translateY(-2px); }
+</style>
+
+
+</head>
+<body x-data="{ mobileMenu:false }">
+
+<header class="bg-white border-b sticky top-0 z-40" style="border-color:var(--fe-border)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6">
+        <div class="h-20 flex items-center justify-between gap-6">
+
+            <div class="flex items-center gap-8 min-w-0">
+                <a href="home.html" class="flex items-center gap-2 shrink-0">
+                    <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                    <span class="font-heading font-bold text-lg text-gray-900 hidden sm:block">EduShopify</span>
+                </a>
+
+                <nav class="hidden lg:flex items-center gap-6 text-sm">
+                    <div class="relative" x-data="{ open:false }" @click.outside="open=false">
+                        <button @click="open=!open" class="nav-link flex items-center gap-1">
+                            Categories <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div x-show="open" x-transition x-cloak class="absolute left-0 mt-3 w-72 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-1 gap-0.5" style="border-color:var(--fe-border)">
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-flask w-4 text-brand"></i> Science Lab Equipment</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-book w-4 text-brand"></i> Textbooks & Publications</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-chair w-4 text-brand"></i> Classroom Furniture</a>
+                            <a href="catalog.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700"><i class="fa-solid fa-computer w-4 text-brand"></i> Computer & IT Equipment</a>
+                            <a href="catalog.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium text-brand mt-1 border-t" style="border-color:var(--fe-border)">Browse all categories →</a>
+                        </div>
+                    </div>
+                    <a href="catalog.html" class="nav-link">Marketplace</a>
+                    <a href="suppliers.html" class="nav-link">Suppliers</a>
+                    <a href="rfqs.html" class="nav-link">Opportunities</a>
+                    <a href="pricing.html" class="nav-link">Pricing</a>
+                </nav>
+            </div>
+
+            <div class="hidden md:flex items-center flex-1 max-w-md relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input type="text" placeholder="Search products, services, suppliers..."
+                    class="focus-brand w-full pl-10 pr-3 py-2.5 text-sm rounded-full border" style="border-color:var(--fe-border); background:var(--fe-bg)">
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="#" class="hidden sm:block text-sm font-medium px-4 py-2 rounded-lg nav-link">Login</a>
+                <a href="#" class="btn-brand text-sm font-semibold px-4 py-2.5 rounded-lg">Join Free</a>
+                <button class="lg:hidden text-gray-500 p-2"><i class="fa-solid fa-bars"></i></button>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+<!-- 1. HERO -->
+<section class="relative overflow-hidden" style="background:linear-gradient(180deg,#F0F9F5 0%,#F8FAFC 100%)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 pt-16 pb-20 text-center">
+        <span class="badge-brand inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+            <i class="fa-solid fa-graduation-cap"></i> Trusted by 2,400+ institutions
+        </span>
+        <h1 class="font-heading text-4xl sm:text-5xl font-bold text-gray-900 max-w-3xl mx-auto leading-tight">
+            Procure smarter for your school, college, or university
+        </h1>
+        <p class="text-gray-500 mt-5 max-w-xl mx-auto text-base">
+            Source lab equipment, textbooks, furniture, and services from verified educational suppliers — post an RFQ and compare quotes side by side.
+        </p>
+
+        <div class="max-w-2xl mx-auto mt-8 bg-white rounded-2xl border shadow-sm p-2 flex flex-col sm:flex-row gap-2" style="border-color:var(--fe-border)">
+            <div class="flex-1 relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="Search for microscopes, textbooks, desks..."
+                    class="w-full pl-11 pr-3 py-3.5 text-sm rounded-xl border-0 focus:outline-none focus:ring-0">
+            </div>
+            <button class="btn-brand font-semibold text-sm px-6 py-3.5 rounded-xl">Search Marketplace</button>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
+            <span class="text-xs text-gray-400 mr-1">Popular:</span>
+            <a href="catalog.html" class="text-xs font-medium px-3 py-1.5 rounded-full bg-white border hover:border-brand hover:text-brand" style="border-color:var(--fe-border)">Lab Equipment</a>
+            <a href="catalog.html" class="text-xs font-medium px-3 py-1.5 rounded-full bg-white border hover:border-brand hover:text-brand" style="border-color:var(--fe-border)">STEM Kits</a>
+            <a href="catalog.html" class="text-xs font-medium px-3 py-1.5 rounded-full bg-white border hover:border-brand hover:text-brand" style="border-color:var(--fe-border)">Classroom Furniture</a>
+            <a href="catalog.html" class="text-xs font-medium px-3 py-1.5 rounded-full bg-white border hover:border-brand hover:text-brand" style="border-color:var(--fe-border)">Software Licenses</a>
+        </div>
+    </div>
+</section>
+
+<!-- 2. TOP CATEGORIES -->
+<section class="max-w-7xl mx-auto px-4 lg:px-6 py-16">
+    <div class="flex items-end justify-between mb-8">
+        <div>
+            <h2 class="font-heading text-2xl font-bold text-gray-900">Shop by Category</h2>
+            <p class="text-sm text-gray-500 mt-1">Explore the categories institutions source most.</p>
+        </div>
+        <a href="catalog.html" class="text-sm font-semibold text-brand hidden sm:block">View all categories →</a>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <a href="catalog.html" class="card-hover bg-white border rounded-2xl p-5 text-center" style="border-color:var(--fe-border)">
+            <div class="w-12 h-12 rounded-xl badge-brand flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-flask text-lg"></i></div>
+            <p class="text-sm font-semibold text-gray-800">Lab Equipment</p>
+        </a>
+        <a href="catalog.html" class="card-hover bg-white border rounded-2xl p-5 text-center" style="border-color:var(--fe-border)">
+            <div class="w-12 h-12 rounded-xl badge-brand flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-computer text-lg"></i></div>
+            <p class="text-sm font-semibold text-gray-800">IT & STEM Hardware</p>
+        </a>
+        <a href="catalog.html" class="card-hover bg-white border rounded-2xl p-5 text-center" style="border-color:var(--fe-border)">
+            <div class="w-12 h-12 rounded-xl badge-brand flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-chair text-lg"></i></div>
+            <p class="text-sm font-semibold text-gray-800">School Furniture</p>
+        </a>
+        <a href="catalog.html" class="card-hover bg-white border rounded-2xl p-5 text-center" style="border-color:var(--fe-border)">
+            <div class="w-12 h-12 rounded-xl badge-brand flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-pen-ruler text-lg"></i></div>
+            <p class="text-sm font-semibold text-gray-800">Stationery</p>
+        </a>
+        <a href="catalog.html" class="card-hover bg-white border rounded-2xl p-5 text-center" style="border-color:var(--fe-border)">
+            <div class="w-12 h-12 rounded-xl badge-brand flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-shirt text-lg"></i></div>
+            <p class="text-sm font-semibold text-gray-800">Uniforms</p>
+        </a>
+        <a href="catalog.html" class="card-hover bg-white border rounded-2xl p-5 text-center" style="border-color:var(--fe-border)">
+            <div class="w-12 h-12 rounded-xl badge-brand flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-laptop-code text-lg"></i></div>
+            <p class="text-sm font-semibold text-gray-800">Software</p>
+        </a>
+    </div>
+</section>
+
+<!-- 3. FEATURED LISTINGS -->
+<section style="background:var(--fe-surface)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-16">
+        <div class="flex items-end justify-between mb-8">
+            <div>
+                <h2 class="font-heading text-2xl font-bold text-gray-900">Featured Listings</h2>
+                <p class="text-sm text-gray-500 mt-1">Verified products and services from top-rated suppliers.</p>
+            </div>
+            <a href="catalog.html" class="text-sm font-semibold text-brand hidden sm:block">Browse marketplace →</a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+            <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                    <i class="fa-solid fa-microscope text-4xl text-gray-300"></i>
+                    <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Digital Microscope 4K — Classroom Set</p>
+                    <p class="text-xs text-gray-400 mt-1">SKU: LAB-4021 · Prime Optics</p>
+                    <p class="text-base font-bold text-gray-900 mt-2">$195.00 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                    <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                        <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                        <span class="text-xs text-gray-500 truncate">Prime Optics Uzbekistan</span>
+                        <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.9</span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                    <i class="fa-solid fa-book text-4xl text-gray-300"></i>
+                    <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Grade 9 Physics Textbook Bundle</p>
+                    <p class="text-xs text-gray-400 mt-1">SKU: TXT-9091 · Horizon Press</p>
+                    <p class="text-base font-bold text-gray-900 mt-2">$12.50 <span class="text-xs font-normal text-gray-400">/ unit</span></p>
+                    <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                        <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                        <span class="text-xs text-gray-500 truncate">Horizon Press</span>
+                        <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.7</span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                    <i class="fa-solid fa-chair text-4xl text-gray-300"></i>
+                    <span class="absolute top-2.5 left-2.5 bg-gray-800/80 text-white text-[10px] font-bold px-2 py-1 rounded-full">RFQ Pricing</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">Ergonomic Student Desk & Chair Set</p>
+                    <p class="text-xs text-gray-400 mt-1">SKU: FUR-1187 · ClassCraft</p>
+                    <p class="text-base font-bold text-gray-900 mt-2">Request Quote</p>
+                    <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                        <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                        <span class="text-xs text-gray-500 truncate">ClassCraft Furniture</span>
+                        <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.8</span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="listing.html" class="card-hover bg-white border rounded-2xl overflow-hidden block" style="border-color:var(--fe-border)">
+                <div class="h-40 bg-gray-100 relative flex items-center justify-center">
+                    <i class="fa-solid fa-flask-vial text-4xl text-gray-300"></i>
+                    <span class="absolute top-2.5 left-2.5 badge-brand text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-circle-check"></i> Verified</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">STEM Chemistry Kit — Grade 6-8</p>
+                    <p class="text-xs text-gray-400 mt-1">SKU: STM-3350 · EduLab</p>
+                    <p class="text-base font-bold text-gray-900 mt-2">$34.00 <span class="text-xs font-normal text-gray-400">/ kit</span></p>
+                    <div class="flex items-center gap-1.5 mt-3 pt-3 border-t" style="border-color:var(--fe-border)">
+                        <div class="w-5 h-5 rounded-full bg-gray-200"></div>
+                        <span class="text-xs text-gray-500 truncate">EduLab Equipment</span>
+                        <span class="text-xs text-gray-400 ml-auto flex items-center gap-0.5"><i class="fa-solid fa-star star text-[10px]"></i> 4.6</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- 4. VERIFIED SUPPLIERS -->
+<section class="max-w-7xl mx-auto px-4 lg:px-6 py-16">
+    <div class="flex items-end justify-between mb-8">
+        <div>
+            <h2 class="font-heading text-2xl font-bold text-gray-900">Verified Suppliers</h2>
+            <p class="text-sm text-gray-500 mt-1">Top-rated, certified suppliers serving educational institutions.</p>
+        </div>
+        <a href="suppliers.html" class="text-sm font-semibold text-brand hidden sm:block">View all suppliers →</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <a href="supplier.html" class="card-hover bg-white border rounded-2xl p-5 block" style="border-color:var(--fe-border)">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-building text-gray-400"></i></div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 truncate">Prime Optics Uzbekistan</p>
+                    <p class="text-xs text-gray-400">🇺🇿 Tashkent</p>
+                </div>
+            </div>
+            <span class="badge-brand text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1 mb-2"><i class="fa-solid fa-circle-check"></i> Verified · 5 yrs</span>
+            <p class="text-xs text-gray-400 flex items-center gap-1"><i class="fa-solid fa-star star"></i> 4.9 (128 reviews)</p>
+        </a>
+        <a href="supplier.html" class="card-hover bg-white border rounded-2xl p-5 block" style="border-color:var(--fe-border)">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-building text-gray-400"></i></div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 truncate">EduLab Equipment</p>
+                    <p class="text-xs text-gray-400">🇺🇿 Samarkand</p>
+                </div>
+            </div>
+            <span class="badge-brand text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1 mb-2"><i class="fa-solid fa-circle-check"></i> Verified · 3 yrs</span>
+            <p class="text-xs text-gray-400 flex items-center gap-1"><i class="fa-solid fa-star star"></i> 4.6 (74 reviews)</p>
+        </a>
+        <a href="supplier.html" class="card-hover bg-white border rounded-2xl p-5 block" style="border-color:var(--fe-border)">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-building text-gray-400"></i></div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 truncate">Horizon Press</p>
+                    <p class="text-xs text-gray-400">🇺🇿 Bukhara</p>
+                </div>
+            </div>
+            <span class="badge-brand text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1 mb-2"><i class="fa-solid fa-circle-check"></i> Verified · 8 yrs</span>
+            <p class="text-xs text-gray-400 flex items-center gap-1"><i class="fa-solid fa-star star"></i> 4.7 (211 reviews)</p>
+        </a>
+        <a href="supplier.html" class="card-hover bg-white border rounded-2xl p-5 block" style="border-color:var(--fe-border)">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-building text-gray-400"></i></div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 truncate">ClassCraft Furniture</p>
+                    <p class="text-xs text-gray-400">🇺🇿 Andijan</p>
+                </div>
+            </div>
+            <span class="badge-brand text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1 mb-2"><i class="fa-solid fa-circle-check"></i> Verified · 2 yrs</span>
+            <p class="text-xs text-gray-400 flex items-center gap-1"><i class="fa-solid fa-star star"></i> 4.8 (52 reviews)</p>
+        </a>
+    </div>
+</section>
+
+<!-- 5. LIVE RFQ TICKER -->
+<section style="background:var(--fe-surface)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-16">
+        <div class="flex items-end justify-between mb-8">
+            <div>
+                <h2 class="font-heading text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style="background:var(--brand-primary)"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5" style="background:var(--brand-primary)"></span>
+                    </span>
+                    Live Sourcing Opportunities
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">Open procurement requests from schools and universities right now.</p>
+            </div>
+            <a href="rfqs.html" class="text-sm font-semibold text-brand hidden sm:block">View all opportunities →</a>
+        </div>
+
+        <div class="bg-white border rounded-2xl divide-y" style="border-color:var(--fe-border)">
+            <a href="rfq-detail.html" class="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-gray-50">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900">Science Lab Equipment for New Campus Wing</p>
+                    <p class="text-xs text-gray-400 mt-1">RFQ-2026-0512 · Tashkent, Uzbekistan · 12 items</p>
+                </div>
+                <span class="text-xs font-medium text-gray-500 shrink-0"><i class="fa-regular fa-clock mr-1"></i> Closes in 4 days</span>
+                <span class="btn-outline text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0">View Summary</span>
+            </a>
+            <a href="rfq-detail.html" class="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-gray-50">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900">Bulk Textbook Order — Grades 6 to 9</p>
+                    <p class="text-xs text-gray-400 mt-1">RFQ-2026-0509 · Samarkand, Uzbekistan · 8 items</p>
+                </div>
+                <span class="text-xs font-medium text-gray-500 shrink-0"><i class="fa-regular fa-clock mr-1"></i> Closes in 2 days</span>
+                <span class="btn-outline text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0">View Summary</span>
+            </a>
+            <a href="rfq-detail.html" class="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-gray-50">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900">Classroom Furniture — 200 Desk & Chair Sets</p>
+                    <p class="text-xs text-gray-400 mt-1">RFQ-2026-0501 · Bukhara, Uzbekistan · 3 items</p>
+                </div>
+                <span class="text-xs font-medium text-gray-500 shrink-0"><i class="fa-regular fa-clock mr-1"></i> Closes in 9 days</span>
+                <span class="btn-outline text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0">View Summary</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- 6. TWO-WAY VALUE PROPOSITION -->
+<section class="max-w-7xl mx-auto px-4 lg:px-6 py-16">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="rounded-2xl p-8 text-white relative overflow-hidden" style="background:var(--brand-primary)">
+            <i class="fa-solid fa-school text-6xl absolute -right-3 -bottom-3 opacity-10"></i>
+            <span class="text-xs font-bold uppercase tracking-wider opacity-80">For Educational Buyers</span>
+            <h3 class="font-heading text-2xl font-bold mt-2 mb-3">Procure smarter, not harder</h3>
+            <p class="text-sm opacity-90 max-w-sm mb-6">Post an RFQ, receive competing quotations, and compare price, lead time, and supplier ratings side by side.</p>
+            <a href="#" class="inline-block bg-white text-sm font-semibold px-5 py-2.5 rounded-lg" style="color:var(--brand-primary)">Register as Buyer</a>
+        </div>
+        <div class="rounded-2xl p-8 text-white relative overflow-hidden bg-gray-900">
+            <i class="fa-solid fa-industry text-6xl absolute -right-3 -bottom-3 opacity-10"></i>
+            <span class="text-xs font-bold uppercase tracking-wider opacity-80">For Suppliers</span>
+            <h3 class="font-heading text-2xl font-bold mt-2 mb-3">Access institutional contracts</h3>
+            <p class="text-sm opacity-90 max-w-sm mb-6">List your products and services, bid on live RFQs, and grow your business with verified education-sector buyers.</p>
+            <a href="#" class="inline-block bg-white text-gray-900 text-sm font-semibold px-5 py-2.5 rounded-lg">Register as Supplier</a>
+        </div>
+    </div>
+</section>
+
+<!-- 7 & 8. TRUST STRIP + NEWSLETTER -->
+<section style="background:var(--fe-surface)" class="border-t" style="border-color:var(--fe-border)">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-14">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center mb-12">
+            <div><p class="font-heading text-3xl font-bold text-gray-900">1,200+</p><p class="text-xs text-gray-500 mt-1">Verified Suppliers</p></div>
+            <div><p class="font-heading text-3xl font-bold text-gray-900">85</p><p class="text-xs text-gray-500 mt-1">Categories</p></div>
+            <div><p class="font-heading text-3xl font-bold text-gray-900">2,400+</p><p class="text-xs text-gray-500 mt-1">Institutions</p></div>
+            <div><p class="font-heading text-3xl font-bold text-gray-900">14</p><p class="text-xs text-gray-500 mt-1">Countries Served</p></div>
+        </div>
+
+        <div class="max-w-xl mx-auto text-center">
+            <h3 class="font-heading text-xl font-bold text-gray-900">Stay updated on new suppliers & RFQs</h3>
+            <p class="text-sm text-gray-500 mt-2 mb-5">Get the latest sourcing opportunities delivered to your inbox.</p>
+            <form class="flex flex-col sm:flex-row gap-2">
+                <input type="email" placeholder="you@institution.edu"
+                    class="focus-brand flex-1 px-4 py-3 text-sm rounded-lg border" style="border-color:var(--fe-border)">
+                <button class="btn-brand text-sm font-semibold px-6 py-3 rounded-lg">Subscribe</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+
+<footer class="bg-gray-900 text-gray-300 mt-16">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
+        <div class="col-span-2">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-9 h-9 rounded-lg btn-brand flex items-center justify-center font-bold text-sm font-heading">ES</div>
+                <span class="font-heading font-bold text-lg text-white">EduShopify</span>
+            </div>
+            <p class="text-sm text-gray-400 leading-relaxed max-w-xs">The B2B marketplace connecting schools, universities, and institutions with verified educational suppliers worldwide.</p>
+            <div class="flex items-center gap-3 mt-5">
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-linkedin-in text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-x-twitter text-xs"></i></a>
+                <a href="#" class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700"><i class="fa-brands fa-facebook-f text-xs"></i></a>
+            </div>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Marketplace</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="catalog.html" class="hover:text-white">Browse Catalog</a></li>
+                <li><a href="suppliers.html" class="hover:text-white">Suppliers</a></li>
+                <li><a href="rfqs.html" class="hover:text-white">Opportunities</a></li>
+                <li><a href="pricing.html" class="hover:text-white">Pricing</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Company</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">How It Works</a></li>
+                <li><a href="#" class="hover:text-white">About Us</a></li>
+                <li><a href="#" class="hover:text-white">Contact</a></li>
+                <li><a href="#" class="hover:text-white">FAQs</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-heading font-semibold text-white text-sm mb-4">Legal</p>
+            <ul class="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" class="hover:text-white">Terms of Service</a></li>
+                <li><a href="#" class="hover:text-white">Privacy Policy</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-gray-800 py-5 text-center text-xs text-gray-500">© 2026 EduShopify. All rights reserved.</div>
+</footer>
+
+</body>
+</html>

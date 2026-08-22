@@ -1,0 +1,4021 @@
+=====================================================================
+EDUSHOPIFY FULL DATABASE STRUCTURE V4.3 — FINAL STRUCTURED DOCUMENT
+=====================================================================
+Target stack : Laravel + MariaDB
+Architecture : RFQ-first B2B marketplace with individual and
+               organization accounts
+Status       : Complete standalone schema using Spatie Laravel
+               Permission Teams for all live roles and permissions.
+               No earlier database document is required.
+
+Format:
+  - Each table is separated clearly.
+  - Columns are shown line by line.
+  - Use this document as the database design reference.
+
+V4.3 = V4.2 schema + merged V4.3 additions:
+  1. account_dashboard_preferences  (new table)
+  2. role_requests                  (new table)
+  3. subscription snapshot fields   (subscriptions table)
+All original V4.2 tables, fields, relationships, indexes and
+workflows remain.
+
+
+=====================================================================
+1. CONFIRMED CORE BUSINESS RULES
+=====================================================================
+
+ 1. A human logs in through users.
+ 2. Every marketplace user belongs to exactly one account.
+ 3. An account is either:
+      - individual
+      - organization
+ 4. One user cannot manage multiple marketplace accounts and cannot
+    join another marketplace account.
+ 5. An organization may contain multiple users/members.
+ 6. An organization may have multiple owners.
+ 7. One account may have:
+      - Buyer capability
+      - Supplier capability
+      - Both Buyer and Supplier capabilities
+ 8. Buyer and Supplier use separate profiles even when they belong
+    to the same account.
+ 9. Every new Buyer or Supplier capability requires Admin approval.
+10. Existing approved capability continues while a new capability
+    application is pending.
+11. An individual account may convert to an organization account.
+12. Individual-to-organization conversion requires Admin approval.
+13. During conversion review, the old individual identity remains
+    active and the proposed organization data is not public.
+14. If conversion is rejected, the account remains individual and
+    the user may resubmit.
+15. After conversion, rollback to individual is not allowed.
+16. If an approved Supplier converts to an organization, Supplier
+    capability becomes pending and requires Admin approval again.
+17. Business records belong to accounts.
+18. The acting human is recorded separately through fields such as
+    created_by_user_id, submitted_by_user_id, and
+    approved_by_user_id.
+19. Spatie Laravel Permission Teams manages all live roles and
+    permissions for Platform staff and account members.
+20. account_id is configured as Spatie's team foreign key.
+21. account_members remains the source of truth for business
+    membership, owner status, joining, removal, and suspension.
+22. Buyer and Supplier are account capabilities, not Spatie roles.
+23. Standard roles may be global Spatie roles with
+    roles.account_id = NULL.
+24. Account-specific custom roles use roles.account_id = the
+    current account id.
+25. If an organization wants to customize a global standard role,
+    the application clones it into an account-specific Spatie role
+    and changes the clone.
+26. Direct user permissions may be stored in model_has_permissions,
+    but role-based permission assignment is preferred.
+27. There is no custom permission-denial table. An ability is
+    denied by default unless granted through a role or direct
+    permission.
+28. Supplier approval must happen before subscription activation.
+29. A Supplier does not automatically receive a free plan. Admin
+    may create a free plan, and the Supplier must select it.
+30. A pending Supplier may create draft listings but cannot
+    publish, see RFQs, or submit quotations.
+31. Buyer and Supplier profiles intentionally store separate
+    business/contact information.
+32. Supplier documents are the same across countries and Supplier
+    types; each document type is marked required or optional.
+33. Supplier applications may be resubmitted only up to an
+    Admin-configurable maximum.
+34. Major Supplier legal-information changes set Supplier
+    capability to revision_required, while current public listings
+    remain visible unless Admin suspends them.
+35. Supplier physical locations and service areas are separate.
+36. Service areas support country, state, city, and later
+    radius/API matching.
+37. Buyer may send an RFQ:
+      - globally
+      - to one selected Supplier
+      - to multiple selected Suppliers
+38. Public RFQ summaries are searchable, but full details require
+    backend eligibility.
+39. RFQ visibility and notifications may be delayed by the
+    Supplier subscription plan.
+40. Directly selected Suppliers receive the RFQ immediately,
+    subject to active Supplier capability and valid subscription.
+41. One RFQ may contain multiple Products and Services from
+    multiple categories.
+42. Partial quotations are allowed.
+43. Alternative quotation items are allowed.
+44. Buyer may request formal quotation revisions and may also
+    negotiate through messages.
+45. Buyer may edit an RFQ after quotations exist; affected
+    Suppliers are notified and may revise.
+46. RFQ cancellation requires a reason.
+47. Phase 1 supports one winning Supplier per RFQ.
+48. Supplier must accept or reject an award within a deadline.
+49. Supplier rejection requires a reason; Buyer may award another
+    quotation.
+50. After Supplier acceptance, the system creates/proceeds with a
+    Purchase Order.
+51. Product purchase payments are outside the platform in Phase 1.
+52. Only Supplier subscription payments are processed inside the
+    platform.
+53. Platform revenue is subscription-based in Phase 1.
+54. Buyer-Supplier disputes initially use the support-ticket
+    system.
+55. Reviews may be created after a Supplier submits a quotation.
+    A later transaction review may also be supported.
+56. Platform Admin/staff users belong to a reserved active system
+    organization account so Spatie Teams always has a non-null
+    account_id assignment context.
+
+
+=====================================================================
+2. DATABASE STANDARD
+=====================================================================
+
+  Database    : edushopify_website
+  Engine      : InnoDB
+  Charset     : utf8mb4
+  Collation   : utf8mb4_unicode_ci
+  Primary key : unsignedBigInteger id
+  Timestamps  : created_at, updated_at
+  Use real SQL NULL
+  Money       : decimal(15,2) unless more precision is required
+  Quantities  : decimal(15,3)
+  Coordinates : latitude decimal(10,7), longitude decimal(10,7)
+
+  - Business records are never physically deleted after
+    transactions exist.
+  - Account deletion is represented by status and timestamps.
+  - Security and eligibility must be checked on the backend.
+    Frontend conditions are display helpers only.
+
+
+=====================================================================
+3. LARAVEL / SYSTEM TABLES
+=====================================================================
+
+3.1 migrations
+--------------
+migrations
+  id unsignedInteger primary auto_increment
+  migration varchar(255)
+  batch integer
+
+Indexes:
+  index(batch)
+
+
+3.2 cache
+---------
+cache
+  key varchar(255) primary
+  value mediumText
+  expiration integer
+
+Indexes:
+  index(expiration)
+
+
+3.3 cache_locks
+---------------
+cache_locks
+  key varchar(255) primary
+  owner varchar(255)
+  expiration integer
+
+Indexes:
+  index(expiration)
+
+
+3.4 sessions
+------------
+sessions
+  id varchar(255) primary
+  user_id unsignedBigInteger FK users.id nullable
+  ip_address varchar(45) nullable
+  user_agent text nullable
+  payload longText
+  last_activity integer
+
+Indexes:
+  index(user_id)
+  index(last_activity)
+
+Foreign Keys:
+  user_id -> users.id ON DELETE SET NULL
+
+
+3.5 jobs
+--------
+jobs
+  id unsignedBigInteger primary auto_increment
+  queue varchar(255)
+  payload longText
+  attempts unsignedTinyInteger
+  reserved_at unsignedInteger nullable
+  available_at unsignedInteger
+  created_at unsignedInteger
+
+Indexes:
+  index(queue)
+  index(reserved_at)
+  index(available_at)
+
+
+3.6 job_batches
+---------------
+job_batches
+  id varchar(255) primary
+  name varchar(255)
+  total_jobs integer
+  pending_jobs integer
+  failed_jobs integer
+  failed_job_ids longText
+  options mediumText nullable
+  cancelled_at integer nullable
+  created_at integer
+  finished_at integer nullable
+
+
+3.7 failed_jobs
+---------------
+failed_jobs
+  id unsignedBigInteger primary auto_increment
+  uuid varchar(255) unique
+  connection text
+  queue text
+  payload longText
+  exception longText
+  failed_at timestamp default current_timestamp
+
+Indexes:
+  index(failed_at)
+
+
+3.8 password_reset_tokens
+-------------------------
+password_reset_tokens
+  email varchar(255) primary
+  token varchar(255)
+  created_at timestamp nullable
+
+
+3.9 activity_log
+----------------
+activity_log
+  id unsignedBigInteger primary auto_increment
+  log_name varchar(255) nullable
+  description text
+  subject_type varchar(255) nullable
+  subject_id unsignedBigInteger nullable
+  event varchar(255) nullable
+  causer_type varchar(255) nullable
+  causer_id unsignedBigInteger nullable
+  properties json nullable
+  batch_uuid char(36) nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(log_name)
+  index(subject_type, subject_id)
+  index(causer_type, causer_id)
+  index(event)
+  index(batch_uuid)
+  index(created_at)
+
+
+3.10 settings
+-------------
+settings
+  id unsignedBigInteger primary auto_increment
+  group_name varchar(120)
+  name varchar(160)
+  locked boolean default false
+  payload json
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(group_name, name)
+
+Suggested settings include:
+  supplier_application_max_attempts
+  account_conversion_max_attempts
+  award_response_hours
+  rfq_requires_admin_approval
+  supplier_requires_active_subscription_for_rfq
+  quotation_review_enabled
+  purchase_review_enabled
+
+
+3.11 media
+----------
+One polymorphic table stores all uploaded files.
+
+media
+  id unsignedBigInteger primary auto_increment
+  model_type varchar(255)
+  model_id unsignedBigInteger
+  uuid char(36) nullable unique
+  collection_name varchar(255)
+  name varchar(255)
+  file_name varchar(255)
+  mime_type varchar(255) nullable
+  disk varchar(255)
+  conversions_disk varchar(255) nullable
+  size unsignedBigInteger
+  manipulations json nullable
+  custom_properties json nullable
+  generated_conversions json nullable
+  responsive_images json nullable
+  order_column unsignedInteger nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(model_type, model_id)
+  index(collection_name)
+  index(order_column)
+  index(created_at)
+
+
+3.12 notifications
+------------------
+Laravel database notifications are addressed primarily to users.
+The payload also carries the account and capability context.
+
+notifications
+  id char(36) primary
+  type varchar(255)
+  notifiable_type varchar(255)
+  notifiable_id unsignedBigInteger
+  data json
+  read_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(notifiable_type, notifiable_id)
+  index(read_at)
+  index(created_at)
+
+
+=====================================================================
+4. SPATIE LARAVEL PERMISSION — TEAMS MODE
+=====================================================================
+
+Spatie Laravel Permission manages every live role and permission
+assignment.
+
+Configuration requirement (config/permission.php):
+
+  'teams' => true,
+  'column_names' => [
+      'team_foreign_key'     => 'account_id',
+      'role_pivot_key'       => null,
+      'permission_pivot_key' => null,
+      'model_morph_key'      => 'model_id',
+  ],
+
+The application must set the current account before checking roles
+or permissions:
+
+  app(\Spatie\Permission\PermissionRegistrar::class)
+      ->setPermissionsTeamId($accountId);
+
+The User model uses:
+
+  use \Spatie\Permission\Traits\HasRoles;
+
+Do not create a second custom live role/permission system alongside
+Spatie Teams.
+
+
+4.1 permissions
+---------------
+Permissions are global abilities. Extra metadata columns are
+permitted because Spatie models may be extended.
+
+permissions
+  id unsignedBigInteger primary auto_increment
+  name varchar(255)
+  guard_name varchar(255) default 'web'
+  display_name varchar(180) nullable
+  group_name varchar(120) nullable
+  capability_scope enum('platform','common','buyer','supplier','both') default 'common'
+  description text nullable
+  is_sensitive boolean default false
+  is_owner_only boolean default false
+  is_assignable boolean default true
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(name, guard_name)
+
+Indexes:
+  index(group_name)
+  index(capability_scope)
+  index(is_active, sort_order)
+  index(is_owner_only)
+
+Recommended permission names:
+
+  Platform:
+    platform.users.view
+    platform.users.suspend
+    platform.accounts.view
+    platform.accounts.approve
+    platform.accounts.suspend
+    platform.capabilities.review
+    platform.conversions.review
+    platform.supplier_documents.verify
+    platform.listings.moderate
+    platform.categories.manage
+    platform.brands.manage
+    platform.attributes.manage
+    platform.subscriptions.manage
+    platform.rfqs.moderate
+    platform.reviews.moderate
+    platform.tickets.manage
+    platform.settings.manage
+    platform.activity_logs.view
+
+  Common account:
+    account.view
+    account.update
+    account.close
+    ownership.transfer
+    members.view
+    members.invite
+    members.update
+    members.remove
+    roles.view
+    roles.create
+    roles.update
+    roles.delete
+    roles.assign
+    locations.view
+    locations.manage
+    messages.view
+    messages.send
+    tickets.view
+    tickets.create
+    tickets.reply
+
+  Buyer:
+    buyer.profile.view
+    buyer.profile.update
+    rfq.view
+    rfq.create
+    rfq.update_draft
+    rfq.publish
+    rfq.update_open
+    rfq.cancel
+    rfq.extend_deadline
+    rfq.invite_suppliers
+    rfq.answer_questions
+    quotation.view_received
+    quotation.compare
+    quotation.request_revision
+    quotation.shortlist
+    quotation.reject
+    quotation.award
+    purchase_order.view_buyer
+    purchase_order.update_buyer
+    purchase_order.complete
+    purchase_order.cancel
+    supplier.review
+
+  Supplier:
+    supplier.profile.view
+    supplier.profile.update
+    supplier.documents.manage
+    supplier.service_areas.manage
+    subscription.view
+    subscription.select
+    subscription.cancel
+    listing.view
+    listing.create
+    listing.update
+    listing.publish
+    listing.deactivate
+    listing.delete
+    listing.media.manage
+    inventory.manage
+    tier_pricing.manage
+    rfq_opportunity.view
+    rfq_question.create
+    quotation.view_own
+    quotation.create
+    quotation.submit
+    quotation.revise
+    quotation.withdraw
+    award.view
+    award.accept
+    award.reject
+    purchase_order.view_supplier
+    purchase_order.update_supplier
+    review.reply
+
+Rules:
+  - Permission checks should use permission names, not role names.
+  - is_owner_only = true is an additional application rule; Spatie
+    stores the permission, while Laravel Policies enforce ownership
+    restrictions.
+  - An inactive permission must not be assignable or accepted by
+    authorization services.
+
+
+4.2 roles
+---------
+roles.account_id is Spatie's nullable team key.
+
+roles
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id nullable
+  name varchar(255)
+  guard_name varchar(255) default 'web'
+  display_name varchar(180) nullable
+  capability_scope enum('platform','common','buyer','supplier','both') default 'common'
+  description text nullable
+  is_system boolean default false
+  is_owner_role boolean default false
+  is_active boolean default true
+  created_by_user_id unsignedBigInteger FK users.id nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique (required by Spatie Teams):
+  unique(account_id, name, guard_name)
+
+Indexes:
+  index(account_id)
+  index(capability_scope)
+  index(is_system)
+  index(is_active)
+
+Foreign Keys:
+  account_id -> accounts.id ON DELETE CASCADE
+  created_by_user_id -> users.id ON DELETE SET NULL
+
+Role scopes:
+  account_id = NULL               Global role available across accounts.
+  account_id = current account id Custom role owned by that account.
+
+Recommended global roles:
+
+  Platform:
+    super_admin
+    admin
+    admin_staff
+    moderator
+    support_agent
+    finance_staff
+
+  Account:
+    primary_owner
+    co_owner
+    account_admin
+    buyer_manager
+    procurement_manager
+    supplier_manager
+    product_manager
+    quotation_manager
+    finance_manager
+    viewer
+
+Rules:
+  - Global standard roles are maintained by Platform Admin.
+  - Account owners cannot edit or delete global roles.
+  - An account owner may create account-specific custom roles.
+  - To customize a global role, clone it into a role with
+    account_id = current account id, then sync the clone's
+    permissions.
+  - Because MariaDB permits multiple NULL values in a unique key,
+    the service layer must also enforce uniqueness of global role
+    name + guard_name when account_id is NULL.
+
+
+4.3 model_has_roles
+-------------------
+Spatie Teams stores role assignments in the current account context.
+
+model_has_roles
+  account_id unsignedBigInteger FK accounts.id
+  role_id unsignedBigInteger FK roles.id
+  model_type varchar(255)
+  model_id unsignedBigInteger
+
+Primary Key:
+  primary(account_id, role_id, model_id, model_type)
+
+Indexes:
+  index(account_id)
+  index(model_id, model_type)
+
+Foreign Keys:
+  account_id -> accounts.id ON DELETE CASCADE
+  role_id -> roles.id ON DELETE CASCADE
+
+Rules:
+  - model_type is normally App\Models\User.
+  - account_id is never NULL in this pivot.
+  - Platform staff role assignments use the reserved system
+    account ID.
+  - Employee-role assignment history is written to activity_log.
+
+
+4.4 model_has_permissions
+-------------------------
+This table stores direct permissions assigned to a user in one
+account context.
+
+model_has_permissions
+  account_id unsignedBigInteger FK accounts.id
+  permission_id unsignedBigInteger FK permissions.id
+  model_type varchar(255)
+  model_id unsignedBigInteger
+
+Primary Key:
+  primary(account_id, permission_id, model_id, model_type)
+
+Indexes:
+  index(account_id)
+  index(model_id, model_type)
+
+Foreign Keys:
+  account_id -> accounts.id ON DELETE CASCADE
+  permission_id -> permissions.id ON DELETE CASCADE
+
+Rules:
+  - Use direct permissions only for exceptional per-user grants.
+  - Prefer assigning permissions through roles.
+  - Spatie does not provide an explicit deny pivot. Missing
+    permission means denied.
+  - Direct-permission assignment history is written to
+    activity_log.
+
+
+4.5 role_has_permissions
+------------------------
+role_has_permissions
+  permission_id unsignedBigInteger FK permissions.id
+  role_id unsignedBigInteger FK roles.id
+
+Primary Key:
+  primary(permission_id, role_id)
+
+Foreign Keys:
+  permission_id -> permissions.id ON DELETE CASCADE
+  role_id -> roles.id ON DELETE CASCADE
+
+Rule:
+  - The role itself carries account scope through
+    roles.account_id; this pivot does not need account_id.
+
+
+4.6 Reserved system account
+---------------------------
+Spatie Teams requires an account/team context for assignments.
+Create one non-public organization account for Platform staff:
+
+  accounts.account_number    = 'SYSTEM'
+  accounts.account_type      = 'organization'
+  accounts.display_name      = 'Edushopify Platform'
+  accounts.is_system_account = true
+  accounts.status            = 'active'
+
+Rules:
+  - The system account is not searchable or publicly visible.
+  - Platform staff users are members of this account.
+  - Platform roles are assigned in model_has_roles with this
+    system account_id.
+  - Normal Buyer/Supplier capabilities are not created for the
+    system account.
+
+
+4.7 Effective authorization order
+---------------------------------
+Every protected action must pass all applicable checks:
+
+  1. User status is active.
+  2. Account status is active.
+  3. account_members status is active.
+  4. Required Buyer/Supplier capability is active.
+  5. Spatie team context is set to the current account_id.
+  6. User has the required Spatie permission.
+  7. The resource belongs to the current account.
+  8. The resource status and workflow allow the action.
+
+Default rule:
+  No granted permission = deny.
+
+Role names should not be used as the main business authorization
+check. Use permissions plus Laravel Policies.
+
+
+=====================================================================
+5. USERS AND AUTHENTICATION
+=====================================================================
+
+5.1 users
+---------
+users
+  id unsignedBigInteger primary auto_increment
+  name varchar(150)
+  email varchar(255) unique
+  phone varchar(30) nullable
+  avatar varchar(255) nullable
+  status enum('pending_verification','active','inactive','suspended','deleted') default 'pending_verification'
+  locale varchar(10) default 'en'
+  currency_code varchar(10) nullable
+  email_verified_at timestamp nullable
+  phone_verified_at timestamp nullable
+  password varchar(255)
+  remember_token varchar(100) nullable
+  last_login_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rules:
+  - Remove users.type.
+  - Buyer/Supplier status belongs to account_capabilities.
+  - Platform Admin status is handled through Spatie roles.
+  - A user may belong to only one account.
+
+
+5.2 otp_codes
+-------------
+otp_codes
+  id unsignedBigInteger primary auto_increment
+  user_id unsignedBigInteger FK users.id
+  code_hash varchar(255)
+  purpose enum('phone_verification','email_verification','login','password_reset','sensitive_action') default 'phone_verification'
+  expires_at timestamp
+  verified_at timestamp nullable
+  attempts unsignedTinyInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(user_id, purpose)
+  index(expires_at)
+
+Foreign Keys:
+  user_id -> users.id ON DELETE CASCADE
+
+
+5.3 social_accounts
+-------------------
+social_accounts
+  id unsignedBigInteger primary auto_increment
+  user_id unsignedBigInteger FK users.id
+  provider varchar(30)
+  provider_id varchar(255)
+  token text nullable
+  refresh_token text nullable
+  token_expires_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(provider, provider_id)
+  unique(user_id, provider)
+
+Indexes:
+  index(user_id)
+
+Foreign Keys:
+  user_id -> users.id ON DELETE CASCADE
+
+
+=====================================================================
+6. ACCOUNTS
+=====================================================================
+
+6.1 accounts
+------------
+accounts
+  id unsignedBigInteger primary auto_increment
+  account_number varchar(50) unique
+  account_type enum('individual','organization') default 'individual'
+  is_system_account boolean default false
+  display_name varchar(200)
+  slug varchar(180) unique nullable
+  status enum('draft','pending_approval','active','inactive','suspended','deletion_pending','deleted') default 'draft'
+  primary_owner_user_id unsignedBigInteger FK users.id nullable
+  converted_from_individual_at timestamp nullable
+  approved_at timestamp nullable
+  approved_by_user_id unsignedBigInteger FK users.id nullable
+  suspended_at timestamp nullable
+  suspended_by_user_id unsignedBigInteger FK users.id nullable
+  suspension_reason text nullable
+  deletion_requested_at timestamp nullable
+  deleted_at timestamp nullable
+  deleted_by_user_id unsignedBigInteger FK users.id nullable
+  deletion_reason text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(account_type)
+  index(is_system_account)
+  index(status)
+  index(primary_owner_user_id)
+
+Rules:
+  - One public marketplace account is personal or organizational.
+  - A reserved organization row with is_system_account = true
+    represents the platform team for Admin/staff role assignments.
+  - System accounts are never publicly listed and cannot receive
+    Buyer/Supplier capabilities.
+  - The same row is converted from individual to organization
+    after Admin approval.
+  - Organization-to-individual conversion is prohibited.
+  - Deleted accounts remain in the database with status = deleted.
+
+
+=====================================================================
+7. ACCOUNT MEMBERSHIP
+=====================================================================
+
+7.1 account_members
+-------------------
+account_members
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  user_id unsignedBigInteger FK users.id
+  member_type enum('owner','member') default 'member'
+  is_primary_owner boolean default false
+  status enum('invited','active','inactive','suspended','removed') default 'invited'
+  joined_at timestamp nullable
+  removed_at timestamp nullable
+  removed_by_user_id unsignedBigInteger FK users.id nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(user_id)
+  unique(account_id, user_id)
+
+Rules:
+  - unique(user_id) enforces one user = one account.
+  - Individual accounts must have exactly one active member.
+  - Organization accounts may have multiple members and multiple
+    owners.
+  - At least one active owner must remain.
+
+
+7.2 account_member_invitations
+------------------------------
+Supports both owner-prefilled employees and employee
+self-completion.
+
+account_member_invitations
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  invited_email varchar(255)
+  invited_name varchar(150) nullable
+  invited_phone varchar(30) nullable
+  invitation_mode enum('owner_prefilled','employee_self_complete')
+  token_hash varchar(255) unique
+  invited_by_user_id unsignedBigInteger FK users.id
+  expires_at timestamp
+  accepted_at timestamp nullable
+  cancelled_at timestamp nullable
+  status enum('pending','accepted','expired','cancelled') default 'pending'
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Security rules:
+  - Even if the owner fills employee information, the employee
+    must set their own password through a secure invitation link.
+  - Owners must never choose or know an employee password.
+
+
+7.3 account_ownership_transfers
+-------------------------------
+account_ownership_transfers
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  from_user_id unsignedBigInteger FK users.id
+  to_user_id unsignedBigInteger FK users.id
+  requested_by_user_id unsignedBigInteger FK users.id
+  status enum('pending','accepted','rejected','cancelled','completed') default 'pending'
+  accepted_at timestamp nullable
+  completed_at timestamp nullable
+  reason text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rule:
+  - The only active owner cannot leave until ownership is
+    transferred or the account is closed.
+
+
+=====================================================================
+8. SPATIE TEAM ROLE MANAGEMENT WORKFLOW
+=====================================================================
+This section defines runtime behavior only. It creates no
+additional role/permission tables.
+
+8.1 Standard roles
+------------------
+Platform Admin seeds global roles in roles with account_id = NULL
+and attaches permissions through role_has_permissions.
+
+Example:
+  Role        : product_manager
+  Scope       : supplier
+  Permissions : listing.view
+                listing.create
+                listing.update
+                listing.media.manage
+                inventory.manage
+                tier_pricing.manage
+
+8.2 Organization custom roles
+-----------------------------
+An authorized owner may create an account-specific role:
+
+  roles.account_id       = current account id
+  roles.name             = 'junior_quotation_officer'
+  roles.capability_scope = 'supplier'
+
+The application then attaches selected global permissions through
+role_has_permissions.
+
+8.3 Customizing a standard role
+-------------------------------
+Global roles are immutable for normal organizations.
+
+When an account wants different permissions:
+  1. Select the global role.
+  2. Clone it into a new role with roles.account_id = current
+     account id.
+  3. Copy current role permissions.
+  4. Add or remove permissions on the cloned role.
+  5. Assign the cloned role through model_has_roles.
+
+This prevents one organization's changes from affecting other
+organizations.
+
+8.4 Assigning roles to members
+------------------------------
+After an invitation is accepted and an active account_members row
+exists:
+  1. Set the Spatie team context to account_members.account_id.
+  2. Confirm the selected role is global or belongs to the same
+     account.
+  3. Confirm the role's capability scope is valid for the account.
+  4. Assign the role with Spatie.
+  5. Record the assignment in activity_log.
+
+8.5 Direct permissions
+----------------------
+model_has_permissions may grant an exceptional permission directly
+to a user.
+
+Example:
+  A Viewer temporarily receives quotation.view_received.
+
+Direct permissions should be rare. If several members need the
+same permission set, create a role.
+
+8.6 No explicit permission denial
+---------------------------------
+This design does not use a custom deny table.
+
+To remove an ability:
+  - remove the permission from an account-specific role;
+  - assign a different role; or
+  - revoke a direct permission.
+
+If a global role grants too much, clone it into an
+account-specific role and remove the unwanted permission from the
+clone.
+
+8.7 Owner rules
+---------------
+account_members.member_type and is_primary_owner remain business
+ownership fields.
+
+The Spatie owner role controls application abilities, but it does
+not replace ownership data.
+
+Rules:
+  - At least one active owner must remain.
+  - The primary owner must transfer ownership before leaving.
+  - Only the primary owner may close the account unless Platform
+    Admin intervenes.
+  - Owner-only permissions require both:
+      - the Spatie permission; and
+      - the required owner state in account_members.
+
+8.8 Capability-aware role use
+-----------------------------
+A role assignment does not activate Buyer or Supplier business
+access.
+
+Example:
+  User has product_manager role.
+  Supplier capability = pending.
+  Result: listing publication and RFQ access remain denied.
+
+Both the Spatie permission and active account capability are
+required.
+
+
+=====================================================================
+9. BUYER AND SUPPLIER CAPABILITIES
+=====================================================================
+
+9.1 account_capabilities
+------------------------
+account_capabilities
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  capability enum('buyer','supplier')
+  status enum('draft','pending','active','rejected','revision_required','suspended') default 'draft'
+  application_attempts unsignedSmallInteger default 0
+  rejection_reason text nullable
+  revision_reason text nullable
+  suspension_reason text nullable
+  applied_by_user_id unsignedBigInteger FK users.id nullable
+  applied_at timestamp nullable
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  reviewed_at timestamp nullable
+  activated_at timestamp nullable
+  suspended_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(account_id, capability)
+
+Rules:
+  - Every Buyer and Supplier capability requires Admin approval.
+  - Adding the second capability creates a new independent
+    application.
+  - Existing active capability remains usable during review of the
+    new capability.
+  - Supplier capability becomes pending after approved
+    individual-to-organization conversion.
+
+
+9.2 capability_application_history
+----------------------------------
+capability_application_history
+  id unsignedBigInteger primary auto_increment
+  account_capability_id unsignedBigInteger FK account_capabilities.id
+  attempt_no unsignedSmallInteger
+  submitted_snapshot json
+  status enum('submitted','approved','rejected','revision_required','withdrawn')
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  review_comment text nullable
+  reviewed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(account_capability_id, attempt_no)
+
+Rule:
+  - Maximum attempts are read from platform settings.
+
+
+=====================================================================
+10. ACCOUNT CONVERSION
+=====================================================================
+
+10.1 account_conversion_requests
+--------------------------------
+account_conversion_requests
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  from_type enum('individual')
+  to_type enum('organization')
+  proposed_display_name varchar(200)
+  proposed_organization_data json
+  submitted_documents json nullable
+  status enum('draft','pending','approved','rejected','revision_required','cancelled') default 'draft'
+  submitted_by_user_id unsignedBigInteger FK users.id
+  submitted_at timestamp nullable
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  reviewed_at timestamp nullable
+  review_comment text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rules:
+  - Only one pending request per account.
+  - Existing account data remains public until approval.
+  - On approval:
+      - update accounts.account_type = organization
+      - set converted_from_individual_at
+      - create an account_type_changes row
+      - set active Supplier capability to pending
+      - require Supplier reapproval
+  - Rollback is not allowed.
+
+
+10.2 account_type_changes
+-------------------------
+account_type_changes
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  conversion_request_id unsignedBigInteger FK account_conversion_requests.id
+  old_type enum('individual')
+  new_type enum('organization')
+  old_display_name varchar(200)
+  new_display_name varchar(200)
+  old_snapshot json
+  new_snapshot json
+  changed_by_user_id unsignedBigInteger FK users.id
+  approved_by_user_id unsignedBigInteger FK users.id
+  changed_at timestamp
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+=====================================================================
+11. BUYER AND SUPPLIER PROFILES
+=====================================================================
+Common data is intentionally not forced into one shared profile
+because Buyer and Supplier may use different public/contact
+information.
+
+11.1 buyer_profiles
+-------------------
+buyer_profiles
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id unique
+  buyer_type_id unsignedBigInteger FK buyer_types.id nullable
+  display_name varchar(200)
+  organization_name varchar(200) nullable
+  contact_person varchar(150) nullable
+  position varchar(100) nullable
+  email varchar(150) nullable
+  phone varchar(30) nullable
+  website varchar(255) nullable
+  country_id unsignedBigInteger FK countries.id nullable
+  state_id unsignedBigInteger FK states.id nullable
+  city_id unsignedBigInteger FK cities.id nullable
+  address text nullable
+  logo varchar(255) nullable
+  tax_id varchar(100) nullable
+  bio text nullable
+  procurement_info text nullable
+  additional_data json nullable
+  profile_completed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+11.2 supplier_profiles
+----------------------
+supplier_profiles
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id unique
+  slug varchar(180) unique nullable
+  display_name varchar(200)
+  legal_name varchar(200) nullable
+  company_type varchar(100) nullable
+  contact_person varchar(150) nullable
+  contact_email varchar(150) nullable
+  contact_phone varchar(30) nullable
+  whatsapp varchar(30) nullable
+  support_email varchar(150) nullable
+  country_id unsignedBigInteger FK countries.id nullable
+  state_id unsignedBigInteger FK states.id nullable
+  city_id unsignedBigInteger FK cities.id nullable
+  address text nullable
+  website varchar(255) nullable
+  founded_year unsignedSmallInteger nullable
+  employees unsignedInteger nullable
+  logo varchar(255) nullable
+  banner varchar(255) nullable
+  profile_photo varchar(255) nullable
+  description longText nullable
+  socials json nullable
+  rating decimal(4,2) default 0.00
+  reviews_count unsignedInteger default 0
+  quotation_response_rate decimal(5,2) default 0.00
+  average_response_minutes unsignedInteger nullable
+  profile_completed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Note:
+  Supplier approval status is not duplicated here; use
+  account_capabilities.
+
+
+=====================================================================
+12. GLOBAL TAXONOMY, GEO, CURRENCY AND LANGUAGE
+=====================================================================
+
+12.1 countries
+--------------
+countries
+  id unsignedBigInteger primary auto_increment
+  name varchar(100)
+  iso2 char(2) unique
+  iso3 char(3) unique
+  phone_code varchar(20) nullable
+  currency_code varchar(10) nullable
+  flag varchar(255) nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(name)
+  index(is_active, sort_order)
+
+
+12.2 states
+-----------
+states
+  id unsignedBigInteger primary auto_increment
+  country_id unsignedBigInteger FK countries.id
+  name varchar(100)
+  code varchar(20) nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(country_id, name)
+
+Indexes:
+  index(country_id)
+  index(is_active, sort_order)
+
+Foreign Keys:
+  country_id -> countries.id ON DELETE CASCADE
+
+
+12.3 cities
+-----------
+cities
+  id unsignedBigInteger primary auto_increment
+  country_id unsignedBigInteger FK countries.id
+  state_id unsignedBigInteger FK states.id nullable
+  name varchar(100)
+  latitude decimal(10,7) nullable
+  longitude decimal(10,7) nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(country_id, state_id, name)
+
+Indexes:
+  index(country_id)
+  index(state_id)
+  index(name)
+  index(is_active, sort_order)
+
+Foreign Keys:
+  country_id -> countries.id ON DELETE CASCADE
+  state_id -> states.id ON DELETE SET NULL
+
+
+12.4 currencies
+---------------
+currencies
+  id unsignedBigInteger primary auto_increment
+  code varchar(10) unique
+  name varchar(80)
+  symbol varchar(20)
+  exchange_rate decimal(18,8) default 1.00000000
+  is_default boolean default false
+  is_active boolean default true
+  decimal_places unsignedTinyInteger default 2
+  last_rate_update_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(is_default)
+  index(is_active)
+
+
+12.5 languages
+--------------
+languages
+  id unsignedBigInteger primary auto_increment
+  code varchar(10) unique
+  name varchar(80)
+  native_name varchar(80)
+  direction enum('ltr','rtl') default 'ltr'
+  flag varchar(255) nullable
+  is_active boolean default true
+  is_default boolean default false
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(is_active, sort_order)
+  index(is_default)
+
+
+12.6 buyer_types
+----------------
+buyer_types
+  id unsignedBigInteger primary auto_increment
+  name varchar(150)
+  slug varchar(160) unique
+  description text nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Examples:
+  Individual, School, University, NGO, Reseller,
+  Training Institute, Government Department, Corporate
+
+
+12.7 supplier_types
+-------------------
+supplier_types
+  id unsignedBigInteger primary auto_increment
+  name varchar(150)
+  slug varchar(160) unique
+  description text nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Examples:
+  Individual Supplier, Manufacturer, Wholesaler, Publisher,
+  Service Provider, Distributor, Training Provider, Retailer
+
+
+12.8 document_types
+-------------------
+document_types
+  id unsignedBigInteger primary auto_increment
+  name varchar(150)
+  slug varchar(160) unique
+  description text nullable
+  accepted_formats json nullable
+  max_size_kb unsignedInteger nullable
+  is_required boolean default true
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rules:
+  - The same document-type catalogue applies to all Suppliers.
+  - Admin marks every document type as required or optional.
+  - A document requirement may later be made capability-specific
+    without changing uploaded-document history.
+
+
+12.9 exhibitions
+----------------
+exhibitions
+  id unsignedBigInteger primary auto_increment
+  name varchar(255)
+  slug varchar(180) unique
+  logo varchar(255) nullable
+  website varchar(255) nullable
+  description text nullable
+  starts_at date nullable
+  ends_at date nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(is_active, sort_order)
+  index(starts_at, ends_at)
+
+
+=====================================================================
+13. ACCOUNT LOCATIONS AND SERVICE AREAS
+=====================================================================
+
+13.1 account_locations
+----------------------
+account_locations
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  location_type enum('primary','registered_office','branch','warehouse','showroom','billing','delivery')
+  label varchar(150) nullable
+  contact_name varchar(150) nullable
+  phone varchar(30) nullable
+  country_id unsignedBigInteger FK countries.id
+  state_id unsignedBigInteger FK states.id nullable
+  city_id unsignedBigInteger FK cities.id nullable
+  address_line_1 varchar(255)
+  address_line_2 varchar(255) nullable
+  postal_code varchar(50) nullable
+  latitude decimal(10,7) nullable
+  longitude decimal(10,7) nullable
+  location_provider varchar(50) nullable
+  provider_place_id varchar(255) nullable
+  is_primary boolean default false
+  is_active boolean default true
+  created_by_user_id unsignedBigInteger FK users.id
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+13.2 supplier_service_areas
+---------------------------
+supplier_service_areas
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  area_level enum('country','state','city','radius')
+  country_id unsignedBigInteger FK countries.id nullable
+  state_id unsignedBigInteger FK states.id nullable
+  city_id unsignedBigInteger FK cities.id nullable
+  center_latitude decimal(10,7) nullable
+  center_longitude decimal(10,7) nullable
+  radius_km decimal(10,2) nullable
+  is_primary boolean default false
+  is_active boolean default true
+  created_by_user_id unsignedBigInteger FK users.id
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rules:
+  - One primary service area is allowed.
+  - Multiple additional areas are allowed.
+  - Radius matching may be activated later without changing this
+    schema.
+  - Coordinates come from API search plus manual correction.
+
+
+=====================================================================
+14. SUPPLIER SUPPORTING TABLES
+=====================================================================
+
+14.1 supplier_documents
+-----------------------
+supplier_documents
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  document_type_id unsignedBigInteger FK document_types.id
+  file_path varchar(255)
+  original_name varchar(255) nullable
+  mime_type varchar(100) nullable
+  file_size_kb unsignedInteger nullable
+  status enum('pending','verified','rejected') default 'pending'
+  rejection_reason text nullable
+  uploaded_by_user_id unsignedBigInteger FK users.id
+  verified_by_user_id unsignedBigInteger FK users.id nullable
+  verified_at timestamp nullable
+  expires_at date nullable
+  is_current boolean default true
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(supplier_account_id, document_type_id)
+  index(status)
+  index(expires_at)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  document_type_id -> document_types.id ON DELETE RESTRICT
+  uploaded_by_user_id -> users.id ON DELETE RESTRICT
+  verified_by_user_id -> users.id ON DELETE SET NULL
+
+Rule:
+  - Multiple historical versions may exist; only one current
+    version should be active for the same Supplier and document
+    type.
+
+
+14.2 supplier_gallery
+---------------------
+supplier_gallery
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  media_id unsignedBigInteger FK media.id nullable
+  image_path varchar(255) nullable
+  caption varchar(255) nullable
+  alt_text varchar(255) nullable
+  sort_order unsignedSmallInteger default 0
+  is_active boolean default true
+  created_by_user_id unsignedBigInteger FK users.id
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(supplier_account_id, is_active, sort_order)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  created_by_user_id -> users.id ON DELETE RESTRICT
+
+
+14.3 supplier_videos
+--------------------
+supplier_videos
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  provider enum('youtube','vimeo','other') default 'youtube'
+  video_id varchar(100) nullable
+  video_url varchar(500) nullable
+  title varchar(255) nullable
+  caption text nullable
+  sort_order unsignedSmallInteger default 0
+  is_active boolean default true
+  created_by_user_id unsignedBigInteger FK users.id
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(supplier_account_id, is_active, sort_order)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  created_by_user_id -> users.id ON DELETE RESTRICT
+
+
+14.4 business_hours
+-------------------
+business_hours
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  account_location_id unsignedBigInteger FK account_locations.id nullable
+  day_of_week unsignedTinyInteger
+  is_open boolean default true
+  open_time time nullable
+  close_time time nullable
+  timezone varchar(64) nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(supplier_account_id, account_location_id, day_of_week)
+
+Indexes:
+  index(supplier_account_id)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  account_location_id -> account_locations.id ON DELETE CASCADE
+
+Checks:
+  day_of_week between 0 and 6
+  if is_open = true, open_time and close_time are required
+
+
+14.5 supplier_supplier_type
+---------------------------
+supplier_supplier_type
+  supplier_account_id unsignedBigInteger FK accounts.id
+  supplier_type_id unsignedBigInteger FK supplier_types.id
+  is_primary boolean default false
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Primary Key:
+  primary(supplier_account_id, supplier_type_id)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  supplier_type_id -> supplier_types.id ON DELETE CASCADE
+
+
+14.6 exhibition_supplier
+------------------------
+exhibition_supplier
+  supplier_account_id unsignedBigInteger FK accounts.id
+  exhibition_id unsignedBigInteger FK exhibitions.id
+  booth_number varchar(100) nullable
+  participation_year unsignedSmallInteger nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Primary Key:
+  primary(supplier_account_id, exhibition_id)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  exhibition_id -> exhibitions.id ON DELETE CASCADE
+
+
+=====================================================================
+15. SUBSCRIPTIONS
+=====================================================================
+
+15.1 subscription_plans
+-----------------------
+subscription_plans
+  id unsignedBigInteger primary auto_increment
+  name varchar(150)
+  slug varchar(160) unique
+  billing_type enum('free','monthly','yearly','custom')
+  price decimal(15,2) default 0.00
+  currency_code varchar(10) default 'USD'
+  stripe_product_id varchar(255) nullable
+  stripe_price_id varchar(255) nullable
+  trial_days unsignedSmallInteger default 0
+  bonus_days unsignedSmallInteger default 0
+  max_active_listings unsignedInteger default 0
+  max_products unsignedInteger default 0
+  max_services unsignedInteger default 0
+  max_team_members unsignedInteger default 1
+  max_monthly_quotations unsignedInteger default 0
+  rfq_delay_minutes unsignedInteger default 0
+  has_rfq_notifications boolean default false
+  has_analytics boolean default false
+  has_verified_badge boolean default false
+  has_homepage_placement boolean default false
+  has_team_members boolean default false
+  is_featured boolean default false
+  is_free boolean default false
+  requires_supplier_approval boolean default true
+  features json nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(is_active, sort_order)
+  index(is_free)
+  index(is_featured)
+
+Rules:
+  - A free plan is an ordinary plan with is_free = true and
+    price 0.
+  - No plan is assigned automatically.
+  - Supplier chooses an Admin-created plan only after Supplier
+    capability approval.
+
+
+15.2 subscriptions
+------------------
+subscriptions
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  plan_id unsignedBigInteger FK subscription_plans.id
+  selected_by_user_id unsignedBigInteger FK users.id
+  provider enum('stripe','manual','free') default 'stripe'
+  provider_customer_id varchar(255) nullable
+  provider_subscription_id varchar(255) nullable
+  provider_session_id varchar(255) nullable
+  plan_name_snapshot varchar(150) nullable          [V4.3]
+  price_snapshot decimal(15,2) nullable             [V4.3]
+  features_snapshot json nullable                   [V4.3]
+  status enum('pending','trialing','active','past_due','expired','cancelled','suspended') default 'pending'
+  starts_at timestamp nullable
+  trial_ends_at timestamp nullable
+  current_period_start timestamp nullable
+  current_period_end timestamp nullable
+  expires_at timestamp nullable
+  cancelled_at timestamp nullable
+  cancellation_reason text nullable
+  auto_renew boolean default false
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(supplier_account_id, status)
+  index(supplier_account_id, expires_at)
+  index(provider_subscription_id)
+  index(current_period_end)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  plan_id -> subscription_plans.id ON DELETE RESTRICT
+  selected_by_user_id -> users.id ON DELETE RESTRICT
+
+Rules:
+  - Supplier capability must be active before a subscription
+    becomes active.
+  - Only one current active/trialing subscription may exist per
+    Supplier account.
+  - RFQ eligibility uses the current active subscription and its
+    plan snapshot.
+
+
+15.3 subscription_payments
+--------------------------
+subscription_payments
+  id unsignedBigInteger primary auto_increment
+  subscription_id unsignedBigInteger FK subscriptions.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  provider enum('stripe','manual','free')
+  provider_payment_id varchar(255) nullable
+  provider_invoice_id varchar(255) nullable
+  amount decimal(15,2)
+  currency_code varchar(10)
+  status enum('pending','paid','failed','refunded','partially_refunded','cancelled') default 'pending'
+  failure_reason text nullable
+  paid_at timestamp nullable
+  refunded_at timestamp nullable
+  metadata json nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(subscription_id)
+  index(supplier_account_id, status)
+  index(provider_payment_id)
+  index(paid_at)
+
+Foreign Keys:
+  subscription_id -> subscriptions.id ON DELETE CASCADE
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+
+
+=====================================================================
+16. CATEGORY, BRAND, ATTRIBUTE AND UNIT SYSTEM
+=====================================================================
+
+16.1 categories
+---------------
+categories
+  id unsignedBigInteger primary auto_increment
+  parent_id unsignedBigInteger FK categories.id nullable
+  name varchar(255)
+  slug varchar(255) unique
+  description text nullable
+  icon varchar(255) nullable
+  image varchar(255) nullable
+  type enum('product','service','both') default 'both'
+  approval_status enum('pending','approved','rejected') default 'approved'
+  rejection_reason text nullable
+  created_by_account_id unsignedBigInteger FK accounts.id nullable
+  created_by_user_id unsignedBigInteger FK users.id nullable
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  reviewed_at timestamp nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+Indexes:
+  index(parent_id)
+  index(type)
+  index(approval_status)
+  index(is_active, sort_order)
+
+Foreign Keys:
+  parent_id -> categories.id ON DELETE SET NULL
+  created_by_account_id -> accounts.id ON DELETE SET NULL
+  created_by_user_id -> users.id ON DELETE SET NULL
+  reviewed_by_user_id -> users.id ON DELETE SET NULL
+
+Rules:
+  - Admin-created categories may be approved immediately.
+  - Supplier-created categories remain pending until Admin
+    approves or rejects them.
+
+
+16.2 category_suggestions
+-------------------------
+category_suggestions
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  suggested_by_user_id unsignedBigInteger FK users.id
+  parent_category_id unsignedBigInteger FK categories.id nullable
+  proposed_name varchar(255)
+  proposed_type enum('product','service','both') default 'both'
+  description text nullable
+  status enum('pending','approved','rejected','withdrawn') default 'pending'
+  resulting_category_id unsignedBigInteger FK categories.id nullable
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  review_comment text nullable
+  reviewed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(supplier_account_id, status)
+  index(parent_category_id)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  suggested_by_user_id -> users.id ON DELETE RESTRICT
+  parent_category_id -> categories.id ON DELETE SET NULL
+  resulting_category_id -> categories.id ON DELETE SET NULL
+  reviewed_by_user_id -> users.id ON DELETE SET NULL
+
+
+16.3 brands
+-----------
+brands
+  id unsignedBigInteger primary auto_increment
+  owner_type enum('global','supplier') default 'global'
+  supplier_account_id unsignedBigInteger FK accounts.id nullable
+  name varchar(255)
+  slug varchar(255) unique
+  logo varchar(255) nullable
+  website varchar(255) nullable
+  description text nullable
+  approval_status enum('pending','approved','rejected') default 'pending'
+  rejection_reason text nullable
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  reviewed_at timestamp nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+Indexes:
+  index(owner_type)
+  index(supplier_account_id)
+  index(approval_status)
+  index(is_active, sort_order)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  reviewed_by_user_id -> users.id ON DELETE SET NULL
+
+Rules:
+  - Global brands are shared.
+  - Supplier-owned brands belong to one Supplier account.
+  - Supplier-created brands require Admin approval.
+
+
+16.4 attributes
+---------------
+attributes
+  id unsignedBigInteger primary auto_increment
+  name varchar(255)
+  slug varchar(255) unique
+  input_type enum('text','textarea','number','select','multi_select','boolean','date','color')
+  unit_id unsignedBigInteger FK units.id nullable
+  placeholder varchar(255) nullable
+  validation_rules json nullable
+  is_filterable boolean default false
+  is_variant boolean default false
+  is_required boolean default false
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(input_type)
+  index(is_filterable)
+  index(is_variant)
+  index(is_active, sort_order)
+
+Foreign Keys:
+  unit_id -> units.id ON DELETE SET NULL
+
+
+16.5 attribute_values
+---------------------
+attribute_values
+  id unsignedBigInteger primary auto_increment
+  attribute_id unsignedBigInteger FK attributes.id
+  value varchar(255)
+  slug varchar(255)
+  color_hex varchar(20) nullable
+  sort_order unsignedSmallInteger default 0
+  is_active boolean default true
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(attribute_id, slug)
+
+Indexes:
+  index(attribute_id, is_active, sort_order)
+
+Foreign Keys:
+  attribute_id -> attributes.id ON DELETE CASCADE
+
+
+16.6 category_attribute
+-----------------------
+category_attribute
+  id unsignedBigInteger primary auto_increment
+  category_id unsignedBigInteger FK categories.id
+  attribute_id unsignedBigInteger FK attributes.id
+  is_required boolean default false
+  is_filterable boolean default false
+  is_variant boolean default false
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(category_id, attribute_id)
+
+Indexes:
+  index(category_id, sort_order)
+  index(attribute_id)
+
+Foreign Keys:
+  category_id -> categories.id ON DELETE CASCADE
+  attribute_id -> attributes.id ON DELETE CASCADE
+
+
+16.7 attribute_suggestions
+--------------------------
+attribute_suggestions
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  suggested_by_user_id unsignedBigInteger FK users.id
+  category_id unsignedBigInteger FK categories.id nullable
+  proposed_name varchar(255)
+  proposed_input_type varchar(30)
+  proposed_unit_name varchar(100) nullable
+  proposed_values json nullable
+  reason text nullable
+  status enum('pending','approved','rejected','withdrawn') default 'pending'
+  resulting_attribute_id unsignedBigInteger FK attributes.id nullable
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  review_comment text nullable
+  reviewed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(supplier_account_id, status)
+  index(category_id)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  suggested_by_user_id -> users.id ON DELETE RESTRICT
+  category_id -> categories.id ON DELETE SET NULL
+  resulting_attribute_id -> attributes.id ON DELETE SET NULL
+  reviewed_by_user_id -> users.id ON DELETE SET NULL
+
+
+16.8 units
+----------
+units
+  id unsignedBigInteger primary auto_increment
+  scope enum('global','supplier_custom') default 'global'
+  supplier_account_id unsignedBigInteger FK accounts.id nullable
+  name varchar(100)
+  symbol varchar(30) nullable
+  unit_type varchar(80) nullable
+  approval_status enum('approved','pending','rejected') default 'approved'
+  rejection_reason text nullable
+  is_active boolean default true
+  created_by_user_id unsignedBigInteger FK users.id nullable
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  reviewed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(scope, supplier_account_id, name)
+
+Indexes:
+  index(supplier_account_id)
+  index(approval_status)
+  index(is_active)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  created_by_user_id -> users.id ON DELETE SET NULL
+  reviewed_by_user_id -> users.id ON DELETE SET NULL
+
+Rules:
+  - Global units are available to all Suppliers.
+  - Supplier custom units may be used by their own listings and
+    RFQs.
+
+
+=====================================================================
+17. SHARED LISTING SYSTEM
+=====================================================================
+Products and Services share one listing table, with separate
+detail tables.
+
+17.1 listings
+-------------
+listings
+  id unsignedBigInteger primary auto_increment
+  supplier_account_id unsignedBigInteger FK accounts.id
+  created_by_user_id unsignedBigInteger FK users.id
+  listing_type enum('product','service')
+  listing_number varchar(50) unique
+  main_category_id unsignedBigInteger FK categories.id nullable
+  brand_id unsignedBigInteger FK brands.id nullable
+  name varchar(255)
+  slug varchar(255)
+  sku varchar(100) nullable
+  short_description text nullable
+  description longText nullable
+  pricing_type enum('fixed','quote_only','rfq_enabled') default 'quote_only'
+  sales_mode enum('rfq_only','direct_purchase','both') default 'rfq_only'
+  base_price decimal(15,2) nullable
+  compare_at_price decimal(15,2) nullable
+  currency_code varchar(10) nullable
+  min_order_quantity decimal(15,3) nullable
+  unit_id unsignedBigInteger FK units.id nullable
+  extra_specs json nullable
+  approval_status enum('draft','pending','approved','rejected') default 'draft'
+  rejection_reason text nullable
+  approved_by_user_id unsignedBigInteger FK users.id nullable
+  approved_at timestamp nullable
+  is_active boolean default true
+  is_featured boolean default false
+  published_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+Unique:
+  unique(supplier_account_id, slug)
+
+Rules:
+  - Pending Suppliers may create only draft listings.
+  - Initial publication requires Admin approval.
+  - After approval, normal edits do not automatically trigger
+    reapproval.
+  - Admin may suspend or moderate a listing at any time.
+  - Every Supplier owns a separate listing.
+
+
+17.2 product_details
+--------------------
+product_details
+  id unsignedBigInteger primary auto_increment
+  listing_id unsignedBigInteger FK listings.id unique
+  product_type enum('simple','variable') default 'simple'
+  stock_status enum('in_stock','out_of_stock','limited','on_request') default 'on_request'
+  stock_quantity decimal(15,3) nullable
+  weight decimal(15,3) nullable
+  weight_unit varchar(20) nullable
+  lead_time_days unsignedInteger nullable
+  warranty_terms text nullable
+  support_terms text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+17.3 service_details
+--------------------
+service_details
+  id unsignedBigInteger primary auto_increment
+  listing_id unsignedBigInteger FK listings.id unique
+  service_mode enum('onsite','remote','hybrid') nullable
+  duration_value decimal(12,2) nullable
+  duration_unit enum('hour','day','week','month','session') nullable
+  lead_time_days unsignedInteger nullable
+  service_terms text nullable
+  support_terms text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+17.4 listing_categories
+-----------------------
+Stores the many-to-many relationship between listings and
+categories.
+
+listing_categories
+  id unsignedBigInteger primary auto_increment
+  listing_id unsignedBigInteger FK listings.id
+  category_id unsignedBigInteger FK categories.id
+  is_primary boolean default false
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(listing_id, category_id)
+
+
+17.5 listing_attribute_values
+-----------------------------
+Stores typed attribute values for Product and Service listings.
+
+listing_attribute_values
+  id unsignedBigInteger primary auto_increment
+  listing_id unsignedBigInteger FK listings.id
+  attribute_id unsignedBigInteger FK attributes.id
+  attribute_value_id unsignedBigInteger FK attribute_values.id nullable
+  value_text text nullable
+  value_number decimal(15,4) nullable
+  value_boolean boolean nullable
+  value_date date nullable
+  value_json json nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+17.6 listing_variants
+---------------------
+Stores Product listing variants.
+
+listing_variants
+  id unsignedBigInteger primary auto_increment
+  listing_id unsignedBigInteger FK listings.id
+  sku varchar(100) nullable
+  name varchar(255) nullable
+  price decimal(15,2) nullable
+  compare_at_price decimal(15,2) nullable
+  currency_code varchar(10) nullable
+  stock_status enum('in_stock','out_of_stock','limited','on_request') default 'on_request'
+  stock_quantity decimal(15,3) nullable
+  weight decimal(15,3) nullable
+  weight_unit varchar(20) nullable
+  min_order_quantity decimal(15,3) nullable
+  unit_id unsignedBigInteger FK units.id nullable
+  lead_time_days unsignedInteger nullable
+  primary_image_media_id unsignedBigInteger nullable
+  is_active boolean default true
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+This adds the requested:
+  - image
+  - weight
+  - MOQ
+  - lead time
+
+
+17.7 listing_variant_attributes
+-------------------------------
+listing_variant_attributes
+  id unsignedBigInteger primary auto_increment
+  listing_variant_id unsignedBigInteger FK listing_variants.id
+  attribute_id unsignedBigInteger FK attributes.id
+  attribute_value_id unsignedBigInteger FK attribute_values.id nullable
+  custom_value varchar(255) nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(listing_variant_id, attribute_id)
+
+Indexes:
+  index(attribute_id)
+  index(attribute_value_id)
+
+Foreign Keys:
+  listing_variant_id -> listing_variants.id ON DELETE CASCADE
+  attribute_id -> attributes.id ON DELETE CASCADE
+  attribute_value_id -> attribute_values.id ON DELETE SET NULL
+
+Rules:
+  - Every variant may contain one value for each variant
+    attribute.
+  - custom_value is used only when no predefined attribute value
+    exists.
+
+
+17.8 listing_tier_prices
+------------------------
+listing_tier_prices
+  id unsignedBigInteger primary auto_increment
+  listing_id unsignedBigInteger FK listings.id
+  listing_variant_id unsignedBigInteger FK listing_variants.id nullable
+  min_quantity decimal(15,3)
+  max_quantity decimal(15,3) nullable
+  unit_price decimal(15,2)
+  currency_code varchar(10)
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Constraints:
+  min_quantity > 0
+  max_quantity IS NULL OR max_quantity >= min_quantity
+
+
+17.9 listing_change_logs
+------------------------
+Because approved listings do not require automatic reapproval,
+keep an audit history.
+
+listing_change_logs
+  id unsignedBigInteger primary auto_increment
+  listing_id unsignedBigInteger FK listings.id
+  changed_by_user_id unsignedBigInteger FK users.id
+  changed_fields json
+  old_values json nullable
+  new_values json nullable
+  created_at timestamp nullable
+
+
+=====================================================================
+18. RFQ SYSTEM
+=====================================================================
+
+18.1 rfqs
+---------
+rfqs
+  id unsignedBigInteger primary auto_increment
+  rfq_number varchar(50) unique
+  buyer_account_id unsignedBigInteger FK accounts.id
+  created_by_user_id unsignedBigInteger FK users.id
+  visibility_type enum('global','selected_suppliers') default 'global'
+  source_listing_id unsignedBigInteger FK listings.id nullable
+  title varchar(255)
+  description longText nullable
+  currency_code varchar(10) nullable
+  budget_min decimal(15,2) nullable
+  budget_max decimal(15,2) nullable
+  delivery_country_id unsignedBigInteger FK countries.id nullable
+  delivery_state_id unsignedBigInteger FK states.id nullable
+  delivery_city_id unsignedBigInteger FK cities.id nullable
+  delivery_address text nullable
+  delivery_latitude decimal(10,7) nullable
+  delivery_longitude decimal(10,7) nullable
+  allow_partial_quotation boolean default true
+  allow_alternative_products boolean default true
+  quotation_deadline timestamp
+  qna_deadline timestamp nullable
+  expected_delivery_date date nullable
+  status enum('draft','pending_approval','open','closed','award_pending','awarded','cancelled','expired','completed') default 'draft'
+  current_version_no unsignedInteger default 1
+  published_at timestamp nullable
+  items_count unsignedSmallInteger default 0
+  quotations_count unsignedInteger default 0
+  approved_by_user_id unsignedBigInteger FK users.id nullable
+  approved_at timestamp nullable
+  closed_at timestamp nullable
+  awarded_at timestamp nullable
+  cancelled_at timestamp nullable
+  cancellation_reason text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+Rules:
+  - Buyer capability must be active.
+  - All Buyers require Admin approval at capability level.
+  - RFQ approval itself is optional and controlled by platform
+    settings (rfq_requires_admin_approval; default Phase 1 =
+    false: Buyer -> Create RFQ -> Instant Publish).
+  - One RFQ may contain Products and Services from different
+    categories.
+  - Backend authorization must enforce RFQ access.
+
+
+18.2 rfq_items
+--------------
+rfq_items
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  item_type enum('product','service')
+  listing_id unsignedBigInteger FK listings.id nullable
+  category_id unsignedBigInteger FK categories.id nullable
+  item_name varchar(255)
+  description text nullable
+  quantity decimal(15,3)
+  unit_id unsignedBigInteger FK units.id nullable
+  custom_unit varchar(50) nullable
+  estimated_unit_price decimal(15,2) nullable
+  specs json nullable
+  sort_order unsignedSmallInteger default 0
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rule:
+  - Every RFQ must have at least one item.
+
+
+18.3 rfq_selected_suppliers
+---------------------------
+Stores Suppliers explicitly selected by the Buyer.
+
+rfq_selected_suppliers
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  selected_by_user_id unsignedBigInteger FK users.id
+  invited_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(rfq_id, supplier_account_id)
+
+
+18.4 rfq_target_filters
+-----------------------
+Optional additional filters for global RFQs.
+
+rfq_target_filters
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  category_id unsignedBigInteger FK categories.id nullable
+  country_id unsignedBigInteger FK countries.id nullable
+  state_id unsignedBigInteger FK states.id nullable
+  city_id unsignedBigInteger FK cities.id nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+18.5 rfq_supplier_queue
+-----------------------
+rfq_supplier_queue
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  subscription_id unsignedBigInteger FK subscriptions.id nullable
+  subscription_plan_id unsignedBigInteger FK subscription_plans.id nullable
+  source enum('global','selected_supplier')
+  delay_minutes unsignedInteger default 0
+  available_at timestamp
+  eligibility_status enum('eligible','not_approved','no_subscription','subscription_expired','blocked','expired') default 'eligible'
+  eligibility_snapshot json nullable
+  notified_at timestamp nullable
+  seen_at timestamp nullable
+  status enum('pending','available','notified','seen','ignored','quotation_submitted','expired') default 'pending'
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(rfq_id, supplier_account_id)
+
+Rules:
+  - For global RFQs, queue rows may be generated for all active
+    Supplier accounts.
+  - Full access is granted only when:
+      - Supplier capability is active
+      - Subscription is active
+      - Delay has elapsed
+      - Account is not suspended/deleted
+  - Selected Suppliers get delay_minutes = 0.
+  - Access checks must run on the backend, not only the frontend.
+
+
+18.6 rfq_public_summary (database view)
+---------------------------------------
+A database view is recommended rather than a table.
+
+Expose only:
+  rfq_id
+  rfq_number
+  title
+  general item/category summary
+  delivery country/state/city
+  quotation_deadline
+  published_at
+
+Do not expose Buyer private contact details, full attachments, or
+confidential specifications.
+
+
+18.7 rfq_questions
+------------------
+rfq_questions
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  asked_by_user_id unsignedBigInteger FK users.id
+  question text
+  answer text nullable
+  answered_by_user_id unsignedBigInteger FK users.id nullable
+  answered_at timestamp nullable
+  is_public boolean default true
+  status enum('pending','answered','hidden') default 'pending'
+  hidden_by_user_id unsignedBigInteger FK users.id nullable
+  hidden_at timestamp nullable
+  hidden_reason text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(rfq_id, status)
+  index(supplier_account_id)
+  index(asked_by_user_id)
+
+Foreign Keys:
+  rfq_id -> rfqs.id ON DELETE CASCADE
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  asked_by_user_id -> users.id ON DELETE RESTRICT
+  answered_by_user_id -> users.id ON DELETE SET NULL
+  hidden_by_user_id -> users.id ON DELETE SET NULL
+
+Rules:
+  - Questions are accepted only before rfqs.qna_deadline.
+  - Public questions and answers are visible to all eligible
+    Suppliers.
+  - Private questions are visible only to the Buyer and asking
+    Supplier.
+
+
+18.8 rfq_deadline_extensions
+----------------------------
+rfq_deadline_extensions
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  extended_by_user_id unsignedBigInteger FK users.id
+  deadline_type enum('quotation','qna')
+  old_deadline timestamp
+  new_deadline timestamp
+  reason text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(rfq_id)
+  index(deadline_type)
+
+Foreign Keys:
+  rfq_id -> rfqs.id ON DELETE CASCADE
+  extended_by_user_id -> users.id ON DELETE RESTRICT
+
+Rules:
+  - new_deadline must be later than old_deadline.
+  - The corresponding deadline in rfqs must be updated in the same
+    database transaction.
+  - Eligible Suppliers and Suppliers with submitted quotations are
+    notified.
+
+
+18.9 rfq_change_logs
+--------------------
+rfq_change_logs
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  from_version_no unsignedInteger
+  to_version_no unsignedInteger
+  change_level enum('minor','major')
+  changed_fields json
+  old_snapshot json
+  new_snapshot json
+  requires_quotation_revision boolean default true
+  changed_by_user_id unsignedBigInteger FK users.id
+  changed_at timestamp
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rules:
+  - Any post-publication edit creates a version.
+  - Suppliers who already submitted quotations are notified.
+  - Quotations store the RFQ version they answered.
+  - Suppliers may submit revised quotations for the new version.
+
+
+=====================================================================
+19. QUOTATION SYSTEM
+=====================================================================
+
+19.1 quotations
+---------------
+quotations
+  id unsignedBigInteger primary auto_increment
+  quotation_number varchar(50) unique
+  rfq_id unsignedBigInteger FK rfqs.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  submitted_by_user_id unsignedBigInteger FK users.id nullable
+  rfq_version_no unsignedInteger
+  current_revision_no unsignedInteger default 1
+  subtotal decimal(15,2) default 0
+  tax_amount decimal(15,2) default 0
+  discount_amount decimal(15,2) default 0
+  shipping_charge decimal(15,2) default 0
+  grand_total decimal(15,2) default 0
+  currency_code varchar(10) nullable
+  lead_time_days unsignedInteger nullable
+  valid_until date nullable
+  warranty_terms text nullable
+  support_terms text nullable
+  payment_terms text nullable
+  proposal longText nullable
+  status enum('draft','submitted','under_review','revision_requested','revised','withdrawn','shortlisted','rejected','awarded','expired') default 'draft'
+  rejection_comment text nullable
+  rejected_at timestamp nullable
+  buyer_viewed_at timestamp nullable
+  decided_by_user_id unsignedBigInteger FK users.id nullable
+  decision_at timestamp nullable
+  submitted_at timestamp nullable
+  revised_at timestamp nullable
+  withdrawn_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+Unique:
+  unique(rfq_id, supplier_account_id)
+
+Rules:
+  - One live quotation per Supplier per RFQ.
+  - Revisions remain in history.
+  - Partial and alternative quotation items are allowed.
+
+
+19.2 quotation_items
+--------------------
+quotation_items
+  id unsignedBigInteger primary auto_increment
+  quotation_id unsignedBigInteger FK quotations.id
+  rfq_item_id unsignedBigInteger FK rfq_items.id nullable
+  offered_listing_id unsignedBigInteger FK listings.id nullable
+  offered_variant_id unsignedBigInteger FK listing_variants.id nullable
+  is_alternative boolean default false
+  item_name varchar(255)
+  description text nullable
+  quantity decimal(15,3)
+  unit_id unsignedBigInteger FK units.id nullable
+  custom_unit varchar(50) nullable
+  unit_price decimal(15,2)
+  tax_rate decimal(7,4) nullable
+  tax_amount decimal(15,2) default 0
+  discount_amount decimal(15,2) default 0
+  line_total decimal(15,2)
+  lead_time_days unsignedInteger nullable
+  specs json nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Important:
+  - rfq_item_id is nullable to allow additional Supplier-proposed
+    items.
+  - When it references an RFQ item, it supports comparison.
+  - is_alternative = true marks an alternative offer.
+
+
+19.3 quotation_revision_requests
+--------------------------------
+quotation_revision_requests
+  id unsignedBigInteger primary auto_increment
+  quotation_id unsignedBigInteger FK quotations.id
+  requested_by_account_id unsignedBigInteger FK accounts.id
+  requested_by_user_id unsignedBigInteger FK users.id
+  requested_changes text
+  requested_fields json nullable
+  response_deadline timestamp nullable
+  status enum('pending','accepted','revised','declined','expired','cancelled') default 'pending'
+  supplier_response text nullable
+  responded_by_user_id unsignedBigInteger FK users.id nullable
+  responded_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+19.4 quotation_revisions
+------------------------
+quotation_revisions
+  id unsignedBigInteger primary auto_increment
+  quotation_id unsignedBigInteger FK quotations.id
+  revision_no unsignedInteger
+  rfq_version_no unsignedInteger
+  subtotal decimal(15,2)
+  tax_amount decimal(15,2)
+  discount_amount decimal(15,2)
+  shipping_charge decimal(15,2)
+  grand_total decimal(15,2)
+  currency_code varchar(10) nullable
+  lead_time_days unsignedInteger nullable
+  valid_until date nullable
+  warranty_terms text nullable
+  support_terms text nullable
+  payment_terms text nullable
+  proposal longText nullable
+  change_summary text nullable
+  created_by_account_id unsignedBigInteger FK accounts.id
+  created_by_user_id unsignedBigInteger FK users.id
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(quotation_id, revision_no)
+
+Indexes:
+  index(quotation_id)
+  index(created_by_account_id)
+
+Foreign Keys:
+  quotation_id -> quotations.id ON DELETE CASCADE
+  created_by_account_id -> accounts.id ON DELETE RESTRICT
+  created_by_user_id -> users.id ON DELETE RESTRICT
+
+
+19.5 quotation_revision_items
+-----------------------------
+quotation_revision_items
+  id unsignedBigInteger primary auto_increment
+  quotation_revision_id unsignedBigInteger FK quotation_revisions.id
+  rfq_item_id unsignedBigInteger FK rfq_items.id nullable
+  offered_listing_id unsignedBigInteger FK listings.id nullable
+  offered_variant_id unsignedBigInteger FK listing_variants.id nullable
+  is_alternative boolean default false
+  item_name varchar(255)
+  description text nullable
+  quantity decimal(15,3)
+  unit_id unsignedBigInteger FK units.id nullable
+  custom_unit varchar(50) nullable
+  unit_price decimal(15,2)
+  tax_rate decimal(7,4) nullable
+  tax_amount decimal(15,2) default 0
+  discount_amount decimal(15,2) default 0
+  line_total decimal(15,2)
+  lead_time_days unsignedInteger nullable
+  specs json nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(quotation_revision_id)
+  index(rfq_item_id)
+  index(offered_listing_id)
+
+Foreign Keys:
+  quotation_revision_id -> quotation_revisions.id ON DELETE CASCADE
+  rfq_item_id -> rfq_items.id ON DELETE SET NULL
+  offered_listing_id -> listings.id ON DELETE SET NULL
+  offered_variant_id -> listing_variants.id ON DELETE SET NULL
+  unit_id -> units.id ON DELETE SET NULL
+
+
+19.6 rfq_shortlists
+-------------------
+rfq_shortlists
+  id unsignedBigInteger primary auto_increment
+  rfq_id unsignedBigInteger FK rfqs.id
+  quotation_id unsignedBigInteger FK quotations.id
+  buyer_account_id unsignedBigInteger FK accounts.id
+  shortlisted_by_user_id unsignedBigInteger FK users.id
+  notes text nullable
+  rank unsignedSmallInteger nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(rfq_id, quotation_id)
+
+Quotation comparison note:
+  No separate comparison table. Dynamic comparison uses:
+    quotations
+    quotation_items
+    supplier information
+    ratings
+    quotation terms
+
+
+=====================================================================
+20. AWARD SYSTEM
+=====================================================================
+One winning Supplier is supported in Phase 1, but multiple award
+attempts are allowed when a Supplier rejects.
+
+20.1 awards
+-----------
+awards
+  id unsignedBigInteger primary auto_increment
+  award_number varchar(50) unique
+  rfq_id unsignedBigInteger FK rfqs.id
+  quotation_id unsignedBigInteger FK quotations.id
+  buyer_account_id unsignedBigInteger FK accounts.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  awarded_by_user_id unsignedBigInteger FK users.id
+  award_attempt_no unsignedSmallInteger default 1
+  status enum('pending_supplier_response','accepted','rejected_by_supplier','cancelled','superseded') default 'pending_supplier_response'
+  award_note text nullable
+  supplier_response_note text nullable
+  supplier_rejection_reason text nullable
+  response_deadline timestamp
+  awarded_at timestamp
+  responded_at timestamp nullable
+  accepted_at timestamp nullable
+  rejected_at timestamp nullable
+  cancelled_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(rfq_id, award_attempt_no)
+  unique(quotation_id)
+
+Rules:
+  - Only one non-rejected/non-cancelled award may be active per
+    RFQ.
+  - Supplier must accept or reject before response_deadline.
+  - Rejection requires a reason.
+  - Buyer may create the next award attempt for another quotation.
+  - An accepted award proceeds to Purchase Order.
+
+
+=====================================================================
+21. PURCHASE ORDER SYSTEM
+=====================================================================
+Phase 1 requires Purchase Orders, but not platform payment
+collection.
+
+Phase 1 workflow:
+  Award Accepted -> PO Issued -> Completed Manually
+
+21.1 purchase_orders
+--------------------
+purchase_orders
+  id unsignedBigInteger primary auto_increment
+  po_number varchar(50) unique
+  award_id unsignedBigInteger FK awards.id unique
+  rfq_id unsignedBigInteger FK rfqs.id
+  quotation_id unsignedBigInteger FK quotations.id
+  buyer_account_id unsignedBigInteger FK accounts.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  created_by_user_id unsignedBigInteger FK users.id
+  subtotal decimal(15,2)
+  tax_amount decimal(15,2) default 0
+  shipping_charge decimal(15,2) default 0
+  discount_amount decimal(15,2) default 0
+  grand_total decimal(15,2)
+  currency_code varchar(10)
+  status enum('issued','confirmed','in_progress','ready_for_delivery','delivered','completed','cancelled','disputed') default 'issued'
+  payment_method_note text nullable
+  payment_status enum('not_recorded','unpaid','partially_paid','paid') default 'not_recorded'
+  issued_at timestamp
+  confirmed_at timestamp nullable
+  delivered_at timestamp nullable
+  completed_at timestamp nullable
+  cancelled_at timestamp nullable
+  cancellation_reason text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rules:
+  - No online Buyer-to-Supplier payment in Phase 1.
+  - Payment status is informational/manual only.
+  - Purchase Order may be exported as PDF.
+
+
+21.2 purchase_order_items
+-------------------------
+purchase_order_items
+  id unsignedBigInteger primary auto_increment
+  purchase_order_id unsignedBigInteger FK purchase_orders.id
+  quotation_item_id unsignedBigInteger FK quotation_items.id nullable
+  item_name varchar(255)
+  description text nullable
+  quantity decimal(15,3)
+  unit_id unsignedBigInteger FK units.id nullable
+  custom_unit varchar(50) nullable
+  unit_price decimal(15,2)
+  tax_amount decimal(15,2) default 0
+  discount_amount decimal(15,2) default 0
+  line_total decimal(15,2)
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+
+21.3 purchase_order_status_history
+----------------------------------
+purchase_order_status_history
+  id unsignedBigInteger primary auto_increment
+  purchase_order_id unsignedBigInteger FK purchase_orders.id
+  old_status varchar(50) nullable
+  new_status varchar(50)
+  changed_by_account_id unsignedBigInteger FK accounts.id
+  changed_by_user_id unsignedBigInteger FK users.id
+  comment text nullable
+  created_at timestamp nullable
+
+
+=====================================================================
+22. MESSAGING SYSTEM
+=====================================================================
+Business conversations are between accounts. Platform Admin/staff
+may join through a separate Admin-participant table. The individual
+user who performs each action is always recorded.
+
+Chat rules:
+  - Buyer and Supplier can chat anytime.
+  - Conversation history remains stored.
+
+22.1 conversations
+------------------
+conversations
+  id unsignedBigInteger primary auto_increment
+  context_type enum('rfq','quotation','listing','purchase_order','general','support')
+  context_id unsignedBigInteger nullable
+  title varchar(255) nullable
+  created_by_account_id unsignedBigInteger FK accounts.id nullable
+  created_by_user_id unsignedBigInteger FK users.id
+  status enum('open','closed','archived') default 'open'
+  last_message_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(context_type, context_id)
+  index(created_by_account_id)
+  index(created_by_user_id)
+  index(status, last_message_at)
+
+Foreign Keys:
+  created_by_account_id -> accounts.id ON DELETE SET NULL
+  created_by_user_id -> users.id ON DELETE RESTRICT
+
+Deduplication rules:
+  - General conversation: reuse an open conversation containing
+    the same two accounts.
+  - Context conversation: reuse an open conversation containing
+    the same accounts, context_type, and context_id.
+  - Support-ticket communication remains in ticket_messages;
+    support context is reserved for future real-time support chat.
+
+
+22.2 conversation_accounts
+--------------------------
+conversation_accounts
+  id unsignedBigInteger primary auto_increment
+  conversation_id unsignedBigInteger FK conversations.id
+  account_id unsignedBigInteger FK accounts.id
+  participant_capability enum('buyer','supplier')
+  joined_at timestamp nullable
+  left_at timestamp nullable
+  is_active boolean default true
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(conversation_id, account_id)
+
+Indexes:
+  index(account_id, is_active)
+
+Foreign Keys:
+  conversation_id -> conversations.id ON DELETE CASCADE
+  account_id -> accounts.id ON DELETE CASCADE
+
+
+22.3 conversation_admin_users
+-----------------------------
+conversation_admin_users
+  id unsignedBigInteger primary auto_increment
+  conversation_id unsignedBigInteger FK conversations.id
+  user_id unsignedBigInteger FK users.id
+  joined_at timestamp nullable
+  left_at timestamp nullable
+  is_active boolean default true
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(conversation_id, user_id)
+
+Indexes:
+  index(user_id, is_active)
+
+Foreign Keys:
+  conversation_id -> conversations.id ON DELETE CASCADE
+  user_id -> users.id ON DELETE CASCADE
+
+Rule:
+  - Only users holding authorized platform Admin/staff permissions
+    may be added.
+
+
+22.4 conversation_user_states
+-----------------------------
+conversation_user_states
+  id unsignedBigInteger primary auto_increment
+  conversation_id unsignedBigInteger FK conversations.id
+  user_id unsignedBigInteger FK users.id
+  last_read_at timestamp nullable
+  muted_at timestamp nullable
+  archived_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(conversation_id, user_id)
+
+Indexes:
+  index(user_id)
+  index(conversation_id, last_read_at)
+
+Foreign Keys:
+  conversation_id -> conversations.id ON DELETE CASCADE
+  user_id -> users.id ON DELETE CASCADE
+
+
+22.5 messages
+-------------
+messages
+  id unsignedBigInteger primary auto_increment
+  conversation_id unsignedBigInteger FK conversations.id
+  sender_account_id unsignedBigInteger FK accounts.id nullable
+  sender_user_id unsignedBigInteger FK users.id nullable
+  message_type enum('text','file','image','system') default 'text'
+  body longText nullable
+  metadata json nullable
+  edited_at timestamp nullable
+  deleted_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(conversation_id, created_at)
+  index(sender_account_id)
+  index(sender_user_id)
+
+Foreign Keys:
+  conversation_id -> conversations.id ON DELETE CASCADE
+  sender_account_id -> accounts.id ON DELETE SET NULL
+  sender_user_id -> users.id ON DELETE SET NULL
+
+Rules:
+  - Normal Buyer/Supplier message: both sender fields are
+    populated.
+  - Admin message: sender_user_id is populated and
+    sender_account_id is NULL.
+  - Automatic system message: both sender fields may be NULL and
+    event data is stored in metadata.
+  - File/image attachments use the message_attachments media
+    collection.
+
+
+=====================================================================
+23. REVIEW SYSTEM
+=====================================================================
+The confirmed requirement allows a Buyer to review a Supplier after
+quotation submission.
+
+To avoid mixing quotation experience with completed-purchase
+experience, support two contexts.
+
+23.1 reviews
+------------
+reviews
+  id unsignedBigInteger primary auto_increment
+  buyer_account_id unsignedBigInteger FK accounts.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  created_by_user_id unsignedBigInteger FK users.id
+  review_context enum('quotation_experience','purchase_experience')
+  rfq_id unsignedBigInteger FK rfqs.id nullable
+  quotation_id unsignedBigInteger FK quotations.id nullable
+  purchase_order_id unsignedBigInteger FK purchase_orders.id nullable
+  rating unsignedTinyInteger
+  title varchar(255) nullable
+  comment text nullable
+  status enum('pending','published','hidden','flagged','rejected') default 'pending'
+  moderated_by_user_id unsignedBigInteger FK users.id nullable
+  moderation_reason text nullable
+  published_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+Recommended unique rules:
+  unique(buyer_account_id, quotation_id, review_context)
+  unique(buyer_account_id, purchase_order_id, review_context)
+
+Rules:
+  - quotation_experience is allowed after quotation submission.
+  - purchase_experience is allowed after Purchase Order
+    completion.
+  - Supplier rating calculation should preferably use purchase
+    reviews more heavily than quotation-only reviews.
+  - Rating must be 1-5.
+
+
+23.2 review_replies
+-------------------
+review_replies
+  id unsignedBigInteger primary auto_increment
+  review_id unsignedBigInteger FK reviews.id
+  supplier_account_id unsignedBigInteger FK accounts.id
+  replied_by_user_id unsignedBigInteger FK users.id
+  reply text
+  status enum('published','hidden') default 'published'
+  moderated_by_user_id unsignedBigInteger FK users.id nullable
+  moderation_reason text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(review_id, supplier_account_id)
+
+Indexes:
+  index(supplier_account_id)
+  index(status)
+
+Foreign Keys:
+  review_id -> reviews.id ON DELETE CASCADE
+  supplier_account_id -> accounts.id ON DELETE CASCADE
+  replied_by_user_id -> users.id ON DELETE RESTRICT
+  moderated_by_user_id -> users.id ON DELETE SET NULL
+
+Rule:
+  - One public Supplier reply is allowed per review.
+
+
+23.3 review_reports
+-------------------
+review_reports
+  id unsignedBigInteger primary auto_increment
+  review_id unsignedBigInteger FK reviews.id
+  reported_by_account_id unsignedBigInteger FK accounts.id
+  reported_by_user_id unsignedBigInteger FK users.id
+  reason varchar(255)
+  details text nullable
+  status enum('pending','reviewed','dismissed','action_taken') default 'pending'
+  reviewed_by_user_id unsignedBigInteger FK users.id nullable
+  review_action text nullable
+  reviewed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique:
+  unique(review_id, reported_by_account_id)
+
+Indexes:
+  index(review_id)
+  index(status)
+
+Foreign Keys:
+  review_id -> reviews.id ON DELETE CASCADE
+  reported_by_account_id -> accounts.id ON DELETE CASCADE
+  reported_by_user_id -> users.id ON DELETE RESTRICT
+  reviewed_by_user_id -> users.id ON DELETE SET NULL
+
+
+=====================================================================
+24. SUPPORT TICKET SYSTEM
+=====================================================================
+
+24.1 tickets
+------------
+tickets
+  id unsignedBigInteger primary auto_increment
+  ticket_number varchar(50) unique
+  account_id unsignedBigInteger FK accounts.id
+  created_by_user_id unsignedBigInteger FK users.id
+  assigned_admin_user_id unsignedBigInteger FK users.id nullable
+  related_type varchar(100) nullable
+  related_id unsignedBigInteger nullable
+  subject varchar(255)
+  description longText nullable
+  priority enum('low','normal','high','urgent') default 'normal'
+  status enum('open','pending','answered','resolved','closed') default 'open'
+  last_reply_at timestamp nullable
+  reopened_at timestamp nullable
+  closed_at timestamp nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+  deleted_at timestamp nullable
+
+
+24.2 ticket_messages
+--------------------
+ticket_messages
+  id unsignedBigInteger primary auto_increment
+  ticket_id unsignedBigInteger FK tickets.id
+  sender_account_id unsignedBigInteger FK accounts.id nullable
+  sender_user_id unsignedBigInteger FK users.id
+  message longText
+  is_internal_note boolean default false
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Rule:
+  - Buyer-Supplier disputes are initially submitted as support
+    tickets linked to an RFQ, quotation, award, or Purchase Order.
+
+
+=====================================================================
+25. SAVED ITEMS
+=====================================================================
+
+25.1 saved_items
+----------------
+saved_items
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  saved_by_user_id unsignedBigInteger FK users.id
+  visibility enum('personal','account') default 'personal'
+  item_type enum('listing','supplier','rfq','quotation')
+  item_id unsignedBigInteger
+  notes text nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Unique recommendation:
+  unique(saved_by_user_id, item_type, item_id)
+
+
+=====================================================================
+26. GUEST CONTACT INQUIRIES
+=====================================================================
+
+26.1 contact_inquiries
+----------------------
+contact_inquiries
+  id unsignedBigInteger primary auto_increment
+  inquiry_number varchar(50) unique
+  supplier_account_id unsignedBigInteger FK accounts.id nullable
+  listing_id unsignedBigInteger FK listings.id nullable
+  name varchar(150)
+  email varchar(150)
+  phone varchar(30) nullable
+  organization varchar(200) nullable
+  subject varchar(255) nullable
+  message text
+  status enum('new','read','replied','spam','closed') default 'new'
+  handled_by_user_id unsignedBigInteger FK users.id nullable
+  handled_at timestamp nullable
+  replied_at timestamp nullable
+  closed_at timestamp nullable
+  ip_address varchar(45) nullable
+  user_agent varchar(500) nullable
+  source_url varchar(1000) nullable
+  metadata json nullable
+  created_at timestamp nullable
+  updated_at timestamp nullable
+
+Indexes:
+  index(supplier_account_id, status)
+  index(listing_id)
+  index(status)
+  index(email)
+  index(created_at)
+
+Foreign Keys:
+  supplier_account_id -> accounts.id ON DELETE SET NULL
+  listing_id -> listings.id ON DELETE SET NULL
+  handled_by_user_id -> users.id ON DELETE SET NULL
+
+Rules:
+  - supplier_account_id = NULL means a general platform inquiry.
+  - A targeted Supplier inquiry is visible only to authorized
+    members of that Supplier account and Platform Admin.
+  - Attachments use the media collection inquiry_attachments.
+  - Rate limiting, CAPTCHA, IP reputation, and spam detection are
+    applied in application code.
+
+
+=====================================================================
+27. V4.3 NEW TABLES
+=====================================================================
+
+27.1 account_dashboard_preferences  [NEW IN V4.3]
+-------------------------------------------------
+Purpose: Store the preferred dashboard mode for accounts that have
+both Buyer and Supplier capabilities.
+
+account_dashboard_preferences
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  default_mode enum('buyer','supplier')
+  created_at timestamp
+  updated_at timestamp
+
+Unique:
+  unique(account_id)
+
+
+27.2 role_requests  [NEW IN V4.3]
+---------------------------------
+Purpose: Organization users can request custom roles. Admin
+approval is required before creating account-specific Spatie roles.
+
+role_requests
+  id unsignedBigInteger primary auto_increment
+  account_id unsignedBigInteger FK accounts.id
+  requested_by_user_id unsignedBigInteger FK users.id
+  role_name varchar(255)
+  display_name varchar(180)
+  capability_scope varchar(50)
+  requested_permissions json
+  description text
+  status enum('pending','approved','rejected','cancelled')
+  reviewed_by_user_id unsignedBigInteger nullable
+  review_comment text nullable
+  reviewed_at timestamp nullable
+  created_at timestamp
+  updated_at timestamp
+
+
+=====================================================================
+28. NOTIFICATIONS
+=====================================================================
+Laravel notifications are addressed primarily to users.
+
+Notification payload should include:
+  account_id
+  capability
+  entity_type
+  entity_id
+  action_url
+
+Examples:
+  - capability approved/rejected
+  - account conversion approved/rejected
+  - member invitation
+  - Supplier document rejected
+  - subscription activated/expired
+  - listing approved/rejected
+  - RFQ available
+  - RFQ edited
+  - deadline extended
+  - quotation received
+  - revision requested
+  - quotation shortlisted
+  - award received
+  - award response deadline
+  - Purchase Order issued
+  - ticket replied
+  - review received
+
+
+=====================================================================
+29. MEDIA COLLECTIONS
+=====================================================================
+Recommended collections:
+
+Account and profiles:
+  account_avatar
+  buyer_logo
+  buyer_documents
+  supplier_logo
+  supplier_banner
+  supplier_gallery
+  supplier_documents
+
+Listings:
+  listing_images
+  listing_documents
+  listing_catalogues
+  variant_images
+
+RFQ:
+  rfq_attachments
+  rfq_boq
+  rfq_specifications
+
+Quotations:
+  quotation_attachments
+  quotation_proposals
+  revision_request_attachments
+
+Purchase Orders:
+  purchase_order_documents
+  delivery_documents
+
+Communication:
+  message_attachments
+  ticket_attachments
+  review_images
+  inquiry_attachments
+
+
+=====================================================================
+30. IMPORTANT BACKEND AUTHORIZATION RULES
+=====================================================================
+These rules must not be implemented only in Vue, React, Blade, or
+other frontend code.
+
+30.1 Request context middleware
+-------------------------------
+For every authenticated account route:
+  1. Resolve the authenticated user's active account_members row.
+  2. Confirm user, account, and membership are active.
+  3. Store current account_id and selected Buyer/Supplier
+     capability in session.
+  4. Validate the account_id in the route against the user's
+     membership.
+  5. Call setPermissionsTeamId(account_id).
+  6. Clear/reload the user's role and permission relations after
+     changing context.
+
+The URL should also express capability context:
+  /buyer/...
+  /supplier/...
+  /admin/...
+
+30.2 Permission checks
+----------------------
+Use permissions rather than role names:
+  $user->can('rfq.publish')
+  $user->can('quotation.submit')
+  $user->can('listing.create')
+
+Roles are collections of permissions, not the final authorization
+rule.
+
+30.3 Full RFQ access
+--------------------
+A Supplier may open full RFQ details only when:
+  user.status = active
+  account.status = active
+  account_members.status = active
+  supplier capability.status = active
+  subscription.status = active
+  Spatie permission rfq_opportunity.view is granted
+  rfq_supplier_queue.eligibility_status = eligible
+  rfq_supplier_queue.available_at <= now
+  rfq.status = open
+
+For directly selected Suppliers:
+  source = selected_supplier
+  delay_minutes = 0
+
+30.4 Submit quotation
+---------------------
+Require:
+  active Supplier capability
+  active subscription
+  Spatie permission quotation.submit
+  RFQ access
+  RFQ open
+  deadline not passed
+  no accepted award
+  quotation belongs to current Supplier account
+
+30.5 Publish RFQ
+----------------
+Require:
+  active Buyer capability
+  account active
+  buyer profile complete
+  Spatie permission rfq.publish
+  at least one RFQ item
+  RFQ belongs to current Buyer account
+
+30.6 Award quotation
+--------------------
+Require:
+  active Buyer capability
+  Spatie permission quotation.award
+  Buyer account owns RFQ
+  quotation belongs to RFQ
+  quotation status is submitted/revised/shortlisted/under_review
+  no active accepted award
+
+30.7 Create Purchase Order
+--------------------------
+Require:
+  award.status = accepted
+  Spatie permission purchase_order.update_buyer or an authorized
+  system workflow
+
+30.8 Manage members and roles
+-----------------------------
+Require:
+  members.invite / members.update / members.remove
+  roles.create / roles.update / roles.delete / roles.assign
+
+Additional rules:
+  - The role being assigned must be global or belong to the same
+    account.
+  - The role capability scope must match an active or pending
+    account capability as configured by the workflow.
+  - Only Platform Admin can edit global roles and global
+    permissions.
+  - An organization cannot remove the last active owner.
+  - An organization cannot assign Platform-scoped permissions.
+
+30.9 Platform Admin
+-------------------
+Platform routes use the reserved system account team context.
+
+Platform permissions include:
+  platform.accounts.approve
+  platform.capabilities.review
+  platform.supplier_documents.verify
+  platform.listings.moderate
+  platform.tickets.manage
+
+Do not assume that a role named admin automatically bypasses
+domain rules. Use permissions and explicit Laravel Gates/Policies.
+A super_admin Gate-before rule may be used only for authorized
+platform-wide bypass behavior.
+
+
+=====================================================================
+31. MAIN WORKFLOWS
+=====================================================================
+
+31.1 Registration
+-----------------
+ 1. User registers.
+ 2. User chooses account type:
+      - individual
+      - organization
+ 3. User chooses initial capability:
+      - Buyer
+      - Supplier
+      - Both
+ 4. System creates:
+      - users
+      - accounts
+      - account_members
+      - buyer_profiles and/or supplier_profiles
+      - account_capabilities
+ 5. System sets Spatie team context to the new account_id.
+ 6. System assigns global primary_owner role through
+    model_has_roles.
+ 7. User completes profile information.
+ 8. Capability application goes to Admin.
+ 9. Admin approves/rejects/requires revision.
+10. Supplier selects a plan only after Supplier approval.
+
+31.2 Add employee
+-----------------
+ 1. Owner/member with members.invite creates an invitation.
+ 2. Owner may prefill employee name, email, phone, and proposed
+    role.
+ 3. Employee receives a secure email.
+ 4. Employee creates a password and verifies email.
+ 5. System creates users and account_members rows.
+ 6. System sets the Spatie team context to the organization's
+    account_id.
+ 7. System assigns the selected global or account-specific role.
+ 8. Role assignment is written to activity_log.
+ 9. User remains tied to this one account.
+
+31.3 Create a custom role
+-------------------------
+ 1. Owner has roles.create permission.
+ 2. Owner selects capability scope and permissions.
+ 3. System rejects Platform-scoped or owner-only permissions the
+    owner may not delegate.
+ 4. System creates roles row with account_id = current account id.
+ 5. System syncs permissions through role_has_permissions.
+ 6. Role creation is written to activity_log.
+
+31.4 Customize a standard role
+------------------------------
+ 1. Owner selects a global role.
+ 2. System clones it to roles.account_id = current account id.
+ 3. System copies role_has_permissions.
+ 4. Owner modifies permissions on the clone.
+ 5. Members are assigned the account-specific clone.
+
+31.5 Individual-to-organization conversion
+------------------------------------------
+ 1. Individual submits proposed organization information.
+ 2. Existing personal account remains active.
+ 3. Admin reviews conversion.
+ 4. If rejected:
+      - account remains individual
+      - resubmission is allowed
+ 5. If approved:
+      - same account_id remains
+      - account_type becomes organization
+      - change history is stored
+      - Supplier capability becomes pending if it was active
+      - organization rollback is prohibited
+      - member-management permissions become usable according to
+        assigned Spatie roles
+
+31.6 Supplier onboarding
+------------------------
+ 1. Supplier capability is approved by Admin.
+ 2. Supplier selects free or paid plan.
+ 3. Subscription becomes active.
+ 4. Supplier users still require the relevant Spatie permissions.
+ 5. Supplier may publish approved listings.
+ 6. Supplier receives eligible RFQs based on queue/delay.
+
+31.7 Global RFQ
+---------------
+ 1. Buyer with rfq.create creates RFQ and items.
+ 2. Buyer with rfq.publish selects global visibility and
+    publishes.
+ 3. System creates queue rows for Supplier accounts.
+ 4. Backend calculates eligibility and available_at.
+ 5. Public summary is searchable.
+ 6. Eligible Suppliers with rfq_opportunity.view see full RFQ
+    after delay.
+ 7. Interested Suppliers with quotation.submit submit quotations.
+
+31.8 Selected-Supplier RFQ
+--------------------------
+ 1. Buyer with rfq.invite_suppliers chooses one or multiple
+    Suppliers.
+ 2. System creates rfq_selected_suppliers rows.
+ 3. Queue rows use source = selected_supplier.
+ 4. Delay = 0.
+ 5. Eligible selected Suppliers receive immediate access.
+
+31.9 RFQ edit after quotations
+------------------------------
+ 1. Authorized Buyer edits RFQ.
+ 2. System increments current_version_no.
+ 3. System creates rfq_change_logs row.
+ 4. Suppliers with submitted quotations are notified.
+ 5. Existing quotation stores old rfq_version_no.
+ 6. Supplier with quotation.revise may submit a revision for the
+    new version.
+
+31.10 Award and Purchase Order
+------------------------------
+ 1. Buyer with quotation.compare compares quotations.
+ 2. Buyer with quotation.shortlist shortlists quotations.
+ 3. Buyer with quotation.award creates award attempt 1.
+ 4. Supplier with award.accept or award.reject responds before
+    deadline.
+ 5. If rejected, Buyer may create another award attempt.
+ 6. If accepted:
+      - RFQ becomes awarded
+      - Purchase Order is created
+ 7. Purchase is fulfilled outside platform payment.
+ 8. Status progresses to completed.
+
+
+=====================================================================
+32. ADDITIONAL PHASE 1 DECISIONS (V4.3)
+=====================================================================
+
+RFQ approval:
+  Keep rfq_requires_admin_approval setting.
+  Default Phase 1: rfq_requires_admin_approval = false
+  Workflow: Buyer -> Create RFQ -> Instant Publish
+
+Quotation comparison:
+  No separate comparison table. Dynamic comparison uses
+  quotations, quotation_items, supplier information, ratings, and
+  quotation terms.
+
+Subscription control:
+  Admin creates subscription plans.
+  Supplier selects an Admin-created plan.
+  Free plan is available only if Admin creates it.
+
+Chat:
+  Buyer and Supplier can chat anytime.
+  Conversation history remains stored.
+
+Inventory:
+  EduShopify is a marketplace only.
+  Supplier inventory is informational.
+  No warehouse inventory management in Phase 1.
+
+Purchase Order:
+  Phase 1 workflow: Award Accepted -> PO Issued -> Completed
+  Manually.
+
+Location data:
+  Country, State, City data will be imported through Admin CSV.
+
+
+=====================================================================
+33. FUTURE MODULES
+=====================================================================
+Delay until the core system is stable:
+  - Buyer-to-Supplier online payment
+  - Escrow
+  - Commission
+  - Refunds
+  - Split awards
+  - Multi-Supplier Purchase Orders
+  - Full dispute workflow
+  - Logistics integrations
+  - Warehouse inventory
+  - Tax engine
+  - Automated invoices
+  - Radius/geospatial RFQ matching
+  - Cart and direct checkout
+
+
+=====================================================================
+34. COMPLETE TABLE INVENTORY
+=====================================================================
+The V4.2 standalone database contains 97 physical tables and one
+recommended database view. V4.3 adds 2 tables
+(account_dashboard_preferences, role_requests) for a total of 99.
+
+System and framework (12):
+  migrations
+  cache
+  cache_locks
+  sessions
+  jobs
+  job_batches
+  failed_jobs
+  password_reset_tokens
+  activity_log
+  settings
+  media
+  notifications
+
+Spatie Teams authorization (5):
+  permissions
+  roles
+  model_has_roles
+  model_has_permissions
+  role_has_permissions
+
+Authentication (3):
+  users
+  otp_codes
+  social_accounts
+
+Accounts and capabilities (10):
+  accounts
+  account_members
+  account_member_invitations
+  account_ownership_transfers
+  account_capabilities
+  capability_application_history
+  account_conversion_requests
+  account_type_changes
+  buyer_profiles
+  supplier_profiles
+
+Geography and global taxonomy (9):
+  countries
+  states
+  cities
+  currencies
+  languages
+  buyer_types
+  supplier_types
+  document_types
+  exhibitions
+
+Locations, Supplier support and subscription (11):
+  account_locations
+  supplier_service_areas
+  supplier_documents
+  supplier_gallery
+  supplier_videos
+  business_hours
+  supplier_supplier_type
+  exhibition_supplier
+  subscription_plans
+  subscriptions
+  subscription_payments
+
+Catalogue and listings (17):
+  categories
+  category_suggestions
+  brands
+  attributes
+  attribute_values
+  category_attribute
+  attribute_suggestions
+  units
+  listings
+  product_details
+  service_details
+  listing_categories
+  listing_attribute_values
+  listing_variants
+  listing_variant_attributes
+  listing_tier_prices
+  listing_change_logs
+
+RFQ and quotation (14):
+  rfqs
+  rfq_items
+  rfq_selected_suppliers
+  rfq_target_filters
+  rfq_supplier_queue
+  rfq_questions
+  rfq_deadline_extensions
+  rfq_change_logs
+  quotations
+  quotation_items
+  quotation_revision_requests
+  quotation_revisions
+  quotation_revision_items
+  rfq_shortlists
+
+Award and Purchase Order (4):
+  awards
+  purchase_orders
+  purchase_order_items
+  purchase_order_status_history
+
+Messaging (5):
+  conversations
+  conversation_accounts
+  conversation_admin_users
+  conversation_user_states
+  messages
+
+Reviews, support and saved data (7):
+  reviews
+  review_replies
+  review_reports
+  tickets
+  ticket_messages
+  saved_items
+  contact_inquiries
+
+V4.3 additions (2):
+  account_dashboard_preferences
+  role_requests
+
+Recommended database view:
+  rfq_public_summary
+
+
+=====================================================================
+35. MIGRATION ORDER
+=====================================================================
+Create migrations in this dependency-safe order:
+
+  01 migrations
+  02 users
+  03 password_reset_tokens
+  04 otp_codes
+  05 social_accounts
+  06 sessions
+  07 cache
+  08 cache_locks
+  09 jobs
+  10 job_batches
+  11 failed_jobs
+  12 activity_log
+  13 settings
+  14 media
+  15 notifications
+  16 countries
+  17 states
+  18 cities
+  19 currencies
+  20 languages
+  21 buyer_types
+  22 supplier_types
+  23 document_types
+  24 exhibitions
+  25 accounts
+  26 account_members
+  27 account_member_invitations
+  28 account_ownership_transfers
+  29 permissions
+  30 roles
+  31 model_has_roles
+  32 model_has_permissions
+  33 role_has_permissions
+  34 account_capabilities
+  35 capability_application_history
+  36 account_conversion_requests
+  37 account_type_changes
+  38 buyer_profiles
+  39 supplier_profiles
+  40 account_locations
+  41 supplier_service_areas
+  42 supplier_documents
+  43 supplier_gallery
+  44 supplier_videos
+  45 business_hours
+  46 supplier_supplier_type
+  47 exhibition_supplier
+  48 subscription_plans
+  49 subscriptions
+  50 subscription_payments
+  51 categories
+  52 category_suggestions
+  53 brands
+  54 units
+  55 attributes
+  56 attribute_values
+  57 category_attribute
+  58 attribute_suggestions
+  59 listings
+  60 product_details
+  61 service_details
+  62 listing_categories
+  63 listing_attribute_values
+  64 listing_variants
+  65 listing_variant_attributes
+  66 listing_tier_prices
+  67 listing_change_logs
+  68 rfqs
+  69 rfq_items
+  70 rfq_selected_suppliers
+  71 rfq_target_filters
+  72 rfq_supplier_queue
+  73 rfq_questions
+  74 rfq_deadline_extensions
+  75 rfq_change_logs
+  76 quotations
+  77 quotation_items
+  78 quotation_revision_requests
+  79 quotation_revisions
+  80 quotation_revision_items
+  81 rfq_shortlists
+  82 awards
+  83 purchase_orders
+  84 purchase_order_items
+  85 purchase_order_status_history
+  86 conversations
+  87 conversation_accounts
+  88 conversation_admin_users
+  89 conversation_user_states
+  90 messages
+  91 reviews
+  92 review_replies
+  93 review_reports
+  94 tickets
+  95 ticket_messages
+  96 saved_items
+  97 contact_inquiries
+  98 account_dashboard_preferences   (V4.3)
+  99 role_requests                   (V4.3)
+
+After the tables are created:
+  1. Create the rfq_public_summary view.
+  2. Seed the reserved system account.
+  3. Seed global permissions.
+  4. Seed global Platform and account roles.
+  5. Sync permissions to roles through role_has_permissions.
+  6. Reset Spatie's permission cache.
+
+Important implementation notes:
+  - Configure Spatie Teams before publishing/running its
+    migration.
+  - Set team_foreign_key to account_id.
+  - accounts.primary_owner_user_id may be created nullable and its
+    foreign key added after accounts and users exist.
+  - roles.account_id, model_has_roles.account_id, and
+    model_has_permissions.account_id reference accounts.id.
+  - The Spatie pivots require a non-null account/team context.
+  - Create the system account before assigning Platform roles.
+  - Where Laravel migration ordering makes a circular or
+    self-reference inconvenient, create the column first and add
+    the foreign key in a later migration.
+
+
+=====================================================================
+36. OWNERSHIP AND RELATIONSHIP SUMMARY
+=====================================================================
+
+Fields intentionally excluded from the final design:
+  users.type
+  buyer_profiles.user_id
+  supplier_profiles.user_id
+  products.supplier_id
+  rfqs.buyer_id
+  quotations.supplier_id
+  awards.buyer_id
+  awards.supplier_id
+  subscriptions.supplier_id
+
+Removed custom authorization tables:
+Spatie Teams replaces the following proposed custom runtime
+tables, so they are not part of V4.2:
+  custom account permission catalogue
+  custom account role table
+  custom account role-permission pivot
+  custom account member-role pivot
+  custom permission override table
+  custom role-template tables
+
+Canonical ownership fields:
+  accounts
+  account_members
+  account_capabilities
+  buyer_profiles.account_id
+  supplier_profiles.account_id
+  listings.supplier_account_id
+  rfqs.buyer_account_id
+  quotations.supplier_account_id
+  awards.buyer_account_id
+  awards.supplier_account_id
+  subscriptions.supplier_account_id
+
+Spatie role and permission fields:
+  roles.account_id
+  model_has_roles.account_id
+  model_has_permissions.account_id
+  role_has_permissions
+
+Actor fields:
+  created_by_user_id
+  submitted_by_user_id
+  approved_by_user_id
+  reviewed_by_user_id
+  awarded_by_user_id
+  changed_by_user_id
+
+Responsibility split:
+  account_members       : Business membership, owner state,
+                          invitation acceptance, suspension,
+                          removal.
+  account_capabilities  : Admin-approved Buyer/Supplier business
+                          eligibility.
+  Spatie Teams          : Live roles and permissions in an account
+                          context.
+  Laravel Policies and
+  services              : Resource ownership, deadlines, status
+                          transitions, subscription eligibility,
+                          and other business rules.
+
+
+=====================================================================
+37. DBA AND IMPLEMENTATION RECOMMENDATIONS
+=====================================================================
+
+ 1. Do not rely on frontend checks for Spatie permissions,
+    subscription, RFQ access, ownership, or capability status.
+ 2. Enable Spatie Teams before running the package migration and
+    configure account_id as the team key.
+ 3. Add HasRoles only to the User model; do not create conflicting
+    role, roles, permission, or permissions fields/relations on
+    that model.
+ 4. Set Spatie's current team/account context in middleware before
+    route model binding and permission checks.
+ 5. After changing account context, clear or reload the user's
+    role and permission relations.
+ 6. Use permission checks rather than role-name checks for
+    business actions.
+ 7. Use Laravel Policies/Gates and service-layer authorization
+    after Spatie permission checks.
+ 8. Keep account_members even though Spatie Teams is enabled; it
+    stores business membership and ownership state that Spatie
+    does not manage.
+ 9. Keep account_capabilities; Buyer/Supplier approval is a
+    business workflow, not a role assignment.
+10. Use global roles for Platform-defined defaults and
+    account-specific roles for organization customizations.
+11. Never let an organization modify a global role. Clone it into
+    an account-specific role instead.
+12. Prefer role permissions over direct user permissions.
+13. Use activity_log to audit role creation, role assignment,
+    direct permission grants, permission synchronization, and
+    revocation.
+14. Use Spatie's API methods such as assignRole, syncRoles,
+    givePermissionTo, and syncPermissions instead of writing
+    directly to pivots.
+15. Reset Spatie's cache after database seeding or any direct
+    maintenance operation.
+16. Wrap registration, employee acceptance, account conversion
+    approval, award creation, and Purchase Order creation in
+    database transactions.
+17. Use queued jobs for RFQ queue creation, delayed notifications,
+    rating recalculation, subscription expiry, RFQ expiry, and
+    award response expiry.
+18. Use immutable history tables for capability applications,
+    account conversion, RFQ edits, quotation revisions, and
+    Purchase Order status.
+19. Do not allow physical deletion of accounts, RFQs, quotations,
+    awards, Purchase Orders, reviews, or subscription payments
+    after business activity exists.
+20. Use application validation plus database constraints for all
+    state transitions.
+21. Add audit events for all Admin approvals and rejections.
+22. Keep public RFQ summary data separate from full RFQ
+    authorization.
+23. Use indexed account foreign keys throughout the schema.
+24. Test authorization with at least these cases:
+      - same permission in two different accounts;
+      - global role assigned in an account;
+      - account-specific custom role;
+      - suspended membership;
+      - pending Supplier capability with Supplier role;
+      - direct permission grant;
+      - system account Platform role;
+      - resource belonging to another account.
+
+
+=====================================================================
+38. FINAL ARCHITECTURE STATEMENT
+=====================================================================
+Edushopify V4.3 uses a stable account_id as both the business
+identity and the Spatie Teams authorization context.
+
+  User                  = human actor
+  Account               = individual, organization, or reserved
+                          internal platform organization
+  Capability            = Admin-approved Buyer and/or Supplier
+                          eligibility
+  Profile               = capability-specific information
+  Membership            = business relationship between User and
+                          Account
+  Spatie Role           = named permission collection, global or
+                          account-specific
+  Spatie Permission     = granular application ability
+  Laravel Policy/Service= ownership, status, deadline,
+                          subscription, and workflow validation
+
+An individual may convert to an organization without transferring
+business records because the same account_id remains. The
+conversion is Admin-approved, audited, and irreversible.
+
+Buyer and Supplier capabilities remain independent of Spatie
+roles. A user may hold Supplier permissions, but Supplier actions
+remain blocked until the account's Supplier capability is active
+and other business conditions pass.
+
+All live role and permission assignments are stored only in
+Spatie's five tables:
+
+  permissions
+  roles
+  model_has_roles
+  model_has_permissions
+  role_has_permissions
+
+No parallel custom runtime role/permission system is used.
+
+=====================================================================
+END OF DOCUMENT — EDUSHOPIFY FULL DATABASE STRUCTURE V4.3
+=====================================================================

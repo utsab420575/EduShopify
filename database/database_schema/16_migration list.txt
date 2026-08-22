@@ -1,0 +1,162 @@
+=====================================================================
+EDUSHOPIFY V4.3 — php artisan make:migration COMMANDS (PARENT-FIRST)
+=====================================================================
+
+Total tables: 98
+Order: strictly parent-before-child, matching the dependency-safe
+migration order from the V4.3 database structure document.
+
+Run these from your Laravel project root, in the batches shown.
+Each command creates an empty migration stub named
+  database/migrations/<timestamp>_create_<table>_table.php
+Then paste in the Schema::create(...) body for that table
+(from the previously generated migration files) before running
+php artisan migrate.
+
+=====================================================================
+BATCH 1  (Tables 1-10 of 98)
+=====================================================================
+
+php artisan make:migration create_users_table --create=users
+php artisan make:migration create_password_reset_tokens_table --create=password_reset_tokens
+php artisan make:migration create_otp_codes_table --create=otp_codes
+php artisan make:migration create_social_accounts_table --create=social_accounts
+php artisan make:migration create_sessions_table --create=sessions
+php artisan make:migration create_cache_table --create=cache
+php artisan make:migration create_cache_locks_table --create=cache_locks
+php artisan make:migration create_jobs_table --create=jobs
+php artisan make:migration create_job_batches_table --create=job_batches
+php artisan make:migration create_failed_jobs_table --create=failed_jobs
+
+=====================================================================
+BATCH 2  (Tables 11-20 of 98)
+=====================================================================
+
+php artisan make:migration create_activity_log_table --create=activity_log
+php artisan make:migration create_settings_table --create=settings
+php artisan make:migration create_media_table --create=media
+php artisan make:migration create_notifications_table --create=notifications
+php artisan make:migration create_countries_table --create=countries
+php artisan make:migration create_states_table --create=states
+php artisan make:migration create_cities_table --create=cities
+php artisan make:migration create_currencies_table --create=currencies
+php artisan make:migration create_languages_table --create=languages
+php artisan make:migration create_buyer_types_table --create=buyer_types
+
+=====================================================================
+BATCH 3  (Tables 21-30 of 98)
+=====================================================================
+
+php artisan make:migration create_supplier_types_table --create=supplier_types
+php artisan make:migration create_document_types_table --create=document_types
+php artisan make:migration create_exhibitions_table --create=exhibitions
+php artisan make:migration create_accounts_table --create=accounts
+php artisan make:migration create_account_members_table --create=account_members
+php artisan make:migration create_account_member_invitations_table --create=account_member_invitations
+php artisan make:migration create_account_ownership_transfers_table --create=account_ownership_transfers
+php artisan make:migration create_permissions_table --create=permissions
+php artisan make:migration create_roles_table --create=roles
+php artisan make:migration create_model_has_roles_table --create=model_has_roles
+
+=====================================================================
+BATCH 4  (Tables 31-40 of 98)
+=====================================================================
+
+php artisan make:migration create_model_has_permissions_table --create=model_has_permissions
+php artisan make:migration create_role_has_permissions_table --create=role_has_permissions
+php artisan make:migration create_account_capabilities_table --create=account_capabilities
+php artisan make:migration create_capability_application_history_table --create=capability_application_history
+php artisan make:migration create_account_conversion_requests_table --create=account_conversion_requests
+php artisan make:migration create_account_type_changes_table --create=account_type_changes
+php artisan make:migration create_buyer_profiles_table --create=buyer_profiles
+php artisan make:migration create_supplier_profiles_table --create=supplier_profiles
+php artisan make:migration create_account_locations_table --create=account_locations
+php artisan make:migration create_supplier_service_areas_table --create=supplier_service_areas
+
+=====================================================================
+BATCH 5  (Tables 41-50 of 98)
+=====================================================================
+
+php artisan make:migration create_supplier_documents_table --create=supplier_documents
+php artisan make:migration create_supplier_gallery_table --create=supplier_gallery
+php artisan make:migration create_supplier_videos_table --create=supplier_videos
+php artisan make:migration create_business_hours_table --create=business_hours
+php artisan make:migration create_supplier_supplier_type_table --create=supplier_supplier_type
+php artisan make:migration create_exhibition_supplier_table --create=exhibition_supplier
+php artisan make:migration create_subscription_plans_table --create=subscription_plans
+php artisan make:migration create_subscriptions_table --create=subscriptions
+php artisan make:migration create_subscription_payments_table --create=subscription_payments
+php artisan make:migration create_categories_table --create=categories
+
+=====================================================================
+BATCH 6  (Tables 51-60 of 98)
+=====================================================================
+
+php artisan make:migration create_category_suggestions_table --create=category_suggestions
+php artisan make:migration create_brands_table --create=brands
+php artisan make:migration create_units_table --create=units
+php artisan make:migration create_attributes_table --create=attributes
+php artisan make:migration create_attribute_values_table --create=attribute_values
+php artisan make:migration create_category_attribute_table --create=category_attribute
+php artisan make:migration create_attribute_suggestions_table --create=attribute_suggestions
+php artisan make:migration create_listings_table --create=listings
+php artisan make:migration create_product_details_table --create=product_details
+php artisan make:migration create_service_details_table --create=service_details
+
+=====================================================================
+BATCH 7  (Tables 61-70 of 98)
+=====================================================================
+
+php artisan make:migration create_listing_categories_table --create=listing_categories
+php artisan make:migration create_listing_attribute_values_table --create=listing_attribute_values
+php artisan make:migration create_listing_variants_table --create=listing_variants
+php artisan make:migration create_listing_variant_attributes_table --create=listing_variant_attributes
+php artisan make:migration create_listing_tier_prices_table --create=listing_tier_prices
+php artisan make:migration create_listing_change_logs_table --create=listing_change_logs
+php artisan make:migration create_rfqs_table --create=rfqs
+php artisan make:migration create_rfq_items_table --create=rfq_items
+php artisan make:migration create_rfq_selected_suppliers_table --create=rfq_selected_suppliers
+php artisan make:migration create_rfq_target_filters_table --create=rfq_target_filters
+
+=====================================================================
+BATCH 8  (Tables 71-80 of 98)
+=====================================================================
+
+php artisan make:migration create_rfq_supplier_queue_table --create=rfq_supplier_queue
+php artisan make:migration create_rfq_questions_table --create=rfq_questions
+php artisan make:migration create_rfq_deadline_extensions_table --create=rfq_deadline_extensions
+php artisan make:migration create_rfq_change_logs_table --create=rfq_change_logs
+php artisan make:migration create_quotations_table --create=quotations
+php artisan make:migration create_quotation_items_table --create=quotation_items
+php artisan make:migration create_quotation_revision_requests_table --create=quotation_revision_requests
+php artisan make:migration create_quotation_revisions_table --create=quotation_revisions
+php artisan make:migration create_quotation_revision_items_table --create=quotation_revision_items
+php artisan make:migration create_rfq_shortlists_table --create=rfq_shortlists
+
+=====================================================================
+BATCH 9  (Tables 81-90 of 98)
+=====================================================================
+
+php artisan make:migration create_awards_table --create=awards
+php artisan make:migration create_purchase_orders_table --create=purchase_orders
+php artisan make:migration create_purchase_order_items_table --create=purchase_order_items
+php artisan make:migration create_purchase_order_status_history_table --create=purchase_order_status_history
+php artisan make:migration create_conversations_table --create=conversations
+php artisan make:migration create_conversation_accounts_table --create=conversation_accounts
+php artisan make:migration create_conversation_admin_users_table --create=conversation_admin_users
+php artisan make:migration create_conversation_user_states_table --create=conversation_user_states
+php artisan make:migration create_messages_table --create=messages
+php artisan make:migration create_reviews_table --create=reviews
+
+=====================================================================
+BATCH 10  (Tables 91-98 of 98)
+=====================================================================
+
+php artisan make:migration create_review_replies_table --create=review_replies
+php artisan make:migration create_review_reports_table --create=review_reports
+php artisan make:migration create_tickets_table --create=tickets
+php artisan make:migration create_ticket_messages_table --create=ticket_messages
+php artisan make:migration create_saved_items_table --create=saved_items
+php artisan make:migration create_contact_inquiries_table --create=contact_inquiries
+php artisan make:migration create_account_dashboard_preferences_table --create=account_dashboard_preferences
+php artisan make:migration create_role_requests_table --create=role_requests

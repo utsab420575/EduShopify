@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php __TRACKED_VAR__/dump.php __TRACKED_VAR__/schema.txt)",
+      "Bash(php -r ' *)",
+      "Bash(grep -vE \"BelongsTo|HasMany|HasOne|BelongsToMany|Relations\\\\\\\\\\\\\\\\|use Illuminate|use Spatie|use Database|use Carbon|use Filament\")",
+      "Bash(php \"C:/Users/utsab/AppData/Local/Temp/claude/c--laragon-www-edushopify/3c43ccf8-d1b0-4eef-a20f-796130c6381e/scratchpad/authstate.php\")",
+      "Bash(php \"C:/Users/utsab/AppData/Local/Temp/claude/c--laragon-www-edushopify/3c43ccf8-d1b0-4eef-a20f-796130c6381e/scratchpad/validate.php\")",
+      "Bash(php \"C:/Users/utsab/AppData/Local/Temp/claude/c--laragon-www-edushopify/3c43ccf8-d1b0-4eef-a20f-796130c6381e/scratchpad/functional.php\")",
+      "Bash(grep -rnE '->saveable|getPlanStatusValue|scopeForSupplier\\\\b|forSupplier\\\\\\(|plan_status|plan_expires_at|'\\\\''supplier_id'\\\\''|\"supplier_id\"|->supplierProfile\\\\b|->buyerProfile\\\\b|\\\\$plan->type|->supplier->|'\\\\''verified_by'\\\\''|'\\\\''sort'\\\\''\\\\s*=>|max_listings|has_notifications' app/ database/seeders/ routes/ resources/views/)",
+      "Bash(grep -n \"Livewire\\\\\\\\\\\\\\\\|Auth\\\\\\\\\\\\\\\\\" routes/web.php)",
+      "Bash(php -l app/Livewire/Auth/SupplierApplication.php)"
+    ]
+  }
+}
