@@ -99,6 +99,21 @@ Route::middleware('guest')->group(function () {
     });
 });
 
+/* ── Authenticated User Dashboard Fallback ── */
+Route::middleware('auth')->get('/dashboard', function (Request $request) {
+    $user = $request->user();
+    if ($user->isAdmin()) {
+        return redirect()->route('admin.dashboard');
+    }
+    if ($user->isSupplier()) {
+        return redirect()->route('supplier.dashboard');
+    }
+    if ($user->isBuyer()) {
+        return redirect()->route('buyer.dashboard');
+    }
+    return redirect('/');
+})->name('dashboard');
+
 /* ── Logout ── */
 Route::post('/logout', function (Request $request) {
     Auth::logout();

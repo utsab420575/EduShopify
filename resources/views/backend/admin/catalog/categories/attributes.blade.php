@@ -104,7 +104,7 @@
                             </thead>
                             <tbody class="divide-y divide-gray-100 text-xs">
                                 @foreach($groupData['attributes'] as $attr)
-                                    <tr class="hover:bg-gray-50/80 transition" x-data="{ editing: false }">
+                                    <tr class="hover:bg-gray-50/80 transition">
                                         <td class="px-5 py-3.5">
                                             <div class="font-semibold text-gray-900 text-sm">{{ $attr->name }}</div>
                                             <div class="text-[11px] text-gray-400 font-mono">{{ $attr->slug }}</div>
@@ -123,61 +123,34 @@
                                             {{ $attr->unit ? ($attr->unit->name . ' (' . $attr->unit->symbol . ')') : '—' }}
                                         </td>
 
-                                        {{-- Inline Update Form --}}
-                                        <td class="px-4 py-3.5 text-center" colspan="4" x-show="editing">
-                                            <form method="POST" action="{{ route('admin.catalog.categories.attributes.update', [$category, $attr]) }}"
-                                                  class="flex items-center justify-center gap-4 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100">
-                                                @csrf @method('PUT')
-                                                <label class="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-                                                    <input type="checkbox" name="is_required" value="1" @checked($attr->pivot->is_required) style="accent-color:var(--theme-primary)">
-                                                    <span>Required</span>
-                                                </label>
-                                                <label class="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-                                                    <input type="checkbox" name="is_filterable" value="1" @checked($attr->pivot->is_filterable) style="accent-color:var(--theme-primary)">
-                                                    <span>Filterable</span>
-                                                </label>
-                                                <label class="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-                                                    <input type="checkbox" name="is_variant" value="1" @checked($attr->pivot->is_variant) style="accent-color:var(--theme-primary)">
-                                                    <span>Variant</span>
-                                                </label>
-                                                <div class="flex items-center gap-1">
-                                                    <span class="text-gray-500">Order:</span>
-                                                    <input type="number" name="sort_order" value="{{ $attr->pivot->sort_order }}" class="w-16 text-xs text-center border border-gray-300 rounded px-1.5 py-1 bg-white">
-                                                </div>
-                                                <button type="submit" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold">Save</button>
-                                                <button type="button" @click="editing = false" class="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs">Cancel</button>
-                                            </form>
-                                        </td>
-
-                                        {{-- Normal Display Columns --}}
-                                        <td class="px-4 py-3.5 text-center" x-show="!editing">
+                                        <td class="px-4 py-3.5 text-center">
                                             @if($attr->pivot->is_required)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">Yes</span>
                                             @else
                                                 <span class="text-gray-400 text-xs">No</span>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-3.5 text-center" x-show="!editing">
+                                        <td class="px-4 py-3.5 text-center">
                                             @if($attr->pivot->is_filterable)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Yes</span>
                                             @else
                                                 <span class="text-gray-400 text-xs">No</span>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-3.5 text-center" x-show="!editing">
+                                        <td class="px-4 py-3.5 text-center">
                                             @if($attr->pivot->is_variant)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">Yes</span>
                                             @else
                                                 <span class="text-gray-400 text-xs">No</span>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-3.5 text-center text-xs font-mono text-gray-700" x-show="!editing">
+                                        <td class="px-4 py-3.5 text-center text-xs font-mono text-gray-700">
                                             {{ $attr->pivot->sort_order }}
                                         </td>
 
                                         <td class="px-5 py-3.5 text-right">
-                                            <div class="flex items-center justify-end gap-1.5" x-show="!editing">
-                                                <button type="button" @click="editing = true" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100" title="Edit Category Settings">
+                                            <div class="flex items-center justify-end gap-1.5">
+                                                <button type="button" @click="$dispatch('open-modal-edit-attr-{{ $attr->id }}')" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100" title="Edit Specification Settings">
                                                     <i class="fa-regular fa-pen-to-square text-sm"></i>
                                                 </button>
                                                 <form method="POST" action="{{ route('admin.catalog.categories.attributes.destroy', [$category, $attr]) }}" onsubmit="return confirm('Remove {{ $attr->name }} from {{ $category->name }}?');">
@@ -197,6 +170,54 @@
             @endforeach
         </div>
     @endif
+
+    {{-- ========================================================================= --}}
+    {{-- EDIT MODALS — one per assigned attribute, opened by the row's pencil icon --}}
+    {{-- ========================================================================= --}}
+    @foreach($assignedAttributes as $attr)
+        <x-backend.modal :id="'edit-attr-'.$attr->id" title="Edit Specification Settings">
+            <div class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs space-y-1 mb-4">
+                <div class="flex justify-between"><span class="text-gray-500">Attribute:</span> <span class="font-semibold text-gray-900">{{ $attr->name }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Group Section:</span> <span class="font-medium text-gray-800">{{ $attr->attributeGroup?->name ?? 'General / Other Specifications' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Input Type:</span> <span class="font-semibold text-blue-700 uppercase">{{ str_replace('_', ' ', $attr->input_type) }}</span></div>
+                @if($attr->unit)
+                    <div class="flex justify-between"><span class="text-gray-500">Unit:</span> <span class="font-medium text-gray-800">{{ $attr->unit->name }} ({{ $attr->unit->symbol }})</span></div>
+                @endif
+            </div>
+
+            <form method="POST" action="{{ route('admin.catalog.categories.attributes.update', [$category, $attr]) }}" class="space-y-4">
+                @csrf @method('PUT')
+
+                <div class="border-t border-gray-100 pt-3 space-y-3">
+                    <p class="text-xs font-bold text-gray-700">Category Specific Behavior</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" name="is_required" value="1" @checked($attr->pivot->is_required) style="accent-color:var(--theme-primary)">
+                            <span class="font-semibold">Required</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" name="is_filterable" value="1" @checked($attr->pivot->is_filterable) style="accent-color:var(--theme-primary)">
+                            <span class="font-semibold">Filterable</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" name="is_variant" value="1" @checked($attr->pivot->is_variant) style="accent-color:var(--theme-primary)">
+                            <span class="font-semibold">Variant</span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Sort Order within Category</label>
+                        <input type="number" name="sort_order" value="{{ $attr->pivot->sort_order }}" placeholder="0" class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                    <button type="button" @click="open = false" class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg">Save Changes</button>
+                </div>
+            </form>
+        </x-backend.modal>
+    @endforeach
 
     {{-- ========================================================================= --}}
     {{-- MODAL 1: ADD SINGLE ATTRIBUTE --}}

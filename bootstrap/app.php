@@ -24,6 +24,26 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetAccountContext::class,
         ]);
 
+        $middleware->redirectTo(
+            guests: '/login',
+            users: function (Request $request) {
+                $user = $request->user();
+                if (! $user) {
+                    return '/';
+                }
+                if ($user->isAdmin()) {
+                    return route('admin.dashboard');
+                }
+                if ($user->isSupplier()) {
+                    return route('supplier.dashboard');
+                }
+                if ($user->isBuyer()) {
+                    return route('buyer.dashboard');
+                }
+                return '/';
+            }
+        );
+
         // Spec 4.7 — opt-in enforcement for routes that need a usable account:
         //   ->middleware('account.context')           active user + account + membership
         //   ->middleware('account.context:buyer')     ... plus an active Buyer capability

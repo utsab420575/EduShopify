@@ -41,6 +41,29 @@ class ListingModerationService
         });
     }
 
+    public function undoApprove(Listing $listing, User $admin): Listing
+    {
+        return DB::transaction(function () use ($listing, $admin) {
+            $listing = Listing::whereKey($listing->id)->lockForUpdate()->firstOrFail();
+
+            if ($listing->approval_status !== 'approved') {
+                throw ValidationException::withMessages(['status' => 'Only an approved listing can have its approval reverted.']);
+            }
+
+            $listing->update([
+                'approval_status'     => 'pending',
+                'rejection_reason'    => null,
+                'approved_by_user_id' => null,
+                'approved_at'         => null,
+                'published_at'        => null,
+            ]);
+
+            activity('moderation')->causedBy($admin)->performedOn($listing)->log('Listing approval reverted back to pending');
+
+            return $listing->fresh();
+        });
+    }
+
     public function reject(Listing $listing, User $admin, string $reason): Listing
     {
         return DB::transaction(function () use ($listing, $admin, $reason) {

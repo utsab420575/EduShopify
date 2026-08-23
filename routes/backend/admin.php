@@ -142,6 +142,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
             Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
             Route::post('/listings/{listing}/approve', [ListingController::class, 'approve'])->name('listings.approve');
+            Route::post('/listings/{listing}/undo-approve', [ListingController::class, 'undoApprove'])->name('listings.undo-approve');
             Route::post('/listings/{listing}/reject', [ListingController::class, 'reject'])->name('listings.reject');
             Route::post('/listings/{listing}/deactivate', [ListingController::class, 'deactivate'])->name('listings.deactivate');
             Route::post('/listings/{listing}/reactivate', [ListingController::class, 'reactivate'])->name('listings.reactivate');

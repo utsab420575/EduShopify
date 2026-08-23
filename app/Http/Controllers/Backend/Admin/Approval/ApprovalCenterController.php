@@ -26,63 +26,129 @@ class ApprovalCenterController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $tab = $request->string('tab', 'capabilities')->toString();
+        $tab = $request->string('tab', 'listings')->toString();
 
         $queues = [];
 
+        if ($user->can('platform.listings.moderate')) {
+            $queues['listings'] = [
+                'label' => 'Product / Service Listings',
+                'icon'  => 'fa-boxes-stacked',
+                'count' => Listing::where('approval_status', 'pending')->count(),
+            ];
+        }
         if ($user->can('platform.capabilities.review')) {
             $queues['capabilities'] = [
                 'label' => 'Capability Applications',
+                'icon'  => 'fa-award',
                 'count' => AccountCapability::where('status', 'pending')->count(),
             ];
             $queues['documents'] = [
                 'label' => 'Supplier Documents',
+                'icon'  => 'fa-file-shield',
                 'count' => SupplierDocument::where('status', 'pending')->count(),
             ];
         }
-        if ($user->can('platform.listings.moderate')) {
-            $queues['listings'] = ['label' => 'Listings', 'count' => Listing::where('approval_status', 'pending')->count()];
-        }
         if ($user->can('platform.categories.manage')) {
-            $queues['categories'] = ['label' => 'Category Suggestions', 'count' => CategorySuggestion::where('status', 'pending')->count()];
+            $queues['categories'] = [
+                'label' => 'Category Suggestions',
+                'icon'  => 'fa-folder-tree',
+                'count' => CategorySuggestion::where('status', 'pending')->count(),
+            ];
         }
         if ($user->can('platform.attributes.manage')) {
-            $queues['attributes'] = ['label' => 'Attribute Suggestions', 'count' => AttributeSuggestion::where('status', 'pending')->count()];
+            $queues['attributes'] = [
+                'label' => 'Attribute Suggestions',
+                'icon'  => 'fa-sliders',
+                'count' => AttributeSuggestion::where('status', 'pending')->count(),
+            ];
         }
         if ($user->can('platform.brands.manage')) {
-            $queues['brands'] = ['label' => 'Brand / Unit Requests', 'count' => Brand::where('approval_status', 'pending')->count() + Unit::where('approval_status', 'pending')->count()];
+            $queues['brands'] = [
+                'label' => 'Brand & Unit Requests',
+                'icon'  => 'fa-tags',
+                'count' => Brand::where('approval_status', 'pending')->count() + Unit::where('approval_status', 'pending')->count(),
+            ];
         }
         if ($user->can('platform.access_control.manage')) {
-            $queues['role_requests'] = ['label' => 'Role Requests', 'count' => RoleRequest::where('status', 'pending')->count()];
+            $queues['role_requests'] = [
+                'label' => 'Role Requests',
+                'icon'  => 'fa-user-shield',
+                'count' => RoleRequest::where('status', 'pending')->count(),
+            ];
         }
         if ($user->can('platform.conversions.review')) {
-            $queues['conversions'] = ['label' => 'Account Conversions', 'count' => AccountConversionRequest::where('status', 'pending')->count()];
+            $queues['conversions'] = [
+                'label' => 'Account Conversions',
+                'icon'  => 'fa-arrow-right-arrow-left',
+                'count' => AccountConversionRequest::where('status', 'pending')->count(),
+            ];
         }
         if ($user->can('platform.reviews.moderate')) {
-            $queues['reports'] = ['label' => 'Review Reports', 'count' => ReviewReport::where('status', 'pending')->count()];
+            $queues['reports'] = [
+                'label' => 'Review Reports',
+                'icon'  => 'fa-flag',
+                'count' => ReviewReport::where('status', 'pending')->count(),
+            ];
         }
 
         if (! array_key_exists($tab, $queues)) {
-            $tab = array_key_first($queues) ?? 'capabilities';
+            $tab = array_key_first($queues) ?? 'listings';
         }
 
         $items = match ($tab) {
-            'capabilities' => AccountCapability::where('status', 'pending')->with(['account', 'capabilityType'])->latest('applied_at')->limit(20)->get(),
-            'documents' => SupplierDocument::where('status', 'pending')->with(['supplierAccount.supplierProfile', 'documentType'])->latest()->limit(20)->get(),
-            'listings' => Listing::where('approval_status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'categories' => CategorySuggestion::where('status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'attributes' => AttributeSuggestion::where('status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'brands' => Brand::where('approval_status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'role_requests' => RoleRequest::where('status', 'pending')->with('account', 'requestedBy')->latest()->limit(20)->get(),
-            'conversions' => AccountConversionRequest::where('status', 'pending')->with('account', 'submittedBy')->latest()->limit(20)->get(),
-            'reports' => ReviewReport::where('status', 'pending')->with(['review', 'reportedByAccount'])->latest()->limit(20)->get(),
-            default => collect(),
+            'listings'     => Listing::where('approval_status', 'pending')
+                                ->with(['supplierAccount.supplierProfile', 'mainCategory', 'media', 'variants'])
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            'capabilities' => AccountCapability::where('status', 'pending')
+                                ->with(['account', 'capabilityType', 'appliedBy'])
+                                ->latest('applied_at')
+                                ->paginate(15)
+                                ->withQueryString(),
+            'documents'    => SupplierDocument::where('status', 'pending')
+                                ->with(['supplierAccount.supplierProfile', 'documentType'])
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            'categories'   => CategorySuggestion::where('status', 'pending')
+                                ->with('supplierAccount.supplierProfile')
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            'attributes'   => AttributeSuggestion::where('status', 'pending')
+                                ->with('supplierAccount.supplierProfile')
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            'brands'       => Brand::where('approval_status', 'pending')
+                                ->with('supplierAccount.supplierProfile')
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            'role_requests' => RoleRequest::where('status', 'pending')
+                                ->with(['account', 'requestedBy', 'requestedRole'])
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            'conversions'  => AccountConversionRequest::where('status', 'pending')
+                                ->with(['account', 'submittedBy'])
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            'reports'      => ReviewReport::where('status', 'pending')
+                                ->with(['review', 'reportedByAccount'])
+                                ->latest()
+                                ->paginate(15)
+                                ->withQueryString(),
+            default        => collect(),
         };
 
         return view('backend.admin.approvals.index', [
             'queues' => $queues,
-            'tab' => $tab,
-            'items' => $items,
+            'tab'    => $tab,
+            'items'  => $items,
         ]);
     }
 }

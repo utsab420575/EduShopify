@@ -76,6 +76,7 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
         Route::prefix('catalog/listings')->name('catalog.listings.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'create'])->name('create');
+            Route::get('/categories/{category}/attributes', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'categoryAttributes'])->name('category.attributes');
             Route::post('/', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'store'])->name('store');
             Route::get('/{listing}/edit', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'edit'])->name('edit');
             Route::put('/{listing}', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'update'])->name('update');
@@ -85,11 +86,13 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
 
             // Variants
             Route::post('/{listing}/variants', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'store'])->name('variants.store');
+            Route::post('/{listing}/variants/generate', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'bulkGenerate'])->name('variants.generate');
             Route::put('/{listing}/variants/{variant}', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'update'])->name('variants.update');
             Route::delete('/{listing}/variants/{variant}', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'destroy'])->name('variants.destroy');
 
             // Tier pricing
             Route::post('/{listing}/tier-prices', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'store'])->name('tier-prices.store');
+            Route::post('/{listing}/tier-prices/copy-global', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'copyGlobal'])->name('tier-prices.copy-global');
             Route::put('/{listing}/tier-prices/{tierPrice}', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'update'])->name('tier-prices.update');
             Route::delete('/{listing}/tier-prices/{tierPrice}', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'destroy'])->name('tier-prices.destroy');
 

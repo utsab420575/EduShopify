@@ -44,6 +44,77 @@
         </div>
     </div>
 
+    {{-- SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Global SweetAlert confirmation helper
+        function confirmSwal(form, title = 'Are you sure?', text = '', icon = 'warning', confirmBtnText = 'Yes, proceed!') {
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: icon,
+                showCancelButton: true,
+                confirmButtonColor: icon === 'danger' || icon === 'error' ? '#DC2626' : '#4F46E5',
+                cancelButtonColor: '#6B7280',
+                confirmButtonText: confirmBtnText,
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+                focusCancel: true,
+                customClass: {
+                    popup: 'rounded-2xl font-sans text-xs',
+                    title: 'text-base font-bold text-gray-900',
+                    htmlContainer: 'text-xs text-gray-600',
+                    confirmButton: 'text-xs font-semibold px-4 py-2 rounded-lg',
+                    cancelButton: 'text-xs font-semibold px-4 py-2 rounded-lg',
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (typeof form === 'function') {
+                        form();
+                    } else if (form && form.submit) {
+                        form.submit();
+                    }
+                }
+            });
+            return false;
+        }
+
+        // Global Flash Toast Notifications
+        @if(session('success'))
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: @json(session('success')),
+                showConfirmButton: false,
+                timer: 3500,
+                timerProgressBar: true
+            });
+        @endif
+        @if(session('error'))
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: @json(session('error')),
+                showConfirmButton: false,
+                timer: 4500,
+                timerProgressBar: true
+            });
+        @endif
+        @if(session('warning'))
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: @json(session('warning')),
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+        @endif
+    </script>
+
     @stack('scripts')
 </body>
 </html>
