@@ -98,7 +98,11 @@
             <a href="{{ route('frontend.listings.show', $listing) }}" target="_blank" class="px-3.5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold flex items-center gap-1.5 transition-colors">
                 <i class="fa-solid fa-arrow-up-right-from-square text-gray-400"></i> View on Marketplace
             </a>
+<<<<<<< HEAD
             <a href="{{ route('admin.approvals.show', 'listings') }}" class="px-3.5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+=======
+            <a href="{{ route('admin.approvals.index', ['tab' => 'listings']) }}" class="px-3.5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+>>>>>>> 65fab0cae4ad61d182eed68d9dbf650abbef22f7
                 <i class="fa-solid fa-list-check text-gray-400"></i> Approval Queue
             </a>
         </div>
