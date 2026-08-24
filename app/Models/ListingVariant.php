@@ -64,6 +64,11 @@ class ListingVariant extends Model
         return $this->hasMany(ListingVariantAttribute::class, 'listing_variant_id');
     }
 
+    public function attributes(): HasMany
+    {
+        return $this->variantAttributes();
+    }
+
     public function tierPrices(): HasMany
     {
         return $this->hasMany(ListingTierPrice::class, 'listing_variant_id');

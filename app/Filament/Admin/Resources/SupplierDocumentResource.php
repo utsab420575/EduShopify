@@ -114,6 +114,22 @@ class SupplierDocumentResource extends Resource
                             ->warning()
                             ->send();
                     }),
+
+                Tables\Actions\Action::make('reset')
+                    ->label('Undo / Reset')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn (SupplierDocument $record) => $record->status !== 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('Revert Document Decision')
+                    ->modalDescription('Are you sure you want to reset this document back to Pending review?')
+                    ->action(function (SupplierDocument $record, SupplierDocumentService $service) {
+                        $service->resetToPending($record, auth()->user());
+                        \Filament\Notifications\Notification::make()
+                            ->title('Document reset to Pending.')
+                            ->info()
+                            ->send();
+                    }),
             ]);
     }
 

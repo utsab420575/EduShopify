@@ -122,6 +122,19 @@ class SupplierDocumentService
     }
 
     /**
+     * Revert document verification or rejection back to pending status.
+     */
+    public function resetToPending(SupplierDocument $document, User $admin): void
+    {
+        $document->update([
+            'status'              => 'pending',
+            'rejection_reason'    => null,
+            'verified_by_user_id' => null,
+            'verified_at'         => null,
+        ]);
+    }
+
+    /**
      * Backend file validation against document_types config.
      */
     private function validateFileRestrictions(UploadedFile $file, DocumentType $docType): void

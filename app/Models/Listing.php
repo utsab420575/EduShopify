@@ -139,9 +139,19 @@ class Listing extends Model implements HasMedia
         return $this->hasMany(ListingVariant::class, 'listing_id');
     }
 
-    public function tierPrices(): HasMany
+    public function allTierPrices(): HasMany
     {
         return $this->hasMany(ListingTierPrice::class, 'listing_id');
+    }
+
+    public function globalTierPrices(): HasMany
+    {
+        return $this->hasMany(ListingTierPrice::class, 'listing_id')->whereNull('listing_variant_id');
+    }
+
+    public function tierPrices(): HasMany
+    {
+        return $this->globalTierPrices();
     }
 
     public function changeLogs(): HasMany

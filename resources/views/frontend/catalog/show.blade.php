@@ -7,8 +7,9 @@
     @php
         $isProduct = $listing->listing_type === 'product';
         $supplierProfile = $listing->supplierAccount?->supplierProfile;
-        $tiers = $listing->tierPrices;
-        $hasVariants = $isProduct && $listing->productDetail?->isVariable() && $listing->variants->isNotEmpty();
+        $globalTiers = $listing->allTierPrices->whereNull('listing_variant_id');
+        $hasVariants = $isProduct && $listing->variants->isNotEmpty();
+        $hasAnyTiers = $listing->allTierPrices->isNotEmpty();
     @endphp
 
     <div class="fe-container py-6 sm:py-8">
@@ -20,9 +21,26 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {{-- Media --}}
             <div class="lg:col-span-4">
-                <div class="aspect-square rounded-2xl border flex items-center justify-center" style="border-color:var(--fe-border);background:var(--fe-surface-soft);">
-                    <i class="fa-solid {{ $isProduct ? 'fa-box' : 'fa-briefcase' }} text-5xl" style="color:var(--fe-text-subtle);"></i>
-                </div>
+                @if($listing->getMedia('gallery')->isNotEmpty())
+                    <div class="space-y-3" x-data="{ activeImg: '{{ $listing->getMedia('gallery')->first()->getUrl() }}' }">
+                        <div class="aspect-square rounded-2xl border overflow-hidden bg-white shadow-xs flex items-center justify-center" style="border-color:var(--fe-border);">
+                            <img :src="activeImg" alt="{{ $listing->name }}" class="w-full h-full object-contain p-2">
+                        </div>
+                        @if($listing->getMedia('gallery')->count() > 1)
+                            <div class="grid grid-cols-4 gap-2">
+                                @foreach($listing->getMedia('gallery') as $media)
+                                    <button type="button" @click="activeImg = '{{ $media->getUrl() }}'" class="aspect-square rounded-xl border overflow-hidden p-1 bg-white hover:opacity-80 transition-opacity" :class="activeImg === '{{ $media->getUrl() }}' ? 'ring-2 ring-indigo-500 border-transparent' : ''" style="border-color:var(--fe-border);">
+                                        <img src="{{ $media->getUrl() }}" alt="{{ $listing->name }}" class="w-full h-full object-contain">
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @else
+                    <div class="aspect-square rounded-2xl border flex items-center justify-center" style="border-color:var(--fe-border);background:var(--fe-surface-soft);">
+                        <i class="fa-solid {{ $isProduct ? 'fa-box' : 'fa-briefcase' }} text-5xl" style="color:var(--fe-text-subtle);"></i>
+                    </div>
+                @endif
             </div>
 
             {{-- Commercial details --}}
@@ -52,10 +70,14 @@
                     </div>
                 @endif
 
-                @if($tiers->isNotEmpty())
+                @if($hasAnyTiers)
                     <div class="mt-6">
-                        <p class="text-sm font-semibold mb-2" style="color:var(--fe-text);">Tier Pricing</p>
-                        <x-frontend::marketplace.tier-pricing-table :tiers="$tiers" :currency="$listing->currency_code" />
+                        <p class="text-sm font-semibold mb-2" style="color:var(--fe-text);">Volume Discount / Tier Pricing</p>
+                        @if($globalTiers->isNotEmpty())
+                            <x-frontend::marketplace.tier-pricing-table :tiers="$globalTiers" :currency="$listing->currency_code" />
+                        @elseif($listing->allTierPrices->isNotEmpty())
+                            <x-frontend::marketplace.tier-pricing-table :tiers="$listing->allTierPrices" :currency="$listing->currency_code" />
+                        @endif
                     </div>
                 @endif
 
@@ -115,12 +137,38 @@
                             {!! nl2br(e($listing->description ?? 'No description provided.')) !!}
                         </div>
                         <div x-show="tab === 'specifications'" x-cloak>
-                            @if($listing->attributeValues->isNotEmpty())
+                            @if(isset($groupedSpecifications) && $groupedSpecifications->isNotEmpty())
+                                <div class="space-y-6">
+                                    @foreach($groupedSpecifications as $group)
+                                        <div>
+                                            <h4 class="text-xs font-bold uppercase tracking-wider mb-3 pb-1 border-b" style="color:var(--fe-text);border-color:var(--fe-border);">{{ $group['group_name'] }}</h4>
+                                            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+                                                @foreach($group['items'] as $item)
+                                                    <div class="flex justify-between items-center py-1.5 border-b" style="border-color:var(--fe-border);">
+                                                        <dt style="color:var(--fe-text-muted);" class="flex items-center gap-1.5">
+                                                            <span>{{ $item->attribute?->name }}</span>
+                                                            @if($item->attribute?->unit)
+                                                                <span class="text-xs text-gray-400 font-normal">({{ $item->attribute->unit->symbol ?? $item->attribute->unit->name }})</span>
+                                                            @endif
+                                                        </dt>
+                                                        <dd class="font-medium flex items-center gap-1.5" style="color:var(--fe-text);">
+                                                            @if($item->attribute?->input_type === 'color' && $item->attributeValue?->color_hex)
+                                                                <span class="w-3.5 h-3.5 rounded-full border border-gray-300 inline-block shadow-xs" style="background-color: {{ $item->attributeValue->color_hex }}"></span>
+                                                            @endif
+                                                            <span>{{ $item->formattedValue() }}</span>
+                                                        </dd>
+                                                    </div>
+                                                @endforeach
+                                            </dl>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif($listing->attributeValues->isNotEmpty())
                                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                                     @foreach($listing->attributeValues as $value)
                                         <div class="flex justify-between border-b pb-2" style="border-color:var(--fe-border);">
                                             <dt style="color:var(--fe-text-muted);">{{ $value->attribute?->name }}</dt>
-                                            <dd class="font-medium" style="color:var(--fe-text);">{{ $value->value }}</dd>
+                                            <dd class="font-medium" style="color:var(--fe-text);">{{ $value->formattedValue() }}</dd>
                                         </div>
                                     @endforeach
                                 </dl>

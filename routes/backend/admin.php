@@ -23,6 +23,7 @@ use App\Http\Controllers\Backend\Admin\Catalog\BuyerTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryAttributeController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryController;
 use App\Http\Controllers\Backend\Admin\Catalog\DocumentTypeController;
+use App\Http\Controllers\Backend\Admin\Catalog\DocumentTypeEnableController;
 use App\Http\Controllers\Backend\Admin\Catalog\ExhibitionController;
 use App\Http\Controllers\Backend\Admin\Catalog\ListingController;
 use App\Http\Controllers\Backend\Admin\Catalog\SupplierTypeController;
@@ -85,11 +86,17 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         Route::get('/suppliers/{account}', [SupplierController::class, 'show'])->name('suppliers.show');
         Route::post('/suppliers/{account}/documents/{document}/verify', [SupplierDocumentController::class, 'verify'])->name('suppliers.documents.verify');
         Route::post('/suppliers/{account}/documents/{document}/reject', [SupplierDocumentController::class, 'reject'])->name('suppliers.documents.reject');
+        Route::post('/suppliers/{account}/documents/{document}/reset', [SupplierDocumentController::class, 'resetToPending'])->name('suppliers.documents.reset');
+
+        Route::post('/documents/{document}/verify', [SupplierDocumentController::class, 'directVerify'])->name('documents.verify');
+        Route::post('/documents/{document}/reject', [SupplierDocumentController::class, 'directReject'])->name('documents.reject');
+        Route::post('/documents/{document}/reset', [SupplierDocumentController::class, 'directReset'])->name('documents.reset');
 
         Route::get('/account-members', [AccountMemberController::class, 'index'])->name('account-members.index');
 
         Route::get('/capabilities', [CapabilityController::class, 'index'])->name('capabilities.index');
         Route::get('/capabilities/{capability}', [CapabilityController::class, 'show'])->name('capabilities.show');
+        Route::get('/capabilities/{capability}/panel', [CapabilityController::class, 'panel'])->name('capabilities.panel');
         Route::post('/capabilities/{capability}/approve', [CapabilityController::class, 'approve'])->name('capabilities.approve');
         Route::post('/capabilities/{capability}/revision', [CapabilityController::class, 'revision'])->name('capabilities.revision');
         Route::post('/capabilities/{capability}/reject', [CapabilityController::class, 'reject'])->name('capabilities.reject');
@@ -109,6 +116,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
 
         /* Approval Center */
         Route::get('/approvals', [ApprovalCenterController::class, 'index'])->name('approvals.index');
+        Route::get('/approvals/{queue}', [ApprovalCenterController::class, 'show'])->name('approvals.show');
 
         /* Catalog & Taxonomy */
         Route::prefix('catalog')->name('catalog.')->group(function () {
@@ -142,6 +150,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
             Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
             Route::post('/listings/{listing}/approve', [ListingController::class, 'approve'])->name('listings.approve');
+            Route::post('/listings/{listing}/undo-approve', [ListingController::class, 'undoApprove'])->name('listings.undo-approve');
             Route::post('/listings/{listing}/reject', [ListingController::class, 'reject'])->name('listings.reject');
             Route::post('/listings/{listing}/deactivate', [ListingController::class, 'deactivate'])->name('listings.deactivate');
             Route::post('/listings/{listing}/reactivate', [ListingController::class, 'reactivate'])->name('listings.reactivate');
@@ -150,6 +159,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::resource('buyer-types', BuyerTypeController::class)->except(['show']);
             Route::resource('supplier-types', SupplierTypeController::class)->except(['show']);
             Route::resource('document-types', DocumentTypeController::class)->except(['show']);
+            Route::resource('document-type-enables', DocumentTypeEnableController::class)->except(['show']);
+            Route::post('document-type-enables/{documentTypeEnable}/toggle', [DocumentTypeEnableController::class, 'toggleRequirement'])->name('document-type-enables.toggle');
             Route::resource('exhibitions', ExhibitionController::class)->except(['show']);
         });
 

@@ -3,86 +3,54 @@
 namespace App\Http\Controllers\Backend\Admin\Approval;
 
 use App\Http\Controllers\Controller;
-use App\Models\AccountCapability;
-use App\Models\AccountConversionRequest;
-use App\Models\AttributeSuggestion;
-use App\Models\Brand;
-use App\Models\CategorySuggestion;
-use App\Models\Listing;
-use App\Models\ReviewReport;
-use App\Models\RoleRequest;
-use App\Models\SupplierDocument;
-use App\Models\Unit;
+use App\Support\Approvals\ApprovalQueueRegistry;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 /**
  * Centralized, permission-aware work queue (spec Part 5). Purely aggregates
  * existing queues and routes to their canonical review screens — no
- * duplicate business data or decisions live here.
+ * duplicate business data or decisions live here. Navigation lives in the
+ * sidebar's Approval Center submenu; each queue has its own URL.
  */
 class ApprovalCenterController extends Controller
 {
-    public function index(Request $request)
+    /** Redirects to the first queue the user can see (spec: /approvals has no content of its own). */
+    public function index(Request $request): View|RedirectResponse
     {
-        $user = Auth::user();
-        $tab = $request->string('tab', 'capabilities')->toString();
+        $queues = ApprovalQueueRegistry::forUser(Auth::user());
 
-        $queues = [];
+        $firstKey = array_key_first($queues);
 
-        if ($user->can('platform.capabilities.review')) {
-            $queues['capabilities'] = [
-                'label' => 'Capability Applications',
-                'count' => AccountCapability::where('status', 'pending')->count(),
-            ];
-            $queues['documents'] = [
-                'label' => 'Supplier Documents',
-                'count' => SupplierDocument::where('status', 'pending')->count(),
-            ];
-        }
-        if ($user->can('platform.listings.moderate')) {
-            $queues['listings'] = ['label' => 'Listings', 'count' => Listing::where('approval_status', 'pending')->count()];
-        }
-        if ($user->can('platform.categories.manage')) {
-            $queues['categories'] = ['label' => 'Category Suggestions', 'count' => CategorySuggestion::where('status', 'pending')->count()];
-        }
-        if ($user->can('platform.attributes.manage')) {
-            $queues['attributes'] = ['label' => 'Attribute Suggestions', 'count' => AttributeSuggestion::where('status', 'pending')->count()];
-        }
-        if ($user->can('platform.brands.manage')) {
-            $queues['brands'] = ['label' => 'Brand / Unit Requests', 'count' => Brand::where('approval_status', 'pending')->count() + Unit::where('approval_status', 'pending')->count()];
-        }
-        if ($user->can('platform.access_control.manage')) {
-            $queues['role_requests'] = ['label' => 'Role Requests', 'count' => RoleRequest::where('status', 'pending')->count()];
-        }
-        if ($user->can('platform.conversions.review')) {
-            $queues['conversions'] = ['label' => 'Account Conversions', 'count' => AccountConversionRequest::where('status', 'pending')->count()];
-        }
-        if ($user->can('platform.reviews.moderate')) {
-            $queues['reports'] = ['label' => 'Review Reports', 'count' => ReviewReport::where('status', 'pending')->count()];
+        if (! $firstKey) {
+            return view('backend.admin.approvals.index', [
+                'queues'      => [],
+                'activeKey'   => null,
+                'activeQueue' => null,
+                'items'       => collect(),
+            ]);
         }
 
-        if (! array_key_exists($tab, $queues)) {
-            $tab = array_key_first($queues) ?? 'capabilities';
-        }
+        return redirect()->route('admin.approvals.show', $firstKey);
+    }
 
-        $items = match ($tab) {
-            'capabilities' => AccountCapability::where('status', 'pending')->with(['account', 'capabilityType'])->latest('applied_at')->limit(20)->get(),
-            'documents' => SupplierDocument::where('status', 'pending')->with(['supplierAccount.supplierProfile', 'documentType'])->latest()->limit(20)->get(),
-            'listings' => Listing::where('approval_status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'categories' => CategorySuggestion::where('status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'attributes' => AttributeSuggestion::where('status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'brands' => Brand::where('approval_status', 'pending')->with('supplierAccount.supplierProfile')->latest()->limit(20)->get(),
-            'role_requests' => RoleRequest::where('status', 'pending')->with('account', 'requestedBy')->latest()->limit(20)->get(),
-            'conversions' => AccountConversionRequest::where('status', 'pending')->with('account', 'submittedBy')->latest()->limit(20)->get(),
-            'reports' => ReviewReport::where('status', 'pending')->with(['review', 'reportedByAccount'])->latest()->limit(20)->get(),
-            default => collect(),
-        };
+    public function show(Request $request, string $queue): View
+    {
+        $queues = ApprovalQueueRegistry::forUser(Auth::user());
+
+        abort_unless(array_key_exists($queue, $queues), 404);
+
+        $items = ($queues[$queue]['query'])()
+            ->paginate(15)
+            ->withQueryString();
 
         return view('backend.admin.approvals.index', [
-            'queues' => $queues,
-            'tab' => $tab,
-            'items' => $items,
+            'queues'      => $queues,
+            'activeKey'   => $queue,
+            'activeQueue' => $queues[$queue],
+            'items'       => $items,
         ]);
     }
 }

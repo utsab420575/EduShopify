@@ -62,14 +62,27 @@
         </div>
         @endcan
 
-        @if($u && $u->hasAnyPermission(['platform.capabilities.review', 'platform.conversions.review', 'platform.supplier_documents.verify', 'platform.listings.moderate', 'platform.categories.manage', 'platform.access_control.manage', 'platform.reviews.moderate']))
-        <a href="{{ route('admin.approvals.index') }}" class="sidebar-menu-item {{ $isActive('admin.approvals.*') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('admin.approvals.*') ? '' : 'border-transparent' }}">
-            <i class="fa-solid fa-clipboard-check sidebar-menu-icon w-5 text-center"></i>
-            <span class="ml-3 flex-1 text-sm font-medium">Approval Center</span>
-            @if(($approvalQueueTotal ?? 0) > 0)
-                <span class="text-[10px] font-semibold text-white rounded-full px-1.5 py-0.5" style="background:#ef4444">{{ $approvalQueueTotal }}</span>
-            @endif
-        </a>
+        @if($u && ! empty($approvalQueues ?? []))
+        <div x-data="{ open: {{ $isActive('admin.approvals.*') ? 'true' : 'false' }} }">
+            <button @click="open = !open" class="sidebar-menu-item {{ $isActive('admin.approvals.*') ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('admin.approvals.*') ? '' : 'border-transparent' }}">
+                <i class="fa-solid fa-clipboard-check sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">Approval Center</span>
+                @if(($approvalQueueTotal ?? 0) > 0)
+                    <span id="sidebar-approval-badge-total" class="text-[10px] font-semibold text-white rounded-full px-1.5 py-0.5 mr-1" style="background:#ef4444">{{ $approvalQueueTotal }}</span>
+                @endif
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                @foreach($approvalQueues as $queue)
+                    <a href="{{ route('admin.approvals.show', $queue['key']) }}" class="sidebar-submenu-item {{ request()->route('queue') === $queue['key'] ? 'active' : '' }} flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-md">
+                        <span class="truncate">{{ $queue['label'] }}</span>
+                        @if($queue['count'] > 0)
+                            <span id="sidebar-approval-badge-{{ $queue['key'] }}" class="text-[10px] font-bold rounded-full px-1.5 py-0.5 shrink-0" style="background:#FEF3C7;color:#92400E;">{{ $queue['count'] }}</span>
+                        @endif
+                    </a>
+                @endforeach
+            </div>
+        </div>
         @endif
 
         @if($u && $u->hasAnyPermission(['platform.categories.manage', 'platform.attributes.manage', 'platform.brands.manage', 'platform.listings.moderate']))
@@ -85,6 +98,7 @@
                 <a href="{{ route('admin.catalog.buyer-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.buyer-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Buyer Types</a>
                 <a href="{{ route('admin.catalog.supplier-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.supplier-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Supplier Types</a>
                 <a href="{{ route('admin.catalog.document-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.document-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Document Types</a>
+                <a href="{{ route('admin.catalog.document-type-enables.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.document-type-enables.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Document Enables</a>
                 <a href="{{ route('admin.catalog.exhibitions.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.exhibitions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Exhibitions</a>
                 @endcan
                 @can('platform.attributes.manage')

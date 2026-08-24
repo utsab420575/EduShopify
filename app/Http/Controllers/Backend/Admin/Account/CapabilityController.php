@@ -42,6 +42,19 @@ class CapabilityController extends Controller
     {
         $this->authorize('platform.capabilities.review');
 
+        return view('backend.admin.capabilities.show', $this->loadForReview($capability));
+    }
+
+    /** Same data as show(), rendered without the layout — fetched into the Approval Center's review modal. */
+    public function panel(AccountCapability $capability)
+    {
+        $this->authorize('platform.capabilities.review');
+
+        return view('backend.admin.capabilities._panel', $this->loadForReview($capability));
+    }
+
+    private function loadForReview(AccountCapability $capability): array
+    {
         $capability->load([
             'account.buyerProfile', 'account.supplierProfile', 'capabilityType',
             'applicationHistory' => fn ($q) => $q->latest(),
@@ -52,20 +65,35 @@ class CapabilityController extends Controller
             ? $capability->account->supplierDocuments()->with('documentType')->current()->get()
             : collect();
 
-        return view('backend.admin.capabilities.show', ['capability' => $capability, 'documents' => $documents]);
+        return ['capability' => $capability, 'documents' => $documents];
     }
 
-    public function approve(AccountCapability $capability, CapabilityReviewService $service)
+    private function firstValidationMessage(ValidationException $e): string
+    {
+        return collect($e->errors())->flatten()->first() ?? $e->getMessage();
+    }
+
+    public function approve(Request $request, AccountCapability $capability, CapabilityReviewService $service)
     {
         $this->authorize('platform.capabilities.review');
 
         try {
             $service->approve($capability, $this->admin());
-        } catch (\RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
+        } catch (\RuntimeException|ValidationException $e) {
+            $message = $e instanceof ValidationException ? $this->firstValidationMessage($e) : $e->getMessage();
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
         }
 
         activity('moderation')->causedBy($this->admin())->performedOn($capability)->log('Capability approved');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Application approved.', 'resolved' => true]);
+        }
 
         return back()->with('success', 'Application approved.');
     }
@@ -76,12 +104,22 @@ class CapabilityController extends Controller
 
         try {
             $service->requestRevision($capability, $this->admin(), $request->string('reason'));
-        } catch (\RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
+        } catch (\RuntimeException|ValidationException $e) {
+            $message = $e instanceof ValidationException ? $this->firstValidationMessage($e) : $e->getMessage();
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
         }
 
         activity('moderation')->causedBy($this->admin())->performedOn($capability)
             ->withProperties(['reason' => $request->string('reason')])->log('Capability revision requested');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Revision requested.', 'resolved' => true]);
+        }
 
         return back()->with('success', 'Revision requested.');
     }
@@ -92,12 +130,22 @@ class CapabilityController extends Controller
 
         try {
             $service->reject($capability, $this->admin(), $request->string('reason'));
-        } catch (\RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
+        } catch (\RuntimeException|ValidationException $e) {
+            $message = $e instanceof ValidationException ? $this->firstValidationMessage($e) : $e->getMessage();
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
         }
 
         activity('moderation')->causedBy($this->admin())->performedOn($capability)
             ->withProperties(['reason' => $request->string('reason')])->log('Capability rejected');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Application rejected.', 'resolved' => true]);
+        }
 
         return back()->with('success', 'Application rejected.');
     }
@@ -119,10 +167,14 @@ class CapabilityController extends Controller
         activity('moderation')->causedBy($this->admin())->performedOn($capability)
             ->withProperties(['reason' => $request->string('reason')])->log('Capability suspended');
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Capability suspended.', 'resolved' => false]);
+        }
+
         return back()->with('success', 'Capability suspended.');
     }
 
-    public function reactivate(AccountCapability $capability)
+    public function reactivate(Request $request, AccountCapability $capability)
     {
         $this->authorize('platform.capabilities.review');
 
@@ -137,6 +189,10 @@ class CapabilityController extends Controller
         });
 
         activity('moderation')->causedBy($this->admin())->performedOn($capability)->log('Capability reactivated');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Capability reactivated.', 'resolved' => false]);
+        }
 
         return back()->with('success', 'Capability reactivated.');
     }

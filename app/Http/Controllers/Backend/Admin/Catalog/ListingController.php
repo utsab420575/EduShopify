@@ -39,9 +39,45 @@ class ListingController extends Controller
     {
         $this->authorize('platform.listings.moderate');
 
-        $listing->load(['supplierAccount.supplierProfile', 'mainCategory', 'brand', 'unit', 'categories', 'attributeValues.attribute', 'variants', 'tierPrices']);
+        $listing->load([
+            'supplierAccount.supplierProfile.country',
+            'mainCategory',
+            'brand',
+            'unit',
+            'categories',
+            'productDetail',
+            'serviceDetail',
+            'variants.variantAttributes.attribute',
+            'variants.variantAttributes.attributeValue',
+            'variants.tierPrices',
+            'allTierPrices',
+            'media',
+            'approvedBy',
+            'attributeValues.attribute.attributeGroup',
+            'attributeValues.attribute.unit',
+            'attributeValues.attributeValue',
+            'changeLogs.changedBy',
+        ]);
 
-        return view('backend.admin.catalog.listings.show', ['listing' => $listing]);
+        // Group listing attribute values by AttributeGroup
+        $groupedSpecifications = $listing->attributeValues
+            ->groupBy(fn ($val) => $val->attribute?->attribute_group_id ?? 0)
+            ->map(function ($items, $groupId) {
+                $group = $groupId > 0 ? $items->first()->attribute?->attributeGroup : null;
+                return [
+                    'group_id'   => $groupId,
+                    'group_name' => $group?->name ?? 'General Specifications',
+                    'sort_order' => $group?->sort_order ?? 999,
+                    'items'      => $items,
+                ];
+            })
+            ->sortBy('sort_order')
+            ->values();
+
+        return view('backend.admin.catalog.listings.show', [
+            'listing'               => $listing,
+            'groupedSpecifications' => $groupedSpecifications,
+        ]);
     }
 
     public function approve(Listing $listing, ListingModerationService $service)
@@ -55,6 +91,19 @@ class ListingController extends Controller
         }
 
         return back()->with('success', 'Listing approved and published.');
+    }
+
+    public function undoApprove(Listing $listing, ListingModerationService $service)
+    {
+        $this->authorize('platform.listings.moderate');
+
+        try {
+            $service->undoApprove($listing, $this->admin());
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('success', 'Listing approval reverted. Listing has been returned to Pending Review.');
     }
 
     public function reject(ReasonRequest $request, Listing $listing, ListingModerationService $service)

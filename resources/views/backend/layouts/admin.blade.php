@@ -1,7 +1,7 @@
 @extends('backend.layouts.master')
 
 @section('sidebar')
-    @include('backend.layouts.partials.admin._sidebar', ['user' => $user ?? auth()->user(), 'approvalQueueTotal' => $approvalQueueTotal ?? 0])
+    @include('backend.layouts.partials.admin._sidebar', ['user' => $user ?? auth()->user(), 'approvalQueueTotal' => $approvalQueueTotal ?? 0, 'approvalQueues' => $approvalQueues ?? []])
 @endsection
 
 @section('topbar')

@@ -22,7 +22,10 @@ class ListingController extends Controller
             'categories',
             'productDetail',
             'serviceDetail',
-            'attributeValues.attribute',
+            'media',
+            'attributeValues.attribute.attributeGroup',
+            'attributeValues.attribute.unit',
+            'attributeValues.attributeValue',
             'variants' => fn ($q) => $q->active(),
             'variants.unit',
             'variants.tierPrices',
@@ -30,6 +33,23 @@ class ListingController extends Controller
             'supplierAccount.supplierProfile.country',
             'supplierAccount.supplierProfile.city',
         ]);
+
+        $groupedSpecifications = $listing->attributeValues
+            ->groupBy(fn ($val) => $val->attribute?->attribute_group_id ?? 0)
+            ->map(function ($items, $groupId) {
+                $group = $groupId > 0 ? $items->first()->attribute?->attributeGroup : null;
+                return [
+                    'group_id'   => $groupId,
+                    'group_name' => $group?->name ?? 'General Specifications',
+                    'sort_order' => $group?->sort_order ?? 9999,
+                    'items'      => $items->sortBy([
+                        ['attribute.sort_order', 'asc'],
+                        ['attribute.name', 'asc'],
+                    ]),
+                ];
+            })
+            ->sortBy('sort_order')
+            ->values();
 
         $related = PublicListingQuery::base()
             ->where('id', '!=', $listing->id)
@@ -43,8 +63,9 @@ class ListingController extends Controller
             ->get();
 
         return view('frontend.catalog.show', [
-            'listing' => $listing,
-            'related' => $related,
+            'listing'               => $listing,
+            'groupedSpecifications' => $groupedSpecifications,
+            'related'               => $related,
         ]);
     }
 }

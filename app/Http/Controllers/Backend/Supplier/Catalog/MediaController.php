@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend\Supplier\Catalog;
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
+use App\Support\Media\ProductImagePathGenerator;
 use Illuminate\Http\Request;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -21,7 +22,9 @@ class MediaController extends Controller
             'image' => ['required', 'image', 'max:5120'],
         ]);
 
-        $listing->addMediaFromRequest('image')->toMediaCollection('gallery');
+        $listing->addMediaFromRequest('image')
+            ->usingFileName(ProductImagePathGenerator::supplierFileName($account->id, $request->file('image')->getClientOriginalName()))
+            ->toMediaCollection('gallery');
 
         return redirect()->route('supplier.catalog.listings.show', $listing)->with('success', 'Image uploaded.');
     }

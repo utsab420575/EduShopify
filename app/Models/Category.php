@@ -57,6 +57,67 @@ class Category extends Model
         return $this->hasMany(Category::class, 'parent_id');
     }
 
+    public function childrenRecursive(): HasMany
+    {
+        return $this->children()->with('childrenRecursive')->where('is_active', true)->orderBy('sort_order')->orderBy('name');
+    }
+
+    /**
+     * Build flat array of categories formatted with indentation and full breadcrumb path for select dropdowns.
+     */
+    public static function getTreeSelectOptions(): array
+    {
+        $all = static::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $grouped = $all->groupBy('parent_id');
+        $options = [];
+
+        $buildTree = function ($parentId, $depth = 0, $path = '') use (&$buildTree, $grouped, &$options) {
+            if (!isset($grouped[$parentId])) {
+                return;
+            }
+
+            foreach ($grouped[$parentId] as $cat) {
+                $currentPath = $path ? "{$path} › {$cat->name}" : $cat->name;
+                $prefix = $depth > 0 ? str_repeat('— ', $depth) : '';
+
+                $options[] = [
+                    'id'           => $cat->id,
+                    'name'         => $cat->name,
+                    'path'         => $currentPath,
+                    'depth'        => $depth,
+                    'indent_name'  => $prefix . $cat->name,
+                    'has_children' => isset($grouped[$cat->id]) && $grouped[$cat->id]->isNotEmpty(),
+                ];
+
+                $buildTree($cat->id, $depth + 1, $currentPath);
+            }
+        };
+
+        $buildTree(null, 0, '');
+
+        return $options;
+    }
+
+    /**
+     * Get full breadcrumb path string e.g. "Electronics › Audio › Portable Wireless Speaker".
+     */
+    public function getBreadcrumbPath(): string
+    {
+        $parts = [$this->name];
+        $curr = $this;
+
+        while ($curr->parent_id && $curr->parent) {
+            $curr = $curr->parent;
+            array_unshift($parts, $curr->name);
+        }
+
+        return implode(' › ', $parts);
+    }
+
     /* ── Actors ─────────────────────────────────────────────────────────── */
 
     public function createdByAccount(): BelongsTo

@@ -2,23 +2,15 @@
 
 namespace App\View\Composers;
 
-use App\Models\AccountCapability;
-use App\Models\AccountConversionRequest;
-use App\Models\AttributeSuggestion;
-use App\Models\Brand;
-use App\Models\CategorySuggestion;
-use App\Models\Listing;
-use App\Models\ReviewReport;
-use App\Models\RoleRequest;
-use App\Models\SupplierDocument;
-use App\Models\Unit;
+use App\Support\Approvals\ApprovalQueueRegistry;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 /**
  * Supplies the Admin backend layout with the acting user and lightweight
- * sidebar/topbar counters (Approval Center badge, notification bell), so
- * controllers don't need to pass this boilerplate on every response.
+ * sidebar/topbar counters (Approval Center submenu badges, notification
+ * bell), so controllers don't need to pass this boilerplate on every
+ * response.
  */
 class AdminLayoutComposer
 {
@@ -33,20 +25,26 @@ class AdminLayoutComposer
         $view->with('user', $user);
         $view->with('unreadNotifications', $user->unreadNotifications()->count());
         $view->with('topbarNotifications', $user->unreadNotifications()->latest()->limit(5)->get());
-        $view->with('approvalQueueTotal', $this->approvalQueueTotal());
+
+        $approvalQueues = $this->approvalQueues($user);
+
+        $view->with('approvalQueues', $approvalQueues);
+        $view->with('approvalQueueTotal', array_sum(array_column($approvalQueues, 'count')));
     }
 
-    private function approvalQueueTotal(): int
+    private function approvalQueues($user): array
     {
-        return AccountCapability::where('status', 'pending')->count()
-            + SupplierDocument::where('status', 'pending')->count()
-            + Listing::where('approval_status', 'pending')->count()
-            + CategorySuggestion::where('status', 'pending')->count()
-            + AttributeSuggestion::where('status', 'pending')->count()
-            + Brand::where('approval_status', 'pending')->count()
-            + Unit::where('approval_status', 'pending')->count()
-            + RoleRequest::where('status', 'pending')->count()
-            + AccountConversionRequest::where('status', 'pending')->count()
-            + ReviewReport::where('status', 'pending')->count();
+        $queues = [];
+
+        foreach (ApprovalQueueRegistry::forUser($user) as $key => $queue) {
+            $queues[] = [
+                'key'   => $key,
+                'label' => $queue['label'],
+                'icon'  => $queue['icon'],
+                'count' => ($queue['count'])(),
+            ];
+        }
+
+        return $queues;
     }
 }
