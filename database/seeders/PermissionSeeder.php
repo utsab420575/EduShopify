@@ -136,6 +136,7 @@ class PermissionSeeder extends Seeder
             ['platform.access_control.manage', 'Platform · Access Control', 'platform', 'Manage platform roles, permissions and account role requests', ['sensitive']],
             ['platform.settings.manage', 'Platform · System', 'platform', 'Manage platform settings', ['sensitive']],
             ['platform.activity_logs.view', 'Platform · System', 'platform', 'View activity logs'],
+            ['platform.system.deploy', 'Platform · System', 'platform', 'Pull code deployments from GitHub', ['sensitive', 'owner_only']],
         ];
     }
 

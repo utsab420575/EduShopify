@@ -230,6 +230,9 @@
                     <a href="{{ route('admin.system.geography.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.geography.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Geography</a>
                     <a href="{{ route('admin.system.languages.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.languages.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Languages</a>
                     <a href="{{ route('admin.system.jobs.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.jobs.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Failed Jobs</a>
+                    @can('platform.system.deploy')
+                    <a href="{{ route('admin.system.deploy.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.deploy.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">GitHub Deploy</a>
+                    @endcan
                 </div>
             </div>
         </div>

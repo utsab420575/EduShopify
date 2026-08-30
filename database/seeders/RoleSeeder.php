@@ -149,6 +149,7 @@ class RoleSeeder extends Seeder
                     'platform.subscriptions.manage',
                     'platform.users.suspend',
                     'platform.access_control.manage',
+                    'platform.system.deploy',
                 ])),
             ],
             'moderator' => [

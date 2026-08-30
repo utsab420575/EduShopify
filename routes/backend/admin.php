@@ -52,6 +52,7 @@ use App\Http\Controllers\Backend\Admin\System\AuditLogController;
 use App\Http\Controllers\Backend\Admin\System\CurrencyController;
 use App\Http\Controllers\Backend\Admin\System\FailedJobController;
 use App\Http\Controllers\Backend\Admin\System\GeographyController;
+use App\Http\Controllers\Backend\Admin\System\GitDeploymentController;
 use App\Http\Controllers\Backend\Admin\System\LanguageController;
 use App\Http\Controllers\Backend\Admin\System\SettingController;
 use App\Http\Controllers\Backend\Admin\System\ThemeController;
@@ -361,5 +362,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::get('/jobs', [FailedJobController::class, 'index'])->name('jobs.index');
             Route::post('/jobs/{id}/retry', [FailedJobController::class, 'retry'])->name('jobs.retry');
             Route::delete('/jobs/{id}', [FailedJobController::class, 'destroy'])->name('jobs.destroy');
+
+            Route::get('/deploy', [GitDeploymentController::class, 'index'])->name('deploy.index');
+            Route::post('/deploy/pull', [GitDeploymentController::class, 'pull'])->name('deploy.pull');
         });
     });
