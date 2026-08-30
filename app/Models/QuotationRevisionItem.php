@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Table: quotation_revision_items — line items frozen into a revision.
@@ -19,6 +20,7 @@ class QuotationRevisionItem extends Model
         'offered_listing_id',
         'offered_variant_id',
         'is_alternative',
+        'is_optional_addon',
         'item_name',
         'description',
         'quantity',
@@ -36,7 +38,8 @@ class QuotationRevisionItem extends Model
     protected function casts(): array
     {
         return [
-            'is_alternative'  => 'boolean',
+            'is_alternative'    => 'boolean',
+            'is_optional_addon' => 'boolean',
             'quantity'        => 'decimal:3',
             'unit_price'      => 'decimal:2',
             'tax_rate'        => 'decimal:4',
@@ -71,5 +74,10 @@ class QuotationRevisionItem extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'unit_id');
+    }
+
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(QuotationRevisionItemAttributeValue::class, 'quotation_revision_item_id');
     }
 }

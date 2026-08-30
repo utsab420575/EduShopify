@@ -32,6 +32,7 @@ class RfqSupplierQueue extends Model
         'notified_at',
         'seen_at',
         'status',
+        'decline_reason',
     ];
 
     protected function casts(): array

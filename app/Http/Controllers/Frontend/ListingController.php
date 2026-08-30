@@ -57,7 +57,7 @@ class ListingController extends Controller
                 $q->where('main_category_id', $listing->main_category_id)
                     ->orWhere('supplier_account_id', $listing->supplier_account_id);
             })
-            ->with(['mainCategory', 'brand', 'supplierAccount.supplierProfile'])
+            ->with(['mainCategory', 'brand', 'unit', 'primaryImage', 'media', 'productDetail', 'serviceDetail', 'supplierAccount.supplierProfile'])
             ->latest('published_at')
             ->limit(4)
             ->get();

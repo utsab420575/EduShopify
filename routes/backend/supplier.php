@@ -15,8 +15,9 @@ use Illuminate\Support\Facades\Route;
 | so a supplier whose capability is pending/rejected/revision_required still
 | lands on a status page instead of a bare 403.
 |
-| Supplier onboarding wizard routes remain in web.php (auth.supplier-pending,
-| supplier.onboarding.*, supplier.pricing, supplier.subscribe.*).
+| Supplier onboarding wizard routes remain in web.php (supplier.pending and
+| supplier.onboarding.rejected both redirect here; supplier.onboarding.*,
+| supplier.pricing, supplier.subscribe.*).
 |
 */
 
@@ -79,25 +80,20 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::get('/categories/{category}/attributes', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'categoryAttributes'])->name('category.attributes');
             Route::post('/', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'store'])->name('store');
             Route::get('/{listing}/edit', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'edit'])->name('edit');
-            Route::put('/{listing}', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'update'])->name('update');
             Route::get('/{listing}', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'show'])->name('show');
+            Route::get('/{listing}/preview', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'previewFragment'])->name('preview');
             Route::post('/{listing}/submit', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'submit'])->name('submit');
             Route::delete('/{listing}', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'destroy'])->name('destroy');
 
-            // Variants
-            Route::post('/{listing}/variants', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'store'])->name('variants.store');
-            Route::post('/{listing}/variants/generate', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'bulkGenerate'])->name('variants.generate');
-            Route::put('/{listing}/variants/{variant}', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'update'])->name('variants.update');
-            Route::delete('/{listing}/variants/{variant}', [\App\Http\Controllers\Backend\Supplier\Catalog\VariantController::class, 'destroy'])->name('variants.destroy');
-
-            // Tier pricing
-            Route::post('/{listing}/tier-prices', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'store'])->name('tier-prices.store');
-            Route::post('/{listing}/tier-prices/copy-global', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'copyGlobal'])->name('tier-prices.copy-global');
-            Route::put('/{listing}/tier-prices/{tierPrice}', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'update'])->name('tier-prices.update');
-            Route::delete('/{listing}/tier-prices/{tierPrice}', [\App\Http\Controllers\Backend\Supplier\Catalog\TierPriceController::class, 'destroy'])->name('tier-prices.destroy');
+            // ── Step-by-Step Wizard Endpoints ─────────────────────────────────
+            Route::post('/wizard/step-1', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'saveStep1'])->name('wizard.step1');
+            Route::post('/{listing}/wizard/step-2', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'saveStep2'])->name('wizard.step2');
+            Route::post('/{listing}/wizard/step-3', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'saveStep3'])->name('wizard.step3');
+            Route::post('/{listing}/wizard/step-4', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'saveStep4'])->name('wizard.step4');
 
             // Media
             Route::post('/{listing}/media', [\App\Http\Controllers\Backend\Supplier\Catalog\MediaController::class, 'store'])->name('media.store');
+            Route::post('/{listing}/media/primary', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'setPrimaryMedia'])->name('media.primary');
             Route::delete('/{listing}/media/{media}', [\App\Http\Controllers\Backend\Supplier\Catalog\MediaController::class, 'destroy'])->name('media.destroy');
         });
 
@@ -106,6 +102,7 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'index'])->name('index');
             Route::get('/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'show'])->name('show');
             Route::post('/{rfq}/questions', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'askQuestion'])->name('questions.store');
+            Route::post('/{rfq}/decline', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'decline'])->name('decline');
         });
 
         // ── Quotations ────────────────────────────────────────────────────
@@ -113,6 +110,9 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'index'])->name('index');
             Route::get('/create/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'create'])->name('create');
             Route::post('/create/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'store'])->name('store');
+            Route::get('/categories/{category}/attributes', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'categoryAttributes'])->name('category-attributes');
+            Route::get('/listings/search', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'searchListings'])->name('listings.search');
+            Route::get('/listings/{listing}/prefill', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'listingPrefill'])->name('listings.prefill');
             Route::get('/{quotation}/edit', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'edit'])->name('edit');
             Route::put('/{quotation}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'update'])->name('update');
             Route::get('/{quotation}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'show'])->name('show');
@@ -157,10 +157,10 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
 
         // ── Communication ─────────────────────────────────────────────────
         Route::prefix('messages')->name('messages.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Backend\Supplier\Communication\MessageController::class, 'index'])->name('index');
-            Route::get('/{conversation}', [\App\Http\Controllers\Backend\Supplier\Communication\MessageController::class, 'show'])->name('show');
-            Route::post('/{conversation}', [\App\Http\Controllers\Backend\Supplier\Communication\MessageController::class, 'store'])->name('store');
-            Route::get('/{conversation}/poll', [\App\Http\Controllers\Backend\Supplier\Communication\MessageController::class, 'poll'])->name('poll');
+            Route::get('/', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'index'])->name('index');
+            Route::post('/start', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'start'])->name('start');
+            Route::get('/{conversation}', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'show'])->name('show');
+            Route::post('/{conversation}', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'store'])->name('store');
         });
 
         Route::prefix('notifications')->name('notifications.')->group(function () {
@@ -187,6 +187,8 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
         // ── Organization (visible only for organization accounts) ─────────
         Route::prefix('members')->name('members.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\Organization\MemberController::class, 'index'])->name('index');
+            Route::get('/{member}/permissions', [\App\Http\Controllers\Backend\Supplier\Organization\MemberController::class, 'editPermissions'])->name('permissions.edit');
+            Route::put('/{member}/permissions', [\App\Http\Controllers\Backend\Supplier\Organization\MemberController::class, 'updatePermissions'])->name('permissions.update');
             Route::post('/{member}/suspend', [\App\Http\Controllers\Backend\Supplier\Organization\MemberController::class, 'suspend'])->name('suspend');
             Route::post('/{member}/activate', [\App\Http\Controllers\Backend\Supplier\Organization\MemberController::class, 'activate'])->name('activate');
             Route::delete('/{member}', [\App\Http\Controllers\Backend\Supplier\Organization\MemberController::class, 'destroy'])->name('destroy');
@@ -201,7 +203,13 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
 
         Route::prefix('roles')->name('roles.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'store'])->name('store');
             Route::get('/{role}', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'show'])->name('show');
+            Route::get('/{role}/edit', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'edit'])->name('edit');
+            Route::put('/{role}', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'update'])->name('update');
+            Route::delete('/{role}', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'destroy'])->name('destroy');
+            Route::post('/{role}/duplicate', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'duplicate'])->name('duplicate');
             Route::post('/{role}/assign', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'assign'])->name('assign');
             Route::post('/{role}/unassign', [\App\Http\Controllers\Backend\Supplier\AccessControl\RoleController::class, 'unassign'])->name('unassign');
         });

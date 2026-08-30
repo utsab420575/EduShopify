@@ -63,11 +63,125 @@ class Category extends Model
     }
 
     /**
-     * Build flat array of categories formatted with indentation and full breadcrumb path for select dropdowns.
+     * Grouped, form-ready attribute definitions for this category (falling
+     * back up the parent chain when this category has none directly
+     * assigned) — the shared shape both the supplier listing wizard and the
+     * buyer RFQ item form build their dynamic spec forms from:
+     * {category_id, category_name, groups: [{group_id, group_name,
+     * sort_order, attributes: [...]}], total_count}.
      */
-    public static function getTreeSelectOptions(): array
+    public function attributesGroupedForForm(): array
     {
-        $all = static::where('is_active', true)
+        $assignedAttributes = $this->attributes()
+            ->with([
+                'attributeGroup',
+                'unit',
+                'values' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')->orderBy('value'),
+            ])
+            ->get();
+
+        if ($assignedAttributes->isEmpty() && $this->parent_id) {
+            $curr = $this;
+            while ($assignedAttributes->isEmpty() && $curr->parent_id) {
+                $curr = $curr->parent;
+                if ($curr) {
+                    $assignedAttributes = $curr->attributes()
+                        ->with([
+                            'attributeGroup',
+                            'unit',
+                            'values' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')->orderBy('value'),
+                        ])
+                        ->get();
+                }
+            }
+        }
+
+        $groupedAttributes = $assignedAttributes
+            ->groupBy(fn ($attr) => $attr->attribute_group_id ?? 0)
+            ->map(function ($items, $groupId) {
+                $group = $groupId > 0 ? $items->first()->attributeGroup : null;
+                $sortedItems = $items->sortBy([
+                    ['pivot.sort_order', 'asc'],
+                    ['sort_order', 'asc'],
+                    ['name', 'asc'],
+                ])->values()->map(function ($attr) {
+                    return [
+                        'id'                 => $attr->id,
+                        'name'               => $attr->name,
+                        'slug'               => $attr->slug,
+                        'input_type'         => $attr->input_type,
+                        'unit_id'            => $attr->unit_id,
+                        'unit_symbol'        => $attr->unit?->symbol,
+                        'unit_name'          => $attr->unit?->name,
+                        'placeholder'        => $attr->placeholder,
+                        'is_required'        => (bool) ($attr->is_required || !empty($attr->pivot?->is_required)),
+                        'is_filterable'      => (bool) ($attr->is_filterable || !empty($attr->pivot?->is_filterable)),
+                        'is_variant'         => (bool) ($attr->is_variant || !empty($attr->pivot?->is_variant)),
+                        'sort_order'         => (int) ($attr->pivot->sort_order ?? $attr->sort_order),
+                        'allow_custom_value' => (bool) $attr->allow_custom_value,
+                        'values'             => $attr->values->map(fn ($v) => [
+                            'id'        => $v->id,
+                            'value'     => $v->value,
+                            'slug'      => $v->slug,
+                            'color_hex' => $v->color_hex,
+                        ])->values()->toArray(),
+                    ];
+                });
+
+                return [
+                    'group_id'   => $groupId,
+                    'group_name' => $group?->name ?? 'General / Other Specifications',
+                    'sort_order' => $group?->sort_order ?? 9999,
+                    'attributes' => $sortedItems,
+                ];
+            })
+            ->sortBy('sort_order')
+            ->values();
+
+        return [
+            'category_id'   => $this->id,
+            'category_name' => $this->name,
+            'groups'        => $groupedAttributes,
+            'total_count'   => $assignedAttributes->count(),
+        ];
+    }
+
+    /**
+     * All descendant category ids (not including this category itself),
+     * walked level by level rather than via a recursive CTE to stay
+     * DB-agnostic. Used for "match this category or anything under it"
+     * queries (e.g. open_matching RFQ supplier eligibility).
+     */
+    public function descendantIds(): array
+    {
+        $ids = [];
+        $frontier = [$this->id];
+
+        while (! empty($frontier)) {
+            $children = static::whereIn('parent_id', $frontier)->pluck('id')->all();
+            if (empty($children)) {
+                break;
+            }
+            $ids = array_merge($ids, $children);
+            $frontier = $children;
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Flat, indented tree for supplier-facing category pickers — active,
+     * admin-approved categories only. Defaults to product-eligible
+     * categories (the listing wizard's original use case); pass a broader
+     * $types list (e.g. including 'service') for pickers that aren't
+     * product-listing-specific, like the "categories you supply" list.
+     */
+    public static function getTreeSelectOptions(array $types = ['product', 'both']): array
+    {
+        $all = static::withCount('attributes')
+            ->where('is_active', true)
+            ->where('approval_status', 'approved')
+            ->whereIn('type', $types)
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -85,12 +199,13 @@ class Category extends Model
                 $prefix = $depth > 0 ? str_repeat('— ', $depth) : '';
 
                 $options[] = [
-                    'id'           => $cat->id,
-                    'name'         => $cat->name,
-                    'path'         => $currentPath,
-                    'depth'        => $depth,
-                    'indent_name'  => $prefix . $cat->name,
-                    'has_children' => isset($grouped[$cat->id]) && $grouped[$cat->id]->isNotEmpty(),
+                    'id'               => $cat->id,
+                    'name'             => $cat->name,
+                    'path'             => $currentPath,
+                    'depth'            => $depth,
+                    'indent_name'      => $prefix . $cat->name,
+                    'attributes_count' => (int) ($cat->attributes_count ?? 0),
+                    'has_children'     => isset($grouped[$cat->id]) && $grouped[$cat->id]->isNotEmpty(),
                 ];
 
                 $buildTree($cat->id, $depth + 1, $currentPath);

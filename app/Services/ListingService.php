@@ -22,15 +22,15 @@ class ListingService
     {
         return DB::transaction(function () use ($supplierAccount, $user, $data, $listing) {
             $attributes = [
-                'listing_type'        => $data['listing_type'],
+                'listing_type_id'     => $data['listing_type_id'],
                 'main_category_id'    => $data['main_category_id'] ?? null,
                 'brand_id'            => $data['brand_id'] ?? null,
                 'name'                => $data['name'],
                 'sku'                 => $data['sku'] ?? null,
                 'short_description'   => $data['short_description'] ?? null,
                 'description'         => $data['description'] ?? null,
-                'pricing_type'        => $data['pricing_type'],
-                'sales_mode'          => $data['sales_mode'],
+                'pricing_type_id'     => $data['pricing_type_id'],
+                'sales_mode_id'       => $data['sales_mode_id'],
                 'base_price'          => $data['base_price'] ?? null,
                 'compare_at_price'    => $data['compare_at_price'] ?? null,
                 'currency_code'       => $data['currency_code'] ?? null,
@@ -50,7 +50,7 @@ class ListingService
                 $listing = Listing::create($attributes);
             }
 
-            if ($data['listing_type'] === 'product') {
+            if ($listing->isProduct()) {
                 ProductDetail::updateOrCreate(['listing_id' => $listing->id], [
                     'stock_status'    => $data['stock_status'] ?? 'on_request',
                     'stock_quantity'  => $data['stock_quantity'] ?? null,

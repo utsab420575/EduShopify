@@ -9,25 +9,16 @@
 
     {{-- Filter bar --}}
     <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <form method="GET" action="{{ route('supplier.quotations.index') }}" class="flex flex-wrap items-center gap-3">
-            <select name="status" class="text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="">All Statuses</option>
-                <option value="draft" @selected($status === 'draft')>Draft</option>
-                <option value="submitted" @selected($status === 'submitted')>Submitted</option>
-                <option value="under_review" @selected($status === 'under_review')>Under Review</option>
-                <option value="revision_requested" @selected($status === 'revision_requested')>Revision Requested</option>
-                <option value="shortlisted" @selected($status === 'shortlisted')>Shortlisted</option>
-                <option value="awarded" @selected($status === 'awarded')>Awarded</option>
-                <option value="rejected" @selected($status === 'rejected')>Rejected</option>
-                <option value="withdrawn" @selected($status === 'withdrawn')>Withdrawn</option>
-            </select>
-            <button type="submit" class="btn-primary text-xs font-semibold px-4 py-2.5 rounded-lg">
-                Filter
-            </button>
-            @if($status)
-                <a href="{{ route('supplier.quotations.index') }}" class="text-xs text-gray-500 hover:text-gray-700 px-2">Reset</a>
-            @endif
-        </form>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a href="{{ route('supplier.quotations.index') }}" class="text-xs font-semibold px-3 py-2 rounded-lg {{ !$status ? 'btn-primary' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                All
+            </a>
+            @foreach($statusOptions as $key => $label)
+                <a href="{{ route('supplier.quotations.index', ['status' => $key]) }}" class="text-xs font-semibold px-3 py-2 rounded-lg {{ $status === $key ? 'btn-primary' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
     </div>
 
     {{-- Quotations Table --}}
@@ -65,7 +56,7 @@
                                     {{ $quote->currency_code }} {{ number_format($quote->grand_total, 2) }}
                                 </td>
                                 <td class="px-3 py-3.5 text-xs text-gray-500">
-                                    Rev #{{ $quote->current_revision_no }}
+                                    {{ $quote->current_revision_no > 0 ? 'Rev #'.$quote->current_revision_no : 'Draft' }}
                                 </td>
                                 <td class="px-3 py-3.5">
                                     <x-backend.status-badge :status="$quote->status" />

@@ -132,6 +132,29 @@ class QuotationPolicy
             && $quotation->rfq->acceptsQuotations();
     }
 
+    /**
+     * Editing an unsubmitted draft in place — distinct from update() above,
+     * which now (in practice) only ever governs the revision_requested path;
+     * a draft that has never been submitted has no revision yet to protect.
+     */
+    public function editDraft(User $user, Quotation $quotation): bool
+    {
+        return $this->checkAccess($user, 'supplier', 'quotation.create') !== null
+            && $this->ownsAsSupplier($user, $quotation)
+            && $quotation->status === 'draft';
+    }
+
+    /**
+     * Promoting a draft to submitted — the show-page "Submit Quotation" action.
+     */
+    public function submitDraft(User $user, Quotation $quotation): bool
+    {
+        return $this->checkAccess($user, 'supplier', 'quotation.submit') !== null
+            && $this->ownsAsSupplier($user, $quotation)
+            && $quotation->status === 'draft'
+            && $quotation->rfq->acceptsQuotations();
+    }
+
     public function withdraw(User $user, Quotation $quotation): bool
     {
         return $this->checkAccess($user, 'supplier', 'quotation.withdraw') !== null

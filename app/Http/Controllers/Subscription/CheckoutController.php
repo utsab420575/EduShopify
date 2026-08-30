@@ -31,10 +31,16 @@ class CheckoutController extends Controller
                 ->with('error', 'No account context could be resolved for your user.');
         }
 
-        /* ── Guard: Supplier capability must be approved first (spec rule 28) ── */
-        if (! $account->hasActiveCapability('supplier')) {
+        /* ── Guard: Supplier capability must exist (spec rule 28, relaxed) ──
+         * Originally required the capability to already be `active`. The
+         * Supplier Application wizard now collects plan selection as its
+         * final step, before Admin review, so a `draft` capability must also
+         * be allowed here — this is a deliberate override, not an oversight.
+         * Post-approval callers are unaffected (their capability is already
+         * `active`, which still satisfies this check). */
+        if (! $account->hasCapability('supplier')) {
             return redirect()->route('supplier.pending')
-                ->with('error', 'Your Supplier application must be approved before you can subscribe.');
+                ->with('error', 'A Supplier application is required before you can subscribe.');
         }
 
         /* ── Guard: plan must be active ── */
@@ -127,13 +133,21 @@ class CheckoutController extends Controller
         return redirect($session->url);
     }
 
-    public function success(Request $request)
+    public function success(Request $request, \App\Services\CapabilityApplicationService $capabilityService)
     {
         $account = $request->attributes->get('account') ?? $request->user()?->account;
 
         $subscription = $account
             ? Subscription::forSupplierAccount($account->id)->with('plan')->latest()->first()
             : null;
+
+        // A supplier who paid as the final step of the application wizard
+        // (capability still draft at this point) is now submitted for
+        // Admin review. Already-approved accounts resubscribing here have a
+        // non-draft capability, so this is a no-op for them.
+        if ($account && $account->capabilityStatus('supplier') === 'draft') {
+            $capabilityService->submit($account, 'supplier', $request->user());
+        }
 
         return view('supplier.checkout.success', compact('subscription'));
     }

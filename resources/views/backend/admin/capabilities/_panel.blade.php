@@ -46,8 +46,15 @@
             <button @click="$dispatch('open-modal-revision')" class="text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50">Request Revision</button>
             <button @click="$dispatch('open-modal-reject')" class="text-sm font-medium px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">Reject</button>
         </div>
-    @elseif($capability->status === 'active')
-        <div class="mb-6">
+      @elseif($capability->status === 'active')
+        <div class="flex items-center gap-2 mb-6">
+            <form method="POST" action="{{ route('admin.capabilities.undo-approve', $capability) }}"
+                  onsubmit="return confirmSwal(this, 'Undo Capability Approval?', 'Revert capability status back to Pending so you can modify document verification or review details?', 'warning', 'Yes, Undo Approval')">
+                @csrf
+                <button type="submit" class="text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 flex items-center gap-1.5 transition-colors">
+                    <i class="fa-solid fa-rotate-left"></i> Undo Approval
+                </button>
+            </form>
             <button @click="$dispatch('open-modal-suspend')" class="text-sm font-medium px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">Suspend Capability</button>
         </div>
     @elseif($capability->status === 'suspended')
@@ -156,6 +163,62 @@
                                             <span class="text-xs font-semibold text-green-600 flex items-center gap-1">
                                                 <i class="fa-solid fa-circle-check"></i> Verified
                                             </span>
+                                            @can('platform.supplier_documents.verify')
+                                                @if($capability->status === 'pending')
+                                                    <form method="POST"
+                                                          action="{{ route('admin.suppliers.documents.reset', [$capability->account, $document]) }}"
+                                                          onsubmit="return confirmSwal(this, 'Undo Document Verification?', 'Revert document status back to Pending?', 'question', 'Yes, Undo')">
+                                                        @csrf
+                                                        <button type="submit"
+                                                                title="Undo Verification (Revert to Pending)"
+                                                                class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 inline-flex items-center gap-1">
+                                                            <i class="fa-solid fa-rotate-left"></i> Undo
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <button type="button"
+                                                            @click="Swal.fire({
+                                                                icon: 'warning',
+                                                                title: 'Cannot Undo Document Verification',
+                                                                text: 'Supplier capability is currently Approved/Active. Please click \'Undo Approval\' on the capability first.',
+                                                                confirmButtonColor: '#4f46e5'
+                                                            })"
+                                                            title="Undo Verification (Revert to Pending)"
+                                                            class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 inline-flex items-center gap-1">
+                                                        <i class="fa-solid fa-rotate-left"></i> Undo
+                                                    </button>
+                                                @endif
+                                            @endcan
+                                        @elseif($document->status === 'rejected')
+                                            <span class="text-xs font-semibold text-red-600 flex items-center gap-1">
+                                                <i class="fa-solid fa-circle-xmark"></i> Rejected
+                                            </span>
+                                            @can('platform.supplier_documents.verify')
+                                                @if($capability->status === 'pending')
+                                                    <form method="POST"
+                                                          action="{{ route('admin.suppliers.documents.reset', [$capability->account, $document]) }}"
+                                                          onsubmit="return confirmSwal(this, 'Undo Document Decision?', 'Revert document status back to Pending?', 'question', 'Yes, Undo')">
+                                                        @csrf
+                                                        <button type="submit"
+                                                                title="Undo Rejection (Revert to Pending)"
+                                                                class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 inline-flex items-center gap-1">
+                                                            <i class="fa-solid fa-rotate-left"></i> Undo
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <button type="button"
+                                                            @click="Swal.fire({
+                                                                icon: 'warning',
+                                                                title: 'Cannot Undo Document Decision',
+                                                                text: 'Supplier capability is currently Approved/Active. Please click \'Undo Approval\' on the capability first.',
+                                                                confirmButtonColor: '#4f46e5'
+                                                            })"
+                                                            title="Undo Rejection (Revert to Pending)"
+                                                            class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 inline-flex items-center gap-1">
+                                                        <i class="fa-solid fa-rotate-left"></i> Undo
+                                                    </button>
+                                                @endif
+                                            @endcan
                                         @endif
                                     </div>
                                 </li>

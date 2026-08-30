@@ -6,7 +6,7 @@ use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\ConversationAdminUser;
-use App\Models\Message;
+use App\Services\MessagingService;
 use Illuminate\Http\Request;
 
 class ConversationController extends Controller
@@ -54,21 +54,13 @@ class ConversationController extends Controller
         return back()->with('success', 'Joined the conversation.');
     }
 
-    public function store(Request $request, Conversation $conversation)
+    public function store(Request $request, Conversation $conversation, MessagingService $messaging)
     {
         $this->authorize('platform.communication.manage');
 
         $request->validate(['body' => ['required', 'string', 'max:5000']]);
 
-        Message::create([
-            'conversation_id' => $conversation->id,
-            'sender_account_id' => null,
-            'sender_user_id' => $this->admin()->id,
-            'message_type' => 'text',
-            'body' => $request->string('body'),
-        ]);
-
-        $conversation->update(['last_message_at' => now()]);
+        $messaging->sendMessage($conversation, null, $this->admin(), $request->input('body'));
 
         return back()->with('success', 'Message sent.');
     }

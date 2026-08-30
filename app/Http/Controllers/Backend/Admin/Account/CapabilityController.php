@@ -98,6 +98,31 @@ class CapabilityController extends Controller
         return back()->with('success', 'Application approved.');
     }
 
+    public function undoApprove(Request $request, AccountCapability $capability, CapabilityReviewService $service)
+    {
+        $this->authorize('platform.capabilities.review');
+
+        try {
+            $service->undoApprove($capability, $this->admin());
+        } catch (\RuntimeException|ValidationException $e) {
+            $message = $e instanceof ValidationException ? $this->firstValidationMessage($e) : $e->getMessage();
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
+        }
+
+        activity('moderation')->causedBy($this->admin())->performedOn($capability)->log('Capability approval undone (reverted to pending)');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Capability approval reverted to pending.', 'resolved' => false]);
+        }
+
+        return back()->with('success', 'Capability approval reverted to pending.');
+    }
+
     public function revision(ReasonRequest $request, AccountCapability $capability, CapabilityReviewService $service)
     {
         $this->authorize('platform.capabilities.review');

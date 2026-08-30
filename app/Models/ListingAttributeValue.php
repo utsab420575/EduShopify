@@ -24,6 +24,7 @@ class ListingAttributeValue extends Model
         'value_boolean',
         'value_date',
         'value_json',
+        'custom_value',
     ];
 
     protected function casts(): array
@@ -52,17 +53,27 @@ class ListingAttributeValue extends Model
     }
 
     /**
-     * The populated value, whichever typed column holds it.
+     * The populated value, whichever typed column holds it. A supplier's
+     * "Other" custom value either stands alone (select/color with no
+     * predefined pick) or, for multi_select, sits alongside value_json —
+     * capped at exactly one custom entry per listing attribute.
      */
     public function resolvedValue(): mixed
     {
-        return $this->attribute_value_id !== null
-            ? $this->attributeValue?->value
-            : ($this->value_text
-                ?? $this->value_number
-                ?? $this->value_boolean
-                ?? $this->value_date
-                ?? $this->value_json);
+        if ($this->attribute_value_id !== null) {
+            return $this->attributeValue?->value;
+        }
+
+        if (is_array($this->value_json) && $this->custom_value !== null && $this->custom_value !== '') {
+            return array_merge($this->value_json, [$this->custom_value]);
+        }
+
+        return $this->custom_value
+            ?? $this->value_text
+            ?? $this->value_number
+            ?? $this->value_boolean
+            ?? $this->value_date
+            ?? $this->value_json;
     }
 
     /**
@@ -72,6 +83,18 @@ class ListingAttributeValue extends Model
     {
         if ($this->attribute_value_id !== null) {
             return $this->attributeValue?->value ?? '-';
+        }
+
+        if (is_array($this->value_json)) {
+            $items = $this->value_json;
+            if ($this->custom_value !== null && $this->custom_value !== '') {
+                $items[] = $this->custom_value;
+            }
+            return implode(', ', $items);
+        }
+
+        if ($this->custom_value !== null && $this->custom_value !== '') {
+            return $this->custom_value;
         }
 
         if ($this->value_boolean !== null) {
@@ -86,10 +109,6 @@ class ListingAttributeValue extends Model
 
         if ($this->value_date !== null) {
             return is_string($this->value_date) ? $this->value_date : $this->value_date->format('Y-m-d');
-        }
-
-        if ($this->value_json !== null && is_array($this->value_json)) {
-            return implode(', ', $this->value_json);
         }
 
         if ($this->value_text !== null) {

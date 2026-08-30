@@ -69,6 +69,9 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
             Route::get('/create', [RfqController::class, 'create'])->name('create');
             Route::post('/', [RfqController::class, 'store'])->name('store');
             Route::get('/supplier-search', [RfqController::class, 'searchSuppliers'])->name('supplier-search');
+            Route::get('/categories/{category}/attributes', [RfqController::class, 'categoryAttributes'])->name('category-attributes');
+            Route::get('/listings/search', [RfqController::class, 'searchListings'])->name('listings.search');
+            Route::get('/listings/{listing}/prefill', [RfqController::class, 'listingPrefill'])->name('listings.prefill');
             Route::get('/{rfq}/edit', [RfqController::class, 'edit'])->name('edit');
             Route::put('/{rfq}', [RfqController::class, 'update'])->name('update');
             Route::get('/{rfq}', [RfqController::class, 'show'])->name('show');
@@ -81,6 +84,7 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
         Route::prefix('quotations')->name('quotations.')->group(function () {
             Route::get('/', [QuotationController::class, 'index'])->name('index');
             Route::get('/compare/{rfq}', [QuotationController::class, 'compare'])->name('compare');
+            Route::post('/compare/{rfq}/data', [QuotationController::class, 'compareData'])->name('compare.data');
             Route::get('/{quotation}', [QuotationController::class, 'show'])->name('show');
             Route::post('/{quotation}/shortlist', [QuotationController::class, 'shortlist'])->name('shortlist');
             Route::delete('/{quotation}/shortlist', [QuotationController::class, 'unshortlist'])->name('unshortlist');
@@ -113,10 +117,10 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
 
         /* Communication */
         Route::prefix('messages')->name('messages.')->group(function () {
-            Route::get('/', [MessageController::class, 'index'])->name('index');
-            Route::get('/{conversation}', [MessageController::class, 'show'])->name('show');
-            Route::post('/{conversation}', [MessageController::class, 'store'])->name('store');
-            Route::get('/{conversation}/poll', [MessageController::class, 'poll'])->name('poll');
+            Route::get('/', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'index'])->name('index');
+            Route::post('/start', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'start'])->name('start');
+            Route::get('/{conversation}', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'show'])->name('show');
+            Route::post('/{conversation}', [\App\Http\Controllers\Backend\Communication\UnifiedMessageController::class, 'store'])->name('store');
         });
 
         Route::prefix('notifications')->name('notifications.')->group(function () {
@@ -147,6 +151,8 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
         /* Organization (visible only for organization accounts; controllers still enforce it) */
         Route::prefix('members')->name('members.')->group(function () {
             Route::get('/', [MemberController::class, 'index'])->name('index');
+            Route::get('/{member}/permissions', [MemberController::class, 'editPermissions'])->name('permissions.edit');
+            Route::put('/{member}/permissions', [MemberController::class, 'updatePermissions'])->name('permissions.update');
             Route::post('/{member}/suspend', [MemberController::class, 'suspend'])->name('suspend');
             Route::post('/{member}/activate', [MemberController::class, 'activate'])->name('activate');
             Route::delete('/{member}', [MemberController::class, 'destroy'])->name('destroy');
@@ -161,7 +167,13 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
 
         Route::prefix('roles')->name('roles.')->group(function () {
             Route::get('/', [RoleController::class, 'index'])->name('index');
+            Route::get('/create', [RoleController::class, 'create'])->name('create');
+            Route::post('/', [RoleController::class, 'store'])->name('store');
             Route::get('/{role}', [RoleController::class, 'show'])->name('show');
+            Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');
+            Route::put('/{role}', [RoleController::class, 'update'])->name('update');
+            Route::delete('/{role}', [RoleController::class, 'destroy'])->name('destroy');
+            Route::post('/{role}/duplicate', [RoleController::class, 'duplicate'])->name('duplicate');
             Route::post('/{role}/assign', [RoleController::class, 'assign'])->name('assign');
             Route::post('/{role}/unassign', [RoleController::class, 'unassign'])->name('unassign');
         });

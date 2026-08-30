@@ -6,7 +6,9 @@ use App\Models\Award;
 use App\Models\Quotation;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\DashboardNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -43,6 +45,8 @@ class AwardService
 
             $rfq->update(['status' => 'award_pending']);
 
+            $this->notifySupplier($award, "Congratulations — your quotation {$quotation->quotation_number} for \"{$rfq->title}\" has been awarded. Please respond within the deadline.");
+
             return $award;
         });
     }
@@ -54,5 +58,14 @@ class AwardService
         $seq    = str_pad($latest + 1, 6, '0', STR_PAD_LEFT);
 
         return "AWD-{$year}-{$seq}";
+    }
+
+    private function notifySupplier(Award $award, string $message): void
+    {
+        $users = User::whereHas('accountMember', fn ($q) => $q->where('account_id', $award->supplier_account_id)->where('status', 'active'))->get();
+
+        if ($users->isNotEmpty()) {
+            Notification::send($users, new DashboardNotification($message, route('supplier.awards.show', $award)));
+        }
     }
 }

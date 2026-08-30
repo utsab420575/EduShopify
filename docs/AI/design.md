@@ -38,6 +38,8 @@ When an AI agent or developer builds or modifies backend UI, use this order:
 
 5. Existing reusable Blade components/styles
    → reuse before creating duplicates
+6. Database Schema
+   → docs\AI\references\database.txt  
 ```
 
 If the static HTML and this document differ visually, prefer the static HTML **unless this document explicitly declares a project-wide rule**, such as runtime themeability, authorization-aware menus, semantic status colors, accessibility, or responsive behavior.
@@ -323,9 +325,177 @@ For a normal reusable table, status badge, stat card, input, or form card:
 Blade Component only
 ```
 
-is usually enough.
+### 0.3.6 Mandatory Standard: Admin Listing & Sidebar Table CRUD Design Standard
 
-Alpine is added only when interaction is actually required.
+All Admin dashboard listing pages (sidebar navigation tables) **must implement full contextual CRUD operations and modal interactions based on entity needs**, rather than only providing a simple preview or full-page redirect button.
+
+```text
+Table Row Actions (Enterprise Standard)
+├── 1. Quick View / Inspect Modal (fa-regular fa-eye)
+│       └── Header: "See in page →" (same-tab redirect: target="_self", never target="_blank")
+├── 2. Edit Modal / Inline Edit (fa-regular fa-pen-to-square)
+├── 3. Contextual Lifecycle & Workflow Actions (Approve, Revision, Suspend, Undo, etc.)
+└── 4. Delete / Remove with SweetAlert (fa-regular fa-trash-can)
+```
+
+#### Guidelines for Admin Sidebar Tables:
+1. **No Preview-Only Tables**: Whenever an entity is displayed in an admin table, provide inline management actions (View modal, Edit modal, State transitions, Delete) appropriate to the entity's domain permissions.
+2. **Quick View Modal Pattern**:
+   - Opens via `<x-backend.modal>` or `<x-backend.ajax-modal>`.
+   - Displays core metadata, relationships, status badges, and activity history without navigating away from the table.
+   - Includes a prominent **"See in page &rarr;" / "Open Full Page"** link navigating to the full `show` page in the **same tab** (`target="_self"`).
+3. **Edit Modal Pattern**:
+   - Allows modifying editable properties (e.g. display name, contact info, status, permissions, roles) directly from the table row.
+   - Uses standard backend form components (`<x-backend.input>`, `<x-backend.select>`, `<x-backend.textarea>`).
+4. **Lifecycle & Workflow Actions**:
+   - Critical operations (Approve, Reject, Suspend, Reactivate, Undo Approval, Finalize Closure) must have dedicated action buttons with `confirmSwal()` or confirmation modal dialogs.
+5. **Destructive Actions**:
+   - Delete/Remove actions must use `fa-regular fa-trash-can` with red hover styling and `confirmSwal()` or SweetAlert dialog confirmation.
+6. **Mandatory Pagination on Every Table**:
+   - **Whenever ANY listing table is created or added across the platform (Admin, Supplier, Buyer), pagination MUST be included.**
+   - Controllers must paginate records using `->paginate(20)->withQueryString()`.
+   - Blade views must always include `<x-slot:pagination><x-backend.pagination :paginator="$items" /></x-slot:pagination>` within `<x-backend.table>`.
+   - Creating tables without pagination is strictly prohibited.
+
+### 0.3.7 Mandatory Standard: Table Pagination & Record Counter Standards
+
+**Mandatory Requirement**: Every enterprise table across Admin, Supplier, and Buyer portals **must include a persistent, standardized footer with entry counters and pagination controls whenever a table is added**.
+
+```text
+Table Footer Layout
+┌───────────────────────────────────────────────┬────────────────────────────────────────────────────────┐
+│ Showing 1 to 8 of 8 entries                   │ [ < Previous ]  [ 1 ]  [ 2 ]  [ 3 ]  [ Next > ]        │
+└───────────────────────────────────────────────┴────────────────────────────────────────────────────────┘
+```
+
+#### Pagination UI/UX Rules:
+1. **Mandatory Inclusion on Every Table**:
+   - Every single table in the codebase must have pagination. No unpaginated tables are allowed.
+   - Controllers must always call `->paginate(...)` and pass the paginator to the view.
+2. **Always Visible When Records Exist (`total > 0`)**:
+   - The table footer must **never disappear completely** when there is only a single page (e.g. 8 items with `per_page = 20`).
+   - Users need immediate visual confirmation of how many total records match their current search and filter criteria (`Showing 1 to 8 of 8 entries`).
+3. **Left Counter Section**:
+   - Format: `Showing <span class="font-semibold text-gray-900">X</span> to <span class="font-semibold text-gray-900">Y</span> of <span class="font-semibold text-gray-900">Z</span> entries`.
+   - Pluralized automatically (`entry` vs `entries`).
+4. **Right Controls Section**:
+   - **Previous Button**: `<i class="fa-solid fa-chevron-left text-[10px]"></i> Previous`. Disabled (grayed out, non-interactive) on page 1.
+   - **Page Number Buttons**: Min width `32px`, centered. Active page styled with `background: var(--theme-primary); color: #fff;` and subtle shadow. Inactive pages styled with `border border-gray-200 bg-white hover:bg-gray-50`.
+   - **Single Page Display**: If `hasPages()` is false, still render page `[ 1 ]` as active between disabled Previous and Next buttons.
+   - **Next Button**: `Next <i class="fa-solid fa-chevron-right text-[10px]"></i>`. Disabled on the last page.
+5. **Standard Component Implementation**:
+   - Use `<x-backend.pagination :paginator="$items" />` inside `<x-slot:pagination>` of `<x-backend.table>`.
+   - The component automatically adheres to these standards with responsive wrapping (`flex-col sm:flex-row`).
+
+### 0.3.8 Mandatory Standard: Table Toolbar Actions & Export Controls (Export/Print on Left, Live Search/Filter on Right)
+
+All enterprise listing tables across Admin, Supplier, and Buyer portals **must provide a standardized toolbar containing instant export/print utility buttons on the left and live search with contextual filters on the right**.
+
+```text
+Table Toolbar Layout Standard
+┌──────────────────────────────────────────────┬────────────────────────────────────────────────────────┐
+│ [📊 Excel]  [📄 PDF]  [🖨️ Print]             │ [Filter 1 ▼]  [Filter 2 ▼]  [🔍 Live Search...]        │
+└──────────────────────────────────────────────┴────────────────────────────────────────────────────────┘
+```
+
+#### Toolbar Standards:
+1. **Left Section — Standard Export & Print Action Buttons**:
+   - **Excel Export**:
+     - Visual: `<i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i> Excel`
+     - Behavior: Triggers backend/client-side CSV/Excel spreadsheet export of current filtered dataset.
+   - **PDF Export**:
+     - Visual: `<i class="fa-solid fa-file-pdf text-red-600 text-sm"></i> PDF`
+     - Behavior: Generates a formatted PDF report of the table data.
+   - **Print**:
+     - Visual: `<i class="fa-solid fa-print text-gray-500 text-sm"></i> Print`
+     - Behavior: Triggers browser print preview (`window.print()`) with print-optimized table stylesheet (hides sidebar/topbar automatically via `@media print`).
+
+2. **Right Section — Live Search Input & Contextual Filters**:
+   - **Live Search (No Enter Key Required)**:
+     - Search must be **live**: results update automatically as the user types, without needing to press Enter or click a button.
+     - Implemented with a 300ms debounce (`@input.debounce.300ms="this.form.submit()"` or dynamic table fetch) to prevent unnecessary query spamming.
+     - Includes a magnifying glass icon (`<i class="fa-solid fa-magnifying-glass text-gray-400"></i>`) inside the left edge.
+     - Automatically preserves query parameters across pagination and filter updates.
+   - **Contextual Filter Selects**:
+     - Styled with `rounded-lg border border-gray-300 px-3 py-2 bg-white text-sm focus-accent`.
+     - Automatically submit/filter on selection change (`onchange="this.form.submit()"`).
+   - **No Manual "Filter" Submit Button**:
+     - Do not include a separate "Filter" submit button. Because search is live debounced and dropdowns submit automatically `onchange`, a manual button is redundant and removed.
+
+### 0.3.9 Mandatory Standard: Sortable Column Headers with Dual Arrow Indicators
+
+Tables with sortable datasets **must allow clicking column headers to dynamically sort data ascending (`asc`) or descending (`desc`) with clear visual top/bottom arrow indicators**.
+
+```text
+Sortable Column Header States & Indicators
+┌──────────────────────────────────────┬────────────────────────────────────────────────────────┐
+│ State                                │ Visual Indicator                                       │
+├──────────────────────────────────────┼────────────────────────────────────────────────────────┤
+│ Default (Unsorted)                   │ Column Title <i class="fa-solid fa-sort text-gray-400"></i> │
+│ Active (Ascending ▲)                 │ Column Title <i class="fa-solid fa-sort-up text-indigo-600"></i> │
+│ Active (Descending ▼)                │ Column Title <i class="fa-solid fa-sort-down text-indigo-600"></i> │
+└──────────────────────────────────────┴────────────────────────────────────────────────────────┘
+```
+
+#### Sorting Guidelines:
+1. **Default Icon (`<i class="fa-solid fa-sort"></i>`)**:
+   - By default, all sortable column headers **must show the dual top and bottom arrow icon**: `<i class="fa-solid fa-sort text-gray-400 ml-1"></i>`.
+   - This provides instant visual clarity to users that the column is interactive and can be sorted both ascending and descending.
+2. **Interactive Headers**:
+   - Clickable column headers must render as links/buttons with subtle hover feedback (`hover:text-gray-900 transition-colors`).
+3. **Toggle Logic**:
+   - Clicking an unsorted column sets `?sort={column}&direction=asc`.
+   - Clicking an active ascending column toggles to `?sort={column}&direction=desc`.
+   - Clicking an active descending column resets or toggles back to `asc`.
+   - All existing search and filter query string parameters must be preserved when sorting.
+4. **Backend Query Sorting**:
+   - Controllers must validate requested sort columns against a strict whitelist of database columns to prevent SQL injection or unindexed query degradation:
+     ```php
+     $sortColumn = in_array($request->string('sort'), ['name', 'created_at', 'sort_order', 'status'])
+         ? $request->string('sort')
+         : 'created_at';
+     $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
+
+     $query->orderBy($sortColumn, $direction);
+     ```
+
+---
+
+### 0.3.10 Mandatory Standard: Live Search & Conditional Filter Button
+
+Applies to **server-rendered, paginated tables** — a real `paginate()` query, not the fully client-loaded pattern in §18.1 (which already has its own instant, in-browser search and needs none of this).
+
+#### Live Search
+
+Search must not require pressing Enter or clicking a "Search" button — it auto-submits a short moment after typing stops:
+
+```html
+<input type="text" name="search" value="{{ $search }}"
+       @input.debounce.500ms="$event.target.form.requestSubmit()"
+       x-init="if (new URLSearchParams(window.location.search).get('search')) { $el.focus(); $el.setSelectionRange($el.value.length, $el.value.length); }">
+```
+
+The `x-init` line is **not optional**. Auto-submitting reloads the page, which resets the DOM and drops focus from the input — without restoring it, the *first* debounced search works but every keystroke after that (including backspacing to broaden a search) lands nowhere, because the field is no longer focused. The check restores focus **and** places the cursor at the end of the existing text, scoped to only the field whose own query param is actually present in the URL.
+
+If a page has more than one independent search box (e.g., two tables side by side sharing one page), give each its own distinctly-named query param (`pending_search`, `decided_search`, …) and repeat this same `x-init` per field — only the field whose own param is present should claim focus after reload. Wrap each table's search + hidden state in its own `<form method="GET">`, re-emitting every *other* current query param (the other table's search/sort/page, this table's own sort/direction) as hidden inputs via `request()->except([...])`, so submitting one table's search never disturbs the other table's state, and this table's own page resets to 1.
+
+A select-based filter (see below) uses the same live idea via `onchange="this.form.submit()"` instead of a debounce — already an established pattern elsewhere in this admin (unit/attribute/category listing filters).
+
+#### Filter Button Is Conditional, Not a Default
+
+Do **not** add a "Filters" button (§6's sliders-icon button) to every table as standing decoration. It exists for one job: narrowing a genuine categorical/status dimension that free-text search can't express — excluding a whole category, not matching text.
+
+```text
+Add the Filters button when:
+    the table has a real status/category field
+    e.g. Approved / Ignored, Active / Inactive, a type enum
+
+Skip the Filters button when:
+    the table's only extra dimension is a numeric range,
+    or there is no field beyond what search already covers
+```
+
+A table with nothing but free-text search needs no Filters button at all — adding one with an empty or marginal panel is clutter, not a feature. When a table *does* get one, the field(s) live in a small popover anchored to the button (appropriate for a table that's one of several panels sharing a page — not a full-width §8 collapsible bar, which assumes the table is the page's only content) and auto-submit on change, same as live search, with no separate Apply click.
 
 ---
 
@@ -1789,6 +1959,24 @@ Disabled controls:
 gray text
 cursor-not-allowed
 ```
+
+## 18.1 Client-Side Pagination for Alpine Search Lists
+
+Section 18 above is the default: server-rendered, query-string-driven pagination for normal Blade index pages.
+
+Some panels intentionally load their **full** dataset into Alpine so search/filtering is instant and covers every record, not just the current page (e.g. the Category Builder's left-side pick lists, a searchable assignment list per §12.6/§12.7). Server-side pagination is wrong there — reloading a page mid-search would only search whatever page happens to be loaded, silently missing matches.
+
+For these lists:
+
+- Load the full dataset once into Alpine state as a plain array (`Js::from(...)`), not per-row Blade loops for the visible rows.
+- Paginate the **filtered** result, not the raw list: `filtered = allItems.filter(search match)`, then slice `filtered` by the current page.
+- Reset to page 1 whenever the search query changes (a stale page 2 after a new search reads as broken, not empty).
+- Reuse the exact same visual pattern as Section 18 — "Showing X to Y of Z entries" left, "Previous 1 2 … Next" right, `theme-primary` current-page pill — computed from `filtered.length` instead of a server total.
+- Actions tied to a specific row (edit modal, delete confirmation) may stay Blade-rendered and hidden (unpaginated) as long as the visible, paginated row triggers them by dispatching a per-id event (`$dispatch('open-edit-x-' + item.id)`) — the same event-dispatch pattern already used for per-row modals elsewhere in this document. Only the *visible list rows* need to move to Alpine `x-for`; modal bodies don't.
+- Typical page size for these panels: 10–15 rows — enough to browse, small enough that re-rendering on search/page change stays instant.
+- Show the pagination footer whenever there's at least one result, even if everything fits on a single page — "Showing 1 to 6 of 6 entries" is useful information on its own, not just a Previous/Next control. Hide it only when the (filtered) result set is empty, matching the standard §18 baseline.
+
+Do not paginate a list this way if the data isn't already fully loaded client-side for another reason (search, typeahead, duplicate-detection) — a normal table gated only by "there are a lot of rows" should use standard server-side pagination (Section 18), not this pattern.
 
 ---
 

@@ -55,13 +55,17 @@ class AttributeGroupController extends Controller
             ? Str::slug($request->string('slug'))
             : $this->uniqueSlug($name);
 
-        AttributeGroup::create([
+        $group = AttributeGroup::create([
             'name'        => $name,
             'slug'        => $slug,
             'description' => $request->input('description'),
             'sort_order'  => $request->integer('sort_order', 0),
             'is_active'   => $request->boolean('is_active', true),
         ]);
+
+        if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
+            return redirect($request->string('redirect_to'))->with('success', "Attribute group '{$group->name}' created and ready to use.");
+        }
 
         return redirect()->route('admin.catalog.attribute-groups.index')->with('success', 'Attribute group created.');
     }
@@ -89,6 +93,10 @@ class AttributeGroupController extends Controller
             'sort_order'  => $request->integer('sort_order', 0),
             'is_active'   => $request->boolean('is_active', true),
         ]);
+
+        if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
+            return redirect($request->string('redirect_to'))->with('success', "Attribute group '{$attributeGroup->name}' updated.");
+        }
 
         return redirect()->route('admin.catalog.attribute-groups.index')->with('success', 'Attribute group updated.');
     }

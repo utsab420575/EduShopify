@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -21,6 +22,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Account extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::creating(function (Account $account) {
+            if (empty($account->account_number)) {
+                $account->account_number = 'ACC-'.strtoupper(bin2hex(random_bytes(5)));
+            }
+        });
+    }
 
     protected $fillable = [
         'account_number',
@@ -78,6 +88,13 @@ class Account extends Model
     public function members(): HasMany
     {
         return $this->hasMany(AccountMember::class, 'account_id');
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'account_members', 'account_id', 'user_id')
+            ->withPivot(['status'])
+            ->withTimestamps();
     }
 
     public function memberInvitations(): HasMany
@@ -151,6 +168,11 @@ class Account extends Model
         return $this->hasMany(SupplierServiceArea::class, 'supplier_account_id');
     }
 
+    public function supplierCategories(): HasMany
+    {
+        return $this->hasMany(SupplierCategory::class, 'supplier_account_id');
+    }
+
     public function supplierDocuments(): HasMany
     {
         return $this->hasMany(SupplierDocument::class, 'supplier_account_id');
@@ -169,6 +191,11 @@ class Account extends Model
     public function businessHours(): HasMany
     {
         return $this->hasMany(BusinessHour::class, 'supplier_account_id');
+    }
+
+    public function socialLinks(): MorphMany
+    {
+        return $this->morphMany(SocialLink::class, 'socialable');
     }
 
     public function supplierTypes(): BelongsToMany

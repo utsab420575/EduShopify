@@ -6,20 +6,18 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-/**
- * Table: messages.
- *
- * Buyer/supplier message: both sender fields set. Admin message: only
- * sender_user_id. System message: both null, with detail in metadata.
- */
-class Message extends Model
+class Message extends Model implements HasMedia
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, InteractsWithMedia, SoftDeletes;
 
     protected $fillable = [
         'conversation_id',
+        'reply_to_message_id',
         'sender_account_id',
         'sender_user_id',
         'message_type',
@@ -36,9 +34,32 @@ class Message extends Model
         ];
     }
 
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('attachments')
+            ->useDisk(config('media-library.disk_name', 'local'));
+    }
+
+    /* ── Relationships ──────────────────────────────────────────────────── */
+
     public function conversation(): BelongsTo
     {
         return $this->belongsTo(Conversation::class, 'conversation_id');
+    }
+
+    public function replyTo(): BelongsTo
+    {
+        return $this->belongsTo(Message::class, 'reply_to_message_id');
+    }
+
+    public function replies(): HasMany
+    {
+        return $this->hasMany(Message::class, 'reply_to_message_id');
+    }
+
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(MessageReceipt::class, 'message_id');
     }
 
     public function senderAccount(): BelongsTo
@@ -51,10 +72,14 @@ class Message extends Model
         return $this->belongsTo(User::class, 'sender_user_id');
     }
 
+    /* ── Scopes ─────────────────────────────────────────────────────────── */
+
     public function scopeSystem(Builder $query): Builder
     {
         return $query->where('message_type', 'system');
     }
+
+    /* ── Helpers ────────────────────────────────────────────────────────── */
 
     public function isSystem(): bool
     {
@@ -69,5 +94,31 @@ class Message extends Model
     public function wasEdited(): bool
     {
         return $this->edited_at !== null;
+    }
+
+    /**
+     * True if at least one recipient user has received/acknowledged delivery.
+     */
+    public function isDelivered(): bool
+    {
+        return $this->receipts()->whereNotNull('delivered_at')->exists();
+    }
+
+    /**
+     * True if at least one recipient user has opened/seen the message.
+     */
+    public function isSeen(): bool
+    {
+        return $this->receipts()->whereNotNull('seen_at')->exists();
+    }
+
+    public function isDeliveredTo(int $userId): bool
+    {
+        return $this->receipts()->where('user_id', $userId)->whereNotNull('delivered_at')->exists();
+    }
+
+    public function isSeenBy(int $userId): bool
+    {
+        return $this->receipts()->where('user_id', $userId)->whereNotNull('seen_at')->exists();
     }
 }

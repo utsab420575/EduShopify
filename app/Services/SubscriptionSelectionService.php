@@ -12,14 +12,21 @@ use Illuminate\Validation\ValidationException;
 class SubscriptionSelectionService
 {
     /**
-     * Select a plan for an active Supplier account.
+     * Select a plan for a Supplier account.
+     *
+     * Deliberately relaxed from requiring an *active* (approved) capability
+     * to requiring only that a supplier capability record exists: the
+     * Supplier Application wizard now collects plan selection as its final
+     * step, before Admin review, so the capability is still `draft` at this
+     * point. Post-approval callers (e.g. the standalone plan-selection page
+     * for an already-approved account) are unaffected — their capability is
+     * already `active`, which still satisfies this check.
      */
     public function select(Account $account, SubscriptionPlan $plan, User $user): Subscription
     {
-        // Require active supplier capability
-        if (! $account->hasActiveCapability('supplier')) {
+        if (! $account->hasCapability('supplier')) {
             throw ValidationException::withMessages([
-                'capability' => 'Plan selection requires an active Supplier capability.',
+                'capability' => 'Plan selection requires a Supplier capability.',
             ]);
         }
 

@@ -20,6 +20,7 @@ class ListingVariant extends Model
         'listing_id',
         'sku',
         'name',
+        'combination_key',
         'price',
         'compare_at_price',
         'currency_code',
@@ -30,7 +31,6 @@ class ListingVariant extends Model
         'min_order_quantity',
         'unit_id',
         'lead_time_days',
-        'primary_image_media_id',
         'is_active',
         'sort_order',
     ];
@@ -57,6 +57,47 @@ class ListingVariant extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'unit_id');
+    }
+
+    public function mediaAssignments(): HasMany
+    {
+        return $this->hasMany(ListingVariantMedia::class, 'listing_variant_id')->orderBy('sort_order');
+    }
+
+    public function images()
+    {
+        return $this->belongsToMany(
+            \Spatie\MediaLibrary\MediaCollections\Models\Media::class,
+            'listing_variant_media',
+            'listing_variant_id',
+            'media_id'
+        )->withPivot(['is_primary', 'sort_order'])->withTimestamps()->orderByPivot('sort_order');
+    }
+
+    public function primaryImage()
+    {
+        return $this->images()->wherePivot('is_primary', true);
+    }
+
+    public static function generateCombinationKey(array $attributes): ?string
+    {
+        if (empty($attributes)) {
+            return null;
+        }
+
+        $normalized = collect($attributes)
+            ->filter(fn ($val) => $val !== null && $val !== '')
+            ->map(function ($value, $attributeId) {
+                return [
+                    'attribute_id' => (int) $attributeId,
+                    'value'        => trim((string) $value),
+                ];
+            })
+            ->sortBy('attribute_id')
+            ->map(fn ($item) => $item['attribute_id'] . ':' . $item['value'])
+            ->implode('|');
+
+        return !empty($normalized) ? sha1($normalized) : null;
     }
 
     public function variantAttributes(): HasMany

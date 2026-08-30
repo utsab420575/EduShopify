@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             LanguageSeeder::class,
             CurrencySeeder::class,
+            UnitSeeder::class,
             GeographySeeder::class,
         ]);
 
@@ -26,6 +27,11 @@ class DatabaseSeeder extends Seeder
             DocumentTypeSeeder::class,
             CapabilityTypeSeeder::class,
             DocumentTypeEnableSeeder::class,
+            InputTypeSeeder::class,
+            PricingTypeSeeder::class,
+            SalesModeSeeder::class,
+            ListingTypeSeeder::class,
+            VisibilityTypeSeeder::class,
         ]);
 
         // 2a. Capability Settings

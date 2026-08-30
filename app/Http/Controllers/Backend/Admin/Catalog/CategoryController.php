@@ -48,7 +48,7 @@ class CategoryController extends Controller
 
     public function store(CategoryRequest $request)
     {
-        Category::create($request->validated() + [
+        $category = Category::create($request->validated() + [
             'slug' => $this->uniqueSlug($request->string('name')),
             'approval_status' => 'approved',
             'created_by_user_id' => $this->admin()->id,
@@ -57,7 +57,12 @@ class CategoryController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return redirect()->route('admin.catalog.categories.index')->with('success', 'Category created.');
+        if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
+            return redirect($request->string('redirect_to'))->with('success', "'{$category->name}' created.");
+        }
+
+        return redirect()->route('admin.catalog.categories.attributes.index', $category)
+            ->with('success', "'{$category->name}' created. Now assign the specification attributes suppliers should fill in for this category.");
     }
 
     public function edit(Category $category)
@@ -75,6 +80,10 @@ class CategoryController extends Controller
         $category->update($request->validated() + [
             'is_active' => $request->boolean('is_active', true),
         ]);
+
+        if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
+            return redirect($request->string('redirect_to'))->with('success', "'{$category->name}' updated.");
+        }
 
         return redirect()->route('admin.catalog.categories.index')->with('success', 'Category updated.');
     }

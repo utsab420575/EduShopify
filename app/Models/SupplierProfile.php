@@ -41,18 +41,18 @@ class SupplierProfile extends Model
         'banner',
         'profile_photo',
         'description',
-        'socials',
         'rating',
         'reviews_count',
         'quotation_response_rate',
         'average_response_minutes',
         'profile_completed_at',
+        'current_step',
+        'max_step_reached',
     ];
 
     protected function casts(): array
     {
         return [
-            'socials'                  => 'array',
             'founded_year'             => 'integer',
             'employees'                => 'integer',
             'rating'                   => 'decimal:2',
@@ -60,6 +60,8 @@ class SupplierProfile extends Model
             'quotation_response_rate'  => 'decimal:2',
             'average_response_minutes' => 'integer',
             'profile_completed_at'     => 'datetime',
+            'current_step'             => 'integer',
+            'max_step_reached'         => 'integer',
         ];
     }
 

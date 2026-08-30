@@ -18,16 +18,22 @@ class ExhibitionSeeder extends Seeder
         ];
 
         foreach ($exhibitions as $i => $ex) {
-            DB::table('exhibitions')->insert([
-                'name'       => $ex['name'],
-                'slug'       => $ex['slug'],
-                'website'    => $ex['website'],
-                'logo'       => null,
-                'is_active'  => true,
-                'sort_order' => ($i + 1) * 10,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('exhibitions')->updateOrInsert(
+                ['slug' => $ex['slug']],
+                [
+                    // 'name' is translatable (Spatie HasTranslations) — the
+                    // model expects JSON per locale, so writing via the query
+                    // builder (which skips the model's mutator) must encode
+                    // it manually or every lookup silently returns empty.
+                    'name'       => json_encode(['en' => $ex['name']]),
+                    'website'    => $ex['website'],
+                    'logo'       => null,
+                    'is_active'  => true,
+                    'sort_order' => ($i + 1) * 10,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
         }
     }
 }

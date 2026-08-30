@@ -51,7 +51,9 @@
                         </td>
                         <td class="px-5 py-3.5 text-right">
                             @if(!$m->is_primary_owner && $m->user_id !== $user->id)
-                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ route('supplier.members.permissions.edit', $m) }}" class="text-indigo-600 hover:underline text-[11px] font-medium">
+                                        Permissions
+                                    </a>
                                     @if($m->status === 'active')
                                         <form method="POST" action="{{ route('supplier.members.suspend', $m) }}">
                                             @csrf

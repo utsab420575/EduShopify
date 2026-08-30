@@ -10,6 +10,8 @@ use App\Models\Attribute;
 use App\Models\AttributeGroup;
 use App\Models\AttributeSuggestion;
 use App\Models\AttributeValue;
+use App\Models\Category;
+use App\Models\InputType;
 use App\Models\Unit;
 use App\Services\AttributeSuggestionService;
 use Illuminate\Http\Request;
@@ -37,7 +39,7 @@ class AttributeController extends Controller
                     $q->where('is_active', false);
                 }
             })
-            ->with(['attributeGroup', 'unit'])
+            ->with(['attributeGroup', 'unit', 'inputType'])
             ->withCount('values')
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -46,11 +48,13 @@ class AttributeController extends Controller
 
         $attributeGroups = AttributeGroup::ordered()->get();
         $units = Unit::orderBy('name')->get();
+        $inputTypes = InputType::active()->ordered()->get();
 
         return view('backend.admin.catalog.attributes.index', [
             'attributes'      => $attributes,
             'attributeGroups' => $attributeGroups,
             'units'           => $units,
+            'inputTypes'      => $inputTypes,
             'search'          => $request->string('search')->toString(),
             'groupId'         => $request->string('group_id')->toString(),
             'inputType'       => $request->string('input_type')->toString(),
@@ -64,15 +68,16 @@ class AttributeController extends Controller
         $this->authorize('platform.attributes.manage');
 
         return view('backend.admin.catalog.attributes.create', [
-            'attribute'       => new Attribute(),
+            'attribute'       => new Attribute(['is_active' => true, 'sort_order' => 0]),
             'attributeGroups' => AttributeGroup::active()->ordered()->get(),
             'units'           => Unit::orderBy('name')->get(),
+            'inputTypes'      => InputType::active()->ordered()->get(),
         ]);
     }
 
     public function store(AttributeRequest $request)
     {
-        DB::transaction(function () use ($request) {
+        $attribute = DB::transaction(function () use ($request) {
             $name = $request->string('name')->toString();
             $slug = $request->filled('slug')
                 ? Str::slug($request->string('slug'))
@@ -80,11 +85,20 @@ class AttributeController extends Controller
 
             $validationRules = $this->buildValidationRules($request);
 
+            $inputTypeId = $request->filled('input_type_id') ? $request->integer('input_type_id') : null;
+            $inputTypeModel = $inputTypeId ? InputType::find($inputTypeId) : null;
+            $inputTypeCode = $inputTypeModel?->code ?? $request->string('input_type', 'text')->toString();
+            if (! $inputTypeId && $inputTypeCode) {
+                $inputTypeId = InputType::where('code', $inputTypeCode)->value('id');
+            }
+
             $attribute = Attribute::create([
                 'attribute_group_id' => $request->filled('attribute_group_id') ? $request->integer('attribute_group_id') : null,
                 'name'               => $name,
                 'slug'               => $slug,
-                'input_type'         => $request->string('input_type')->toString(),
+                'input_type'         => $inputTypeCode,
+                'input_type_id'      => $inputTypeId,
+                'allow_custom_value' => $request->boolean('allow_custom_value'),
                 'unit_id'            => $request->filled('unit_id') ? $request->integer('unit_id') : null,
                 'placeholder'        => $request->input('placeholder'),
                 'validation_rules'   => !empty($validationRules) ? $validationRules : null,
@@ -96,7 +110,32 @@ class AttributeController extends Controller
             ]);
 
             $this->syncValues($attribute, $request->input('values'));
+
+            // Optional: immediately attach to the category the admin was configuring
+            // when this attribute was created from the category assignment screen.
+            if ($request->filled('assign_to_category_id')) {
+                $category = Category::find($request->integer('assign_to_category_id'));
+
+                if ($category && ! $category->attributes()->where('attribute_id', $attribute->id)->exists()) {
+                    $category->attributes()->attach($attribute->id, [
+                        'is_required'   => $attribute->is_required,
+                        'is_filterable' => $attribute->is_filterable,
+                        'is_variant'    => $attribute->is_variant,
+                        'sort_order'    => $attribute->sort_order,
+                    ]);
+                }
+            }
+
+            return $attribute;
         });
+
+        if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
+            $message = $request->filled('assign_to_category_id')
+                ? "'{$attribute->name}' created and assigned to this category."
+                : "Attribute '{$attribute->name}' created.";
+
+            return redirect($request->string('redirect_to'))->with('success', $message);
+        }
 
         return redirect()->route('admin.catalog.attributes.index')->with('success', 'Attribute created.');
     }
@@ -106,9 +145,10 @@ class AttributeController extends Controller
         $this->authorize('platform.attributes.manage');
 
         return view('backend.admin.catalog.attributes.edit', [
-            'attribute'       => $attribute->load(['attributeGroup', 'values' => fn ($q) => $q->orderBy('sort_order')]),
+            'attribute'       => $attribute->load(['attributeGroup', 'inputType', 'values' => fn ($q) => $q->orderBy('sort_order')]),
             'attributeGroups' => AttributeGroup::ordered()->get(),
             'units'           => Unit::orderBy('name')->get(),
+            'inputTypes'      => InputType::active()->ordered()->get(),
         ]);
     }
 
@@ -122,11 +162,20 @@ class AttributeController extends Controller
 
             $validationRules = $this->buildValidationRules($request);
 
+            $inputTypeId = $request->filled('input_type_id') ? $request->integer('input_type_id') : $attribute->input_type_id;
+            $inputTypeModel = $inputTypeId ? InputType::find($inputTypeId) : null;
+            $inputTypeCode = $inputTypeModel?->code ?? $request->string('input_type', $attribute->input_type)->toString();
+            if (! $inputTypeId && $inputTypeCode) {
+                $inputTypeId = InputType::where('code', $inputTypeCode)->value('id');
+            }
+
             $attribute->update([
                 'attribute_group_id' => $request->filled('attribute_group_id') ? $request->integer('attribute_group_id') : null,
                 'name'               => $name,
                 'slug'               => $slug,
-                'input_type'         => $request->string('input_type')->toString(),
+                'input_type'         => $inputTypeCode,
+                'input_type_id'      => $inputTypeId,
+                'allow_custom_value' => $request->boolean('allow_custom_value'),
                 'unit_id'            => $request->filled('unit_id') ? $request->integer('unit_id') : null,
                 'placeholder'        => $request->input('placeholder'),
                 'validation_rules'   => !empty($validationRules) ? $validationRules : null,
@@ -139,6 +188,10 @@ class AttributeController extends Controller
 
             $this->syncValues($attribute, $request->input('values'));
         });
+
+        if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
+            return redirect($request->string('redirect_to'))->with('success', "Attribute '{$attribute->name}' updated.");
+        }
 
         return redirect()->route('admin.catalog.attributes.index')->with('success', 'Attribute updated.');
     }

@@ -54,7 +54,10 @@ class RoleRequestController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        activity('access_control')->causedBy($this->admin())->performedOn($roleRequest)->log('Role request approved');
+        // 'rbac', not 'access_control' — RbacAuditLogController only ever
+        // queries log_name = 'rbac', so this must match or the entry is
+        // silently invisible on the Audit Logs page.
+        activity('rbac')->causedBy($this->admin())->performedOn($roleRequest)->log('Role request approved');
 
         return back()->with('success', 'Role request approved — the role is now available to the account.');
     }
@@ -69,7 +72,7 @@ class RoleRequestController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        activity('access_control')->causedBy($this->admin())->performedOn($roleRequest)
+        activity('rbac')->causedBy($this->admin())->performedOn($roleRequest)
             ->withProperties(['reason' => $request->string('reason')])->log('Role request rejected');
 
         return back()->with('success', 'Role request rejected.');

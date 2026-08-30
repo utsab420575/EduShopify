@@ -35,6 +35,7 @@ Route::middleware('guest')->group(function () {
 
     // Unified multi-step Livewire registration wizard (Account Type → Capability → Details)
     Route::get('/register', AccountRegister::class)->name('register');
+    Route::post('/register', fn () => redirect()->route('register'));
 
     // Login page
     Route::view('/login', 'auth.login')->name('login');
@@ -237,16 +238,25 @@ require __DIR__.'/backend/admin.php';
 
 /* ── Supplier Onboarding (Authenticated + Verified) ── */
 Route::middleware(['auth', 'verified'])->prefix('supplier/onboarding')->name('supplier.onboarding.')->group(function () {
-    Route::get('/profile', \App\Livewire\Auth\SupplierProfileOnboarding::class)->name('profile');
-    Route::get('/documents', \App\Livewire\Auth\SupplierDocumentOnboarding::class)->name('documents');
-    Route::get('/review', \App\Livewire\Auth\SupplierApplicationReview::class)->name('review');
-    Route::get('/revision', \App\Livewire\Auth\SupplierProfileOnboarding::class)->name('revision');
+    // profile/documents/review/revision all resolve to the same single
+    // 7-step wizard now — SupplierApplication::mount() figures out where to
+    // resume from the account's current profile/document/capability state.
+    Route::get('/profile', \App\Livewire\Auth\SupplierApplication::class)->name('profile');
+    Route::get('/documents', \App\Livewire\Auth\SupplierApplication::class)->name('documents');
+    Route::get('/review', \App\Livewire\Auth\SupplierApplication::class)->name('review');
+    Route::get('/revision', \App\Livewire\Auth\SupplierApplication::class)->name('revision');
+    // .plan stays on the old standalone component — the only remaining path
+    // to it is an already-approved account with no subscription yet; new
+    // applicants now select a plan inside the wizard above (step 7).
     Route::get('/plan', \App\Livewire\Auth\SupplierPlanOnboarding::class)->name('plan');
 
-    // Reuses the same status-aware view as `supplier.pending` (rejected/revision/pending
-    // are all derived from the live capability status inside that view).
+    // supplier.dashboard already re-checks the live capability status on
+    // every load and renders the correct pending/rejected/revision/suspended
+    // (or full active) view accordingly — see DashboardController::index().
+    // Redirecting here instead of rendering a frozen static page means a
+    // refresh always reflects the current status, approval included.
     Route::get('/rejected', function () {
-        return view('auth.supplier-pending');
+        return redirect()->route('supplier.dashboard');
     })->name('rejected');
 
     Route::get('/subscription-pending', function () {
@@ -259,8 +269,13 @@ Route::middleware(['auth', 'verified'])->prefix('supplier/onboarding')->name('su
    these use the flatter 'supplier.*' route names referenced across middleware, emails, and
    the public pricing page — kept separate from the 'supplier.onboarding.*' wizard steps. ── */
 Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->group(function () {
+    // supplier.dashboard already re-checks the live capability status on
+    // every load and renders the correct pending/rejected/revision/suspended
+    // (or full active) view accordingly — see DashboardController::index().
+    // Redirecting here instead of rendering a frozen static page means a
+    // refresh always reflects the current status, approval included.
     Route::get('/pending', function () {
-        return view('auth.supplier-pending');
+        return redirect()->route('supplier.dashboard');
     })->name('pending');
 
     Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');

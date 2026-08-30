@@ -75,7 +75,7 @@ class SupplierDirectoryController extends Controller
             ->with(['mainCategory', 'brand']);
 
         if ($tab !== 'all') {
-            $listingsQuery->where('listing_type', rtrim($tab, 's'));
+            $listingsQuery->whereHas('listingType', fn ($q) => $q->where('code', rtrim($tab, 's')));
         }
 
         $listings = $listingsQuery->latest('published_at')->paginate(12)->withQueryString();

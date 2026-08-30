@@ -40,6 +40,7 @@
                     <td class="px-5 py-3.5 text-right">
                         @unless($member->is_primary_owner)
                             <div class="flex items-center justify-end gap-1.5">
+                                <a href="{{ route('buyer.members.permissions.edit', $member) }}" title="Direct Permissions" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-indigo-600 hover:bg-indigo-50"><i class="fa-solid fa-key"></i></a>
                                 @if($member->status === 'active')
                                     <form method="POST" action="{{ route('buyer.members.suspend', $member) }}">
                                         @csrf

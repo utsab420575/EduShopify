@@ -18,6 +18,7 @@ class SupplierApprovalValidator
         $this->validateProfileComplete($account);
         $this->validateRequiredDocumentsPresent($account);
         $this->validateRequiredDocumentsVerified($account);
+        $this->validateAllUploadedDocumentsVerified($account);
         $this->validateDocumentsNotExpired($account);
     }
 
@@ -103,26 +104,52 @@ class SupplierApprovalValidator
     }
 
     /**
-     * 4. No required current document must be expired.
+     * 4. ALL current uploaded documents (mandatory, optional, and custom) must be verified.
+     */
+    public function validateAllUploadedDocumentsVerified(Account $account): void
+    {
+        $currentDocs = SupplierDocument::where('supplier_account_id', $account->id)
+            ->where('is_current', true)
+            ->with('documentType')
+            ->get();
+
+        foreach ($currentDocs as $doc) {
+            $typeName = $doc->documentType?->name ?? ($doc->custom_name ?: "Document #{$doc->id}");
+
+            if ($doc->status === 'pending') {
+                throw ValidationException::withMessages([
+                    'documents' => "Supplier approval failed: Document '{$typeName}' is still pending verification.",
+                ]);
+            }
+
+            if ($doc->status === 'rejected') {
+                throw ValidationException::withMessages([
+                    'documents' => "Supplier approval failed: Document '{$typeName}' is rejected. Please request revision or re-upload.",
+                ]);
+            }
+
+            if ($doc->status !== 'verified') {
+                throw ValidationException::withMessages([
+                    'documents' => "Supplier approval failed: Document '{$typeName}' is not verified.",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * 5. No current verified document must be expired.
      */
     public function validateDocumentsNotExpired(Account $account): void
     {
-        $requiredTypeIds = DocumentType::where('is_active', true)
-            ->whereHas('capabilityEnables', function ($q) {
-                $q->whereHas('capabilityType', fn($c) => $c->where('code', 'supplier'))
-                  ->where('is_required', true);
-            })
-            ->pluck('id');
+        $currentDocs = SupplierDocument::where('supplier_account_id', $account->id)
+            ->where('is_current', true)
+            ->where('status', 'verified')
+            ->with('documentType')
+            ->get();
 
-        foreach ($requiredTypeIds as $typeId) {
-            $doc = SupplierDocument::where('supplier_account_id', $account->id)
-                ->where('document_type_id', $typeId)
-                ->where('is_current', true)
-                ->where('status', 'verified')
-                ->first();
-
-            if ($doc && $doc->expires_at && $doc->expires_at->isPast()) {
-                $typeName = $doc->documentType?->name ?? "Type #{$typeId}";
+        foreach ($currentDocs as $doc) {
+            if ($doc->expires_at && $doc->expires_at->isPast()) {
+                $typeName = $doc->documentType?->name ?? ($doc->custom_name ?: "Document #{$doc->id}");
 
                 throw ValidationException::withMessages([
                     'documents' => "Supplier approval failed: Document '{$typeName}' has expired on {$doc->expires_at->format('Y-m-d')}.",

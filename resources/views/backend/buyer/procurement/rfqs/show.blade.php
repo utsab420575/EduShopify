@@ -25,6 +25,7 @@
                 <button @click="$dispatch('open-modal-cancel-rfq')" class="text-sm font-medium px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">Cancel RFQ</button>
             @endcan
             @can('compare', $rfq)
+                <a href="{{ route('buyer.quotations.index', ['rfq' => $rfq->id]) }}" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">View Responses</a>
                 <a href="{{ route('buyer.quotations.compare', $rfq) }}" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Compare Quotations</a>
             @endcan
         </x-slot:actions>
@@ -67,6 +68,39 @@
                 </div>
 
                 <div class="space-y-6">
+                    @php($vt = $rfq->getRelationValue('visibilityType'))
+                    <x-backend.form-card title="Supplier Targeting">
+                        <dl class="space-y-3 text-sm">
+                            <div class="flex justify-between">
+                                <dt class="text-gray-500">Visibility</dt>
+                                <dd class="text-gray-900 font-medium">{{ $vt?->name ?? '—' }}</dd>
+                            </div>
+                            @if($vt?->code === 'open_matching' && $rfq->targetFilters->first())
+                                @php($tf = $rfq->targetFilters->first())
+                                <div class="flex justify-between"><dt class="text-gray-500">Category Filter</dt><dd class="text-gray-900 font-medium">{{ $tf->category?->name ?? 'Any category' }}</dd></div>
+                                <div class="flex justify-between">
+                                    <dt class="text-gray-500">Location Match</dt>
+                                    <dd class="text-gray-900 font-medium">
+                                        @if($tf->location_match_level === 'none' || !$tf->location_match_level)
+                                            Anywhere
+                                        @else
+                                            {{ ucfirst($tf->location_match_level) }} — {{ collect([$tf->city?->name, $tf->state?->name, $tf->country?->name])->filter()->implode(', ') ?: 'Not set' }}
+                                        @endif
+                                    </dd>
+                                </div>
+                            @elseif(in_array($vt?->code, ['direct', 'invited']))
+                                <div class="flex justify-between"><dt class="text-gray-500">Suppliers Invited</dt><dd class="text-gray-900 font-medium">{{ $rfq->invitedSupplierAccounts->count() }}</dd></div>
+                            @endif
+                        </dl>
+                    </x-backend.form-card>
+
+                    <x-backend.form-card title="Rules">
+                        <dl class="space-y-3 text-sm">
+                            <div class="flex justify-between"><dt class="text-gray-500">Partial Quotations</dt><dd class="text-gray-900 font-medium">{{ $rfq->allow_partial_quotation ? 'Allowed' : 'Not allowed' }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500">Alternative Products</dt><dd class="text-gray-900 font-medium">{{ $rfq->allow_alternative_products ? 'Allowed' : 'Not allowed' }}</dd></div>
+                        </dl>
+                    </x-backend.form-card>
+
                     <x-backend.form-card title="Timeline">
                         <dl class="space-y-3 text-sm">
                             <div class="flex justify-between"><dt class="text-gray-500">Budget</dt><dd class="text-gray-900 font-medium">{{ $rfq->budget_min || $rfq->budget_max ? number_format((float) $rfq->budget_min, 2) . ' - ' . number_format((float) $rfq->budget_max, 2) . ' ' . $rfq->currency_code : '—' }}</dd></div>
@@ -89,34 +123,43 @@
             </div>
         </div>
 
-        <div x-show="tab === 'items'" x-cloak>
-            <x-backend.table>
-                <x-slot:head>
-                    <tr>
-                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
-                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
-                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quantity</th>
-                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Est. Unit Price</th>
-                    </tr>
-                </x-slot:head>
-                @foreach($rfq->items as $item)
-                    <tr>
-                        <td class="px-5 py-3.5">
-                            <p class="text-sm font-medium text-gray-900">{{ $item->item_name }}</p>
-                            @if($item->description)<p class="text-xs text-gray-400">{{ Str::limit($item->description, 80) }}</p>@endif
-                        </td>
-                        <td class="px-5 py-3.5 text-sm text-gray-600">{{ $item->category?->name ?? '—' }}</td>
-                        <td class="px-5 py-3.5 text-sm text-gray-600">{{ rtrim(rtrim((string) $item->quantity, '0'), '.') }} {{ $item->unit?->symbol ?? $item->custom_unit }}</td>
-                        <td class="px-5 py-3.5 text-sm text-gray-600">{{ $item->estimated_unit_price ? number_format($item->estimated_unit_price, 2) : '—' }}</td>
-                    </tr>
-                @endforeach
-            </x-backend.table>
+        <div x-show="tab === 'items'" x-cloak class="space-y-4">
+            @foreach($rfq->items as $item)
+                <x-backend.form-card>
+                    <div class="flex items-start justify-between gap-3 mb-1">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
+                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
+                                    {{ $item->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
+                                </span>
+                            </div>
+                            @if($item->description)<p class="text-xs text-gray-500 mt-1">{{ $item->description }}</p>@endif
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-sm text-gray-900 font-medium">{{ rtrim(rtrim((string) $item->quantity, '0'), '.') }} {{ $item->unit?->symbol ?? $item->custom_unit }}</p>
+                            <p class="text-xs text-gray-400">{{ $item->estimated_unit_price ? 'Est. '.number_format($item->estimated_unit_price, 2).' / unit' : 'No estimate' }}</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-3">{{ $item->category?->name ?? 'No category selected' }}</p>
+
+                    @if($item->attributeValues->isNotEmpty())
+                        <div class="flex flex-wrap gap-1.5 pt-3 border-t border-gray-100">
+                            @foreach($item->attributeValues as $value)
+                                <span class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
+                                    <span class="font-medium text-gray-500">{{ $value->attribute?->name }}:</span> {{ $value->formattedValue() }}
+                                </span>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-backend.form-card>
+            @endforeach
         </div>
 
         <div x-show="tab === 'suppliers'" x-cloak>
-            <x-backend.form-card :title="$rfq->visibility_type === 'global' ? 'Global RFQ' : 'Selected Suppliers'">
-                @if($rfq->visibility_type === 'global')
-                    <p class="text-sm text-gray-500">This RFQ is visible to all eligible suppliers on the marketplace.</p>
+            <x-backend.form-card :title="$rfq->getRelationValue('visibilityType')?->name ?? ($rfq->isOpenMarketplace() ? 'Open Marketplace RFQ' : 'Selected Suppliers')">
+                @if($rfq->isOpenMarketplace())
+                    <p class="text-sm text-gray-500">{{ $rfq->getRelationValue('visibilityType')?->description ?: 'This RFQ is visible to all eligible matching suppliers on the marketplace.' }}</p>
                 @elseif($rfq->invitedSupplierAccounts->isEmpty())
                     <p class="text-sm text-gray-400">No suppliers invited yet.</p>
                 @else

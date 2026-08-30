@@ -126,6 +126,18 @@ class SupplierDocumentService
      */
     public function resetToPending(SupplierDocument $document, User $admin): void
     {
+        $hasActiveSupplierCapability = $document->supplierAccount
+            ?->capabilities()
+            ->whereHas('capabilityType', fn($q) => $q->where('code', 'supplier'))
+            ->where('status', 'active')
+            ->exists();
+
+        if ($hasActiveSupplierCapability) {
+            throw ValidationException::withMessages([
+                'document' => 'Cannot undo document verification while the Supplier capability is active. Please undo capability approval first.',
+            ]);
+        }
+
         $document->update([
             'status'              => 'pending',
             'rejection_reason'    => null,

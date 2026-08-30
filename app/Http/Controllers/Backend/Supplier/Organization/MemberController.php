@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Backend\Supplier\Organization;
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
 use App\Models\AccountMember;
+use App\Models\Permission;
+use App\Services\RbacAuditLogger;
 use Illuminate\Http\Request;
 
 class MemberController extends Controller
@@ -17,16 +19,70 @@ class MemberController extends Controller
         abort_unless($account->isOrganization(), 403);
 
         $members = $account->members()
-            ->with(['user.roles'])
+            ->with(['user.roles', 'user.permissions'])
             ->orderByDesc('is_primary_owner')
             ->orderBy('created_at')
             ->get();
 
         return view('backend.supplier.organization.members.index', [
             'account' => $account,
-            'user' => $this->currentUser(),
+            'user'    => $this->currentUser(),
             'members' => $members,
         ]);
+    }
+
+    public function editPermissions(AccountMember $member)
+    {
+        $this->authorizeMember($member);
+        $account = $this->currentAccount();
+
+        $member->user->activateTeamContext();
+        $directPermissions = $member->user->permissions()->wherePivot('account_id', $account->id)->pluck('name')->toArray();
+        $inheritedPermissions = $member->user->getPermissionsViaRoles()->pluck('name')->toArray();
+
+        $permissionGroups = Permission::active()
+            ->whereIn('capability_scope', ['supplier', 'common', 'both', 'all'])
+            ->orderBy('group_name')
+            ->orderBy('name')
+            ->get()
+            ->groupBy('group_name');
+
+        return view('backend.supplier.organization.members.permissions', [
+            'account'              => $account,
+            'user'                 => $this->currentUser(),
+            'member'               => $member,
+            'directPermissions'    => $directPermissions,
+            'inheritedPermissions' => $inheritedPermissions,
+            'permissionGroups'     => $permissionGroups,
+        ]);
+    }
+
+    public function updatePermissions(Request $request, AccountMember $member)
+    {
+        $this->authorizeMember($member);
+        $account = $this->currentAccount();
+
+        $validated = $request->validate([
+            'direct_permissions'   => ['nullable', 'array'],
+            'direct_permissions.*' => ['string', 'exists:permissions,name'],
+        ]);
+
+        $member->user->activateTeamContext();
+
+        $oldDirect = $member->user->permissions()->wherePivot('account_id', $account->id)->pluck('name')->toArray();
+        $newDirect = $validated['direct_permissions'] ?? [];
+
+        $member->user->syncPermissions($newDirect);
+
+        $added = array_values(array_diff($newDirect, $oldDirect));
+        $removed = array_values(array_diff($oldDirect, $newDirect));
+
+        if (!empty($added) || !empty($removed)) {
+            RbacAuditLogger::logUserPermissionOverride($member->user, $added, $removed, $account->id);
+        }
+
+        return redirect()->route('supplier.members.index')
+            ->with('success', "Direct permissions updated for {$member->user->name}.");
     }
 
     public function suspend(AccountMember $member)
@@ -54,8 +110,8 @@ class MemberController extends Controller
         $this->guardLastOwner($member, 'remove');
 
         $member->update([
-            'status' => 'removed',
-            'removed_at' => now(),
+            'status'             => 'removed',
+            'removed_at'         => now(),
             'removed_by_user_id' => $this->currentUser()->id,
         ]);
 

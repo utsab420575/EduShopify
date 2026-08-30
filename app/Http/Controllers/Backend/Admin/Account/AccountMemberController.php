@@ -40,4 +40,53 @@ class AccountMemberController extends Controller
             'status' => $request->string('status')->toString(),
         ]);
     }
+
+    public function update(Request $request, AccountMember $member)
+    {
+        $this->authorize('platform.accounts.suspend');
+
+        $validated = $request->validate([
+            'member_type' => ['required', 'in:owner,member'],
+            'status'      => ['required', 'in:invited,active,inactive,suspended,removed'],
+        ]);
+
+        if ($member->is_primary_owner && $validated['member_type'] !== 'owner') {
+            return back()->with('error', 'Cannot change membership type of the primary owner.');
+        }
+
+        $member->update($validated);
+
+        activity('moderation')->causedBy($this->admin())->performedOn($member)
+            ->withProperties($validated)
+            ->log('Account member status updated');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Account member updated successfully.']);
+        }
+
+        return back()->with('success', 'Account member updated successfully.');
+    }
+
+    public function destroy(Request $request, AccountMember $member)
+    {
+        $this->authorize('platform.accounts.suspend');
+
+        if ($member->is_primary_owner) {
+            return back()->with('error', 'Cannot remove primary owner. Please transfer ownership first.');
+        }
+
+        $member->update([
+            'status'             => 'removed',
+            'removed_at'         => now(),
+            'removed_by_user_id' => $this->admin()->id,
+        ]);
+
+        activity('moderation')->causedBy($this->admin())->performedOn($member)->log('Account member removed');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Account member removed successfully.']);
+        }
+
+        return back()->with('success', 'Account member removed successfully.');
+    }
 }

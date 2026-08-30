@@ -49,14 +49,30 @@ class SupplierDocumentController extends Controller
         return back()->with('success', 'Document rejected.');
     }
 
-    public function resetToPending(Account $account, SupplierDocument $document, SupplierDocumentService $service)
+    public function resetToPending(Request $request, Account $account, SupplierDocument $document, SupplierDocumentService $service)
     {
         $this->authorize('platform.supplier_documents.verify');
         abort_unless($document->supplier_account_id === $account->id, 404);
 
-        $service->resetToPending($document, $this->admin());
+        try {
+            $service->resetToPending($document, $this->admin());
+        } catch (\RuntimeException|\Illuminate\Validation\ValidationException $e) {
+            $message = $e instanceof \Illuminate\Validation\ValidationException
+                ? (collect($e->errors())->flatten()->first() ?? $e->getMessage())
+                : $e->getMessage();
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
+        }
 
         activity('moderation')->causedBy($this->admin())->performedOn($document)->log('Supplier document status reset to pending');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Document status has been reverted to Pending.', 'resolved' => false]);
+        }
 
         return back()->with('success', 'Document status has been reverted to Pending.');
     }
@@ -87,13 +103,29 @@ class SupplierDocumentController extends Controller
         return back()->with('success', 'Document rejected.');
     }
 
-    public function directReset(SupplierDocument $document, SupplierDocumentService $service)
+    public function directReset(Request $request, SupplierDocument $document, SupplierDocumentService $service)
     {
         $this->authorize('platform.supplier_documents.verify');
 
-        $service->resetToPending($document, $this->admin());
+        try {
+            $service->resetToPending($document, $this->admin());
+        } catch (\RuntimeException|\Illuminate\Validation\ValidationException $e) {
+            $message = $e instanceof \Illuminate\Validation\ValidationException
+                ? (collect($e->errors())->flatten()->first() ?? $e->getMessage())
+                : $e->getMessage();
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
+        }
 
         activity('moderation')->causedBy($this->admin())->performedOn($document)->log('Supplier document status reset to pending');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Document status has been reverted to Pending.', 'resolved' => false]);
+        }
 
         return back()->with('success', 'Document status has been reverted to Pending.');
     }

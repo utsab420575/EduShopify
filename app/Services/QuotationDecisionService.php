@@ -7,7 +7,9 @@ use App\Models\Quotation;
 use App\Models\QuotationRevisionRequest;
 use App\Models\RfqShortlist;
 use App\Models\User;
+use App\Notifications\DashboardNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -18,7 +20,7 @@ class QuotationDecisionService
 {
     public function shortlist(Quotation $quotation, Account $buyerAccount, User $user, ?string $notes = null): RfqShortlist
     {
-        return RfqShortlist::updateOrCreate(
+        $shortlist = RfqShortlist::updateOrCreate(
             ['rfq_id' => $quotation->rfq_id, 'quotation_id' => $quotation->id],
             [
                 'buyer_account_id'       => $buyerAccount->id,
@@ -26,6 +28,10 @@ class QuotationDecisionService
                 'notes'                  => $notes,
             ]
         );
+
+        $this->notifySupplier($quotation, "Your quotation {$quotation->quotation_number} was shortlisted by the buyer.");
+
+        return $shortlist;
     }
 
     public function removeFromShortlist(Quotation $quotation): void
@@ -48,6 +54,8 @@ class QuotationDecisionService
 
             $quotation->update(['status' => 'revision_requested']);
 
+            $this->notifySupplier($quotation, "The buyer requested changes to your quotation {$quotation->quotation_number}.", route('supplier.quotations.revision.create', $quotation));
+
             return $request;
         });
     }
@@ -64,6 +72,8 @@ class QuotationDecisionService
             'rejected_at'        => now(),
         ]);
 
+        $this->notifySupplier($quotation, "Your quotation {$quotation->quotation_number} was not selected by the buyer.");
+
         return $quotation;
     }
 
@@ -71,6 +81,15 @@ class QuotationDecisionService
     {
         if ($quotation->buyer_viewed_at === null) {
             $quotation->update(['buyer_viewed_at' => now()]);
+        }
+    }
+
+    private function notifySupplier(Quotation $quotation, string $message, ?string $url = null): void
+    {
+        $users = User::whereHas('accountMember', fn ($q) => $q->where('account_id', $quotation->supplier_account_id)->where('status', 'active'))->get();
+
+        if ($users->isNotEmpty()) {
+            Notification::send($users, new DashboardNotification($message, $url ?? route('supplier.quotations.show', $quotation)));
         }
     }
 }

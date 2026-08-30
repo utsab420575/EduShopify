@@ -105,9 +105,19 @@ class BuyerQuotationAwardTest extends TestCase
             ->assertOk()
             ->assertSee('Award This Quotation');
 
+        // The compare page shell renders client-side (localStorage-driven
+        // fetch to compare.data) — the server-rendered shell shows the RFQ
+        // context, not quotation figures; the data endpoint is what actually
+        // carries the grand_total, so both are asserted separately here.
         $this->actingAs($buyer)->get(route('buyer.quotations.compare', $rfq))
             ->assertOk()
-            ->assertSee('5,000.00');
+            ->assertSee('Science lab kits');
+
+        $this->actingAs($buyer)->postJson(route('buyer.quotations.compare.data', $rfq), [
+            'quotation_ids' => [$quotation->id],
+        ])
+            ->assertOk()
+            ->assertJsonPath('commercial.rows.0.grand_total', 5000);
 
         // Shortlist
         $this->actingAs($buyer)->post(route('buyer.quotations.shortlist', $quotation))

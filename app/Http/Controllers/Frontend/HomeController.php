@@ -28,14 +28,14 @@ class HomeController extends Controller
 
         $featuredProducts = PublicListingQuery::products()
             ->where('is_featured', true)
-            ->with(['mainCategory', 'brand', 'supplierAccount.supplierProfile'])
+            ->with(['mainCategory', 'brand', 'unit', 'primaryImage', 'media', 'productDetail', 'supplierAccount.supplierProfile'])
             ->latest('published_at')
             ->limit(8)
             ->get();
 
         if ($featuredProducts->count() < 4) {
             $featuredProducts = PublicListingQuery::products()
-                ->with(['mainCategory', 'brand', 'supplierAccount.supplierProfile'])
+                ->with(['mainCategory', 'brand', 'unit', 'primaryImage', 'media', 'productDetail', 'supplierAccount.supplierProfile'])
                 ->latest('published_at')
                 ->limit(8)
                 ->get();
@@ -43,14 +43,14 @@ class HomeController extends Controller
 
         $featuredServices = PublicListingQuery::services()
             ->where('is_featured', true)
-            ->with(['mainCategory', 'supplierAccount.supplierProfile'])
+            ->with(['mainCategory', 'primaryImage', 'media', 'serviceDetail', 'supplierAccount.supplierProfile'])
             ->latest('published_at')
             ->limit(8)
             ->get();
 
         if ($featuredServices->count() < 4) {
             $featuredServices = PublicListingQuery::services()
-                ->with(['mainCategory', 'supplierAccount.supplierProfile'])
+                ->with(['mainCategory', 'primaryImage', 'media', 'serviceDetail', 'supplierAccount.supplierProfile'])
                 ->latest('published_at')
                 ->limit(8)
                 ->get();

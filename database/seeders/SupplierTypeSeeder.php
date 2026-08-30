@@ -26,14 +26,17 @@ class SupplierTypeSeeder extends Seeder
         ];
 
         foreach ($types as $i => $name) {
-            DB::table('supplier_types')->insert([
-                'name'       => json_encode(['en' => $name['en']]),
-                'slug'       => Str::slug($name['en']),
-                'is_active'  => true,
-                'sort_order' => ($i + 1) * 10,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $slug = Str::slug($name['en']);
+            DB::table('supplier_types')->updateOrInsert(
+                ['slug' => $slug],
+                [
+                    'name'       => json_encode(['en' => $name['en']]),
+                    'is_active'  => true,
+                    'sort_order' => ($i + 1) * 10,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
         }
     }
 }

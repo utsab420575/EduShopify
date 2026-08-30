@@ -66,6 +66,13 @@ class CapabilitySettingSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'group_name' => 'messaging',
+                'name'       => 'allow_unrelated_messaging',
+                'payload'    => json_encode(['value' => true]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ];
 
         foreach ($settings as $setting) {

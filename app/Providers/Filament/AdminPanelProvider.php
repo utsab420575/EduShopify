@@ -30,6 +30,7 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->navigationGroups([
+                NavigationGroup::make('Roles And Permission')->icon('heroicon-o-shield-check'),
                 NavigationGroup::make('User Management'),
                 NavigationGroup::make('Marketplace'),
                 NavigationGroup::make('Content'),

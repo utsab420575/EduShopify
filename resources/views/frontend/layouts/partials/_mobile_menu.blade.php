@@ -36,6 +36,10 @@
                 <a href="{{ route('frontend.products.index') }}" class="block px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Products</a>
                 <a href="{{ route('frontend.services.index') }}" class="block px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Services</a>
                 <a href="{{ route('frontend.suppliers.index') }}" class="block px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Suppliers</a>
+                <a href="{{ route('frontend.compare.index') }}" x-data="compareBadge" class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <span><i class="fa-solid fa-arrow-right-arrow-left mr-1.5"></i> Compare</span>
+                    <span x-show="count > 0" x-cloak x-text="count" class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:var(--fe-primary-soft);color:var(--fe-primary);"></span>
+                </a>
                 <a href="{{ route('frontend.rfqs.index') }}" class="block px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Opportunities</a>
                 <a href="{{ route('frontend.pages.pricing') }}" class="block px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Pricing</a>
                 <a href="{{ route('frontend.pages.how-it-works') }}" class="block px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">How It Works</a>

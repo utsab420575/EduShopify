@@ -28,7 +28,7 @@
             <x-backend.form-card title="RFQ Details">
                 <p class="text-sm text-gray-600 mb-4">{{ $rfq->description }}</p>
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div><dt class="text-gray-500">Visibility</dt><dd class="font-medium text-gray-900">{{ ucfirst($rfq->visibility_type) }}</dd></div>
+                    <div><dt class="text-gray-500">Visibility</dt><dd class="font-medium text-gray-900">{{ $rfq->getRelationValue('visibilityType')?->name ?? ucfirst(str_replace('_', ' ', $rfq->visibility_type ?? '')) }}</dd></div>
                     <div><dt class="text-gray-500">Budget</dt><dd class="font-medium text-gray-900">{{ $rfq->budget_min ? number_format($rfq->budget_min, 2) : '—' }} &ndash; {{ $rfq->budget_max ? number_format($rfq->budget_max, 2) : '—' }} {{ $rfq->currency_code }}</dd></div>
                     <div><dt class="text-gray-500">Quotation Deadline</dt><dd class="font-medium text-gray-900">{{ $rfq->quotation_deadline?->format('d M Y H:i') ?? '—' }}</dd></div>
                     <div><dt class="text-gray-500">Expected Delivery</dt><dd class="font-medium text-gray-900">{{ $rfq->expected_delivery_date?->format('d M Y') ?? '—' }}</dd></div>

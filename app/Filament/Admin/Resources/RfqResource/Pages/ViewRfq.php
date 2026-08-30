@@ -23,7 +23,7 @@ class ViewRfq extends ViewRecord
                         TextEntry::make('rfq_number'),
                         TextEntry::make('title'),
                         TextEntry::make('buyerAccount.buyerProfile.display_name')->label('Buyer'),
-                        TextEntry::make('visibility_type')->badge(),
+                        TextEntry::make('visibilityType.name')->label('Visibility')->badge(),
                         TextEntry::make('status')->badge(),
                         TextEntry::make('quotation_deadline')->dateTime(),
                     ]),

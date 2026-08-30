@@ -51,7 +51,7 @@ class RfqResource extends Resource
 
                 TextColumn::make('buyerAccount.buyerProfile.display_name')->label('Buyer')->searchable(),
 
-                TextColumn::make('visibility_type')->badge(),
+                TextColumn::make('visibilityType.name')->label('Visibility')->badge(),
 
                 TextColumn::make('status')
                     ->badge()

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Backend\Supplier\Company;
 
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
+use App\Models\SupplierCategory;
 use App\Models\SupplierProfile;
 use App\Models\SupplierType;
 use Illuminate\Http\Request;
@@ -31,6 +33,8 @@ class ProfileController extends Controller
             'supplierTypes' => $supplierTypes,
             'selectedTypeIds' => $selectedTypeIds,
             'primaryTypeId' => $primaryTypeId,
+            'categoryOptions' => Category::getTreeSelectOptions(['product', 'service', 'both']),
+            'selectedCategoryIds' => $account->supplierCategories()->active()->pluck('category_id'),
         ]);
     }
 
@@ -59,10 +63,11 @@ class ProfileController extends Controller
             'supplier_type_ids' => ['nullable', 'array'],
             'supplier_type_ids.*' => ['exists:supplier_types,id'],
             'primary_supplier_type_id' => ['nullable', 'exists:supplier_types,id'],
+            'category_ids' => ['nullable', 'array'],
+            'category_ids.*' => ['integer', 'exists:categories,id'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'banner' => ['nullable', 'image', 'max:4096'],
             'profile_photo' => ['nullable', 'image', 'max:2048'],
-            'socials' => ['nullable', 'array'],
         ]);
 
         if ($request->hasFile('logo')) {
@@ -105,6 +110,20 @@ class ProfileController extends Controller
                 $syncData[$tId] = ['is_primary' => ($tId == $primaryId)];
             }
             $account->supplierTypes()->sync($syncData);
+        }
+
+        // supplier_categories isn't a pure pivot (it also drives
+        // open_matching RFQ eligibility via is_active), so it's synced
+        // manually rather than via a belongsToMany sync() call.
+        $categoryIds = $request->input('category_ids', []);
+        SupplierCategory::where('supplier_account_id', $account->id)
+            ->whereNotIn('category_id', $categoryIds)
+            ->delete();
+        foreach ($categoryIds as $categoryId) {
+            SupplierCategory::updateOrCreate(
+                ['supplier_account_id' => $account->id, 'category_id' => $categoryId],
+                ['is_active' => true]
+            );
         }
 
         return redirect()->route('supplier.company.profile')->with('success', 'Supplier profile updated successfully.');

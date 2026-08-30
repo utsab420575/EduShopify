@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Backend\Buyer\Procurement;
 use App\Http\Controllers\Backend\Buyer\Concerns\InteractsWithBuyerAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backend\Buyer\Procurement\AwardQuotationRequest;
+use App\Http\Requests\Backend\Buyer\Procurement\CompareQuotationsDataRequest;
 use App\Http\Requests\Backend\Buyer\Procurement\RejectQuotationRequest;
 use App\Http\Requests\Backend\Buyer\Procurement\RequestQuotationRevisionRequest;
 use App\Models\Quotation;
 use App\Models\Review;
 use App\Models\Rfq;
 use App\Services\AwardService;
+use App\Services\QuotationComparisonService;
 use App\Services\QuotationDecisionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +45,8 @@ class QuotationController extends Controller
                 'submitted' => 'Submitted', 'under_review' => 'Under Review', 'shortlisted' => 'Shortlisted',
                 'revision_requested' => 'Revision Requested', 'revised' => 'Revised', 'rejected' => 'Rejected', 'awarded' => 'Awarded',
             ],
+            'compareEligibleStatuses' => config('quotation_comparison.eligible_statuses', []),
+            'maxCompareItems' => (int) config('quotation_comparison.max_items', 5),
         ]);
     }
 
@@ -50,12 +54,43 @@ class QuotationController extends Controller
     {
         $this->authorize('compare', $rfq);
 
+        $rfq->loadCount('items');
+
+        return view('backend.buyer.procurement.quotations.compare', [
+            'rfq' => $rfq,
+            'maxItems' => (int) config('quotation_comparison.max_items', 5),
+        ]);
+    }
+
+    public function compareData(Rfq $rfq, CompareQuotationsDataRequest $request, QuotationComparisonService $service)
+    {
+        $this->authorize('compare', $rfq);
+
         $rfq->load([
-            'quotations' => fn ($q) => $q->submitted()->with(['supplierAccount.supplierProfile', 'items', 'shortlists']),
-            'items',
+            'items.attributeValues.attribute.attributeGroup',
+            'items.attributeValues.attribute.unit',
+            'items.attributeValues.attributeValue',
+            'items.unit',
         ]);
 
-        return view('backend.buyer.procurement.quotations.compare', ['rfq' => $rfq]);
+        ['quotations' => $quotations, 'removed_ids' => $removedIds] = $service->resolve($rfq, $request->input('quotation_ids', []));
+
+        return response()->json([
+            'removed_ids' => $removedIds,
+            'rfq' => [
+                'id' => $rfq->id,
+                'title' => $rfq->title,
+                'rfq_number' => $rfq->rfq_number,
+                'current_version_no' => $rfq->current_version_no,
+                'allow_partial_quotation' => (bool) $rfq->allow_partial_quotation,
+                'allow_alternative_products' => (bool) $rfq->allow_alternative_products,
+            ],
+            'summary' => $service->buildSummary($rfq, $quotations),
+            'commercial' => $service->buildCommercial($quotations),
+            'items' => $service->buildItemComparison($rfq, $quotations),
+            'addons' => $service->buildAddons($quotations),
+            'partial' => $service->buildPartialSummary($rfq, $quotations),
+        ]);
     }
 
     public function show(Quotation $quotation, QuotationDecisionService $decisions)

@@ -34,13 +34,12 @@ class AwardController extends Controller
 
     public function show(Award $award)
     {
-        $account = $this->currentAccount();
-        abort_if($award->supplier_account_id !== $account->id, 403);
+        $this->authorize('view', $award);
 
         $award->load(['rfq.buyerAccount.buyerProfile', 'quotation.items', 'purchaseOrder']);
 
         return view('backend.supplier.procurement.awards.show', [
-            'account' => $account,
+            'account' => $this->currentAccount(),
             'user' => $this->currentUser(),
             'award' => $award,
         ]);
@@ -48,19 +47,16 @@ class AwardController extends Controller
 
     public function accept(Request $request, Award $award, AwardResponseService $service)
     {
-        $account = $this->currentAccount();
-        abort_if($award->supplier_account_id !== $account->id, 403);
+        $this->authorize('accept', $award);
 
-        $note = $request->input('note');
-        $service->accept($award, $note);
+        $service->accept($award, $request->input('note'));
 
         return redirect()->route('supplier.awards.show', $award)->with('success', 'Award accepted! Purchase Order has been generated.');
     }
 
     public function reject(Request $request, Award $award, AwardResponseService $service)
     {
-        $account = $this->currentAccount();
-        abort_if($award->supplier_account_id !== $account->id, 403);
+        $this->authorize('reject', $award);
 
         $validated = $request->validate([
             'reason' => ['required', 'string', 'max:1000'],

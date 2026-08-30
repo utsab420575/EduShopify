@@ -6,6 +6,7 @@ use App\Http\Controllers\Frontend\HandoffController;
 use App\Http\Controllers\Frontend\InquiryController;
 use App\Http\Controllers\Frontend\ListingController;
 use App\Http\Controllers\Frontend\PageController;
+use App\Http\Controllers\Frontend\ProductComparisonController;
 use App\Http\Controllers\Frontend\PublicRfqController;
 use App\Http\Controllers\Frontend\SearchController;
 use App\Http\Controllers\Frontend\SupplierDirectoryController;
@@ -38,6 +39,12 @@ Route::get('/opportunities', [PublicRfqController::class, 'index'])->name('front
 Route::get('/opportunities/{rfq_number}', [PublicRfqController::class, 'show'])->name('frontend.rfqs.show');
 
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('frontend.search.suggestions');
+
+/* ── Product Comparison (public, guest-accessible — no DB storage, ── */
+/* ── localStorage-driven; see App\Services\Catalog\ProductComparisonService) ── */
+Route::get('/compare', [ProductComparisonController::class, 'index'])->name('frontend.compare.index');
+Route::post('/compare/data', [ProductComparisonController::class, 'data'])->name('frontend.compare.data');
+Route::get('/compare/search', [ProductComparisonController::class, 'search'])->name('frontend.compare.search');
 
 Route::post('/inquire/{listing:slug}', [InquiryController::class, 'listing'])->name('frontend.inquiries.listing')
     ->middleware('throttle:10,1');

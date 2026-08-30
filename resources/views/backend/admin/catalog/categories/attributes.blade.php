@@ -22,6 +22,9 @@
                 <a href="{{ route('admin.catalog.categories.edit', $category) }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white">
                     <i class="fa-solid fa-arrow-left text-xs"></i> Category Settings
                 </a>
+                <button type="button" @click="$dispatch('open-group-modal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white">
+                    <i class="fa-solid fa-folder-plus text-xs"></i> New Group
+                </button>
                 <button type="button" @click="$dispatch('open-bulk-modal')" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                     <i class="fa-solid fa-layer-group text-xs"></i> Bulk Assign by Group
                 </button>
@@ -220,10 +223,13 @@
     @endforeach
 
     {{-- ========================================================================= --}}
-    {{-- MODAL 1: ADD SINGLE ATTRIBUTE --}}
+    {{-- MODAL 1: ADD ATTRIBUTE — "Choose Existing" (reuse from catalog dictionary) --}}
+    {{-- or "Create New" (define a brand-new attribute, auto-assigned here)        --}}
     {{-- ========================================================================= --}}
     <div x-data="{
         open: false,
+        activeTab: 'existing',
+        searchQuery: '',
         selectedGroup: '',
         selectedAttrId: '',
         attributesList: {{ Js::from($availableAttributes->map(fn($a) => [
@@ -243,10 +249,15 @@
         isVariant: false,
         sortOrder: 0,
         get filteredAttributes() {
-            if (!this.selectedGroup || this.selectedGroup === '') {
-                return this.attributesList;
+            let list = this.attributesList;
+            if (this.selectedGroup !== '') {
+                list = list.filter(a => a.group_id == this.selectedGroup);
             }
-            return this.attributesList.filter(a => a.group_id == this.selectedGroup);
+            if (this.searchQuery.trim() !== '') {
+                const q = this.searchQuery.trim().toLowerCase();
+                list = list.filter(a => a.name.toLowerCase().includes(q) || a.group_name.toLowerCase().includes(q));
+            }
+            return list;
         },
         get currentAttr() {
             return this.attributesList.find(a => a.id == this.selectedAttrId) || null;
@@ -260,88 +271,147 @@
             }
         }
     }"
-    @open-add-modal.window="open = true"
+    @open-add-modal.window="open = true; activeTab = 'existing'"
     x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
         <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="open = false"></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 overflow-hidden"
+        <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-100 overflow-hidden flex flex-col max-h-[88vh]"
              x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-            <div class="flex items-center justify-between pb-4 border-b border-gray-100">
-                <h3 class="text-base font-bold text-gray-900">Add Specification Attribute</h3>
+
+            <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
+                <h3 class="text-base font-bold text-gray-900">Assign Attribute to {{ $category->name }}</h3>
                 <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('admin.catalog.categories.attributes.store', $category) }}" class="space-y-4 pt-4">
-                @csrf
-
-                {{-- Filter by Attribute Group --}}
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Filter by Group (Optional)</label>
-                    <select x-model="selectedGroup" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
-                        <option value="">— All Groups —</option>
-                        @foreach($attributeGroups as $grp)
-                            <option value="{{ $grp->id }}">{{ $grp->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Attribute Selection --}}
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Select Attribute <span class="text-red-500">*</span></label>
-                    <select name="attribute_id" x-model="selectedAttrId" @change="onAttrChange()" required
-                            class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500">
-                        <option value="">— Choose an attribute —</option>
-                        <template x-for="attr in filteredAttributes" :key="attr.id">
-                            <option :value="attr.id" x-text="attr.name + ' (' + attr.group_name + ')'"></option>
-                        </template>
-                    </select>
-                    <template x-if="filteredAttributes.length === 0">
-                        <p class="text-xs text-amber-600 mt-1">All attributes in this group are already assigned to this category.</p>
-                    </template>
-                </div>
-
-                {{-- Attribute Summary Info --}}
-                <template x-if="currentAttr">
-                    <div class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs space-y-1">
-                        <div class="flex justify-between"><span class="text-gray-500">Group Section:</span> <span class="font-medium text-gray-800" x-text="currentAttr.group_name"></span></div>
-                        <div class="flex justify-between"><span class="text-gray-500">Input Type:</span> <span class="font-semibold text-blue-700 uppercase" x-text="currentAttr.input_type"></span></div>
-                        <div class="flex justify-between" x-show="currentAttr.unit"><span class="text-gray-500">Unit:</span> <span class="font-medium text-gray-800" x-text="currentAttr.unit"></span></div>
-                    </div>
-                </template>
-
-                {{-- Category-specific Configuration --}}
-                <div class="border-t border-gray-100 pt-3 space-y-3">
-                    <p class="text-xs font-bold text-gray-700">Category Specific Behavior</p>
-                    <div class="grid grid-cols-3 gap-2">
-                        <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" name="is_required" value="1" x-model="isRequired" style="accent-color:var(--theme-primary)">
-                            <span class="font-semibold">Required</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" name="is_filterable" value="1" x-model="isFilterable" style="accent-color:var(--theme-primary)">
-                            <span class="font-semibold">Filterable</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" name="is_variant" value="1" x-model="isVariant" style="accent-color:var(--theme-primary)">
-                            <span class="font-semibold">Variant</span>
-                        </label>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Sort Order within Category</label>
-                        <input type="number" name="sort_order" x-model="sortOrder" placeholder="0" class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-                    <button type="button" @click="open = false" class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" :disabled="!selectedAttrId" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
-                        Assign Attribute
+            {{-- Tabs --}}
+            <div class="px-6 pt-3 border-b border-gray-100 shrink-0">
+                <nav class="flex gap-5 -mb-px">
+                    <button type="button" @click="activeTab = 'existing'"
+                            class="py-2 text-sm font-semibold border-b-2 transition"
+                            :class="activeTab === 'existing' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+                        Choose Existing
                     </button>
+                    <button type="button" @click="activeTab = 'create'"
+                            class="py-2 text-sm font-semibold border-b-2 transition"
+                            :class="activeTab === 'create' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+                        Create New Attribute
+                    </button>
+                </nav>
+            </div>
+
+            <div class="px-6 py-4 overflow-y-auto">
+
+                {{-- TAB: CHOOSE EXISTING --}}
+                <div x-show="activeTab === 'existing'">
+                    <form method="POST" action="{{ route('admin.catalog.categories.attributes.store', $category) }}" class="space-y-4">
+                        @csrf
+
+                        {{-- Search + Filter --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Search Attributes</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                    <input type="text" x-model="searchQuery" placeholder="Search by name or group..."
+                                           class="w-full text-sm rounded-lg border border-gray-300 pl-9 pr-3 py-2 bg-white">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Filter by Group</label>
+                                <select x-model="selectedGroup" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                    <option value="">— All Groups —</option>
+                                    @foreach($attributeGroups as $grp)
+                                        <option value="{{ $grp->id }}">{{ $grp->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        {{-- Attribute Selection --}}
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Select Attribute <span class="text-red-500">*</span></label>
+                            <select name="attribute_id" x-model="selectedAttrId" @change="onAttrChange()" required
+                                    class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500">
+                                <option value="">— Choose an attribute —</option>
+                                <template x-for="attr in filteredAttributes" :key="attr.id">
+                                    <option :value="attr.id" x-text="attr.name + ' (' + attr.group_name + ')'"></option>
+                                </template>
+                            </select>
+                            <template x-if="filteredAttributes.length === 0">
+                                <p class="text-xs text-amber-600 mt-1">No matching attributes. Try clearing the search, or switch to "Create New Attribute" above.</p>
+                            </template>
+                        </div>
+
+                        {{-- Attribute Summary Info --}}
+                        <template x-if="currentAttr">
+                            <div class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs space-y-1">
+                                <div class="flex justify-between"><span class="text-gray-500">Group Section:</span> <span class="font-medium text-gray-800" x-text="currentAttr.group_name"></span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">Input Type:</span> <span class="font-semibold text-blue-700 uppercase" x-text="currentAttr.input_type"></span></div>
+                                <div class="flex justify-between" x-show="currentAttr.unit"><span class="text-gray-500">Unit:</span> <span class="font-medium text-gray-800" x-text="currentAttr.unit"></span></div>
+                            </div>
+                        </template>
+
+                        {{-- Category-specific Configuration --}}
+                        <div class="border-t border-gray-100 pt-3 space-y-3">
+                            <p class="text-xs font-bold text-gray-700">Category Specific Behavior</p>
+                            <div class="grid grid-cols-3 gap-2">
+                                <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" name="is_required" value="1" x-model="isRequired" style="accent-color:var(--theme-primary)">
+                                    <span class="font-semibold">Required</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" name="is_filterable" value="1" x-model="isFilterable" style="accent-color:var(--theme-primary)">
+                                    <span class="font-semibold">Filterable</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" name="is_variant" value="1" x-model="isVariant" style="accent-color:var(--theme-primary)">
+                                    <span class="font-semibold">Variant</span>
+                                </label>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Sort Order within Category</label>
+                                <input type="number" name="sort_order" x-model="sortOrder" placeholder="0" class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                            <button type="button" @click="open = false" class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                            <button type="submit" :disabled="!selectedAttrId" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
+                                Assign Attribute
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+
+                {{-- TAB: CREATE NEW ATTRIBUTE — adds to the global catalog dictionary AND assigns it here --}}
+                <div x-show="activeTab === 'create'">
+                    <p class="text-xs text-gray-500 -mt-1 mb-4">
+                        This creates a reusable attribute in the catalog dictionary (available to every category), and immediately assigns it to <strong>{{ $category->name }}</strong>.
+                    </p>
+
+                    <form method="POST" action="{{ route('admin.catalog.attributes.store') }}" class="space-y-4">
+                        @csrf
+                        <input type="hidden" name="redirect_to" value="{{ route('admin.catalog.categories.attributes.index', $category) }}">
+                        <input type="hidden" name="assign_to_category_id" value="{{ $category->id }}">
+
+                        @include('backend.admin.catalog.attributes._form', [
+                            'attribute' => new \App\Models\Attribute(),
+                            'attributeGroups' => $attributeGroups,
+                            'units' => $units,
+                        ])
+
+                        <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                            <button type="button" @click="open = false" class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                            <button type="submit" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg">
+                                Create &amp; Assign to Category
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -451,6 +521,52 @@
                             Add Selected Attributes
                         </button>
                     </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- ========================================================================= --}}
+    {{-- MODAL 3: CREATE NEW ATTRIBUTE GROUP --}}
+    {{-- ========================================================================= --}}
+    <div x-data="{ open: false }"
+         @open-group-modal.window="open = true"
+         x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="open = false"></div>
+
+        <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-100 overflow-hidden"
+             x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+                <div>
+                    <h3 class="text-base font-bold text-gray-900">New Attribute Group</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">A section heading used to organize related attributes (e.g. "Technical Specification").</p>
+                </div>
+                <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('admin.catalog.attribute-groups.store') }}" class="space-y-4 pt-4">
+                @csrf
+                <input type="hidden" name="redirect_to" value="{{ route('admin.catalog.categories.attributes.index', $category) }}">
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Group Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="name" required placeholder="e.g. Technical Specification"
+                           class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Description (optional)</label>
+                    <textarea name="description" rows="2" placeholder="Shown as a subtitle under the group heading"
+                              class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                    <button type="button" @click="open = false" class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg">
+                        Create Group
+                    </button>
                 </div>
             </form>
         </div>

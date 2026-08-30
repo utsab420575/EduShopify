@@ -24,7 +24,7 @@ class SupplierController extends Controller
             ->when($request->filled('document_status'), function ($q) use ($request) {
                 $q->whereHas('supplierDocuments', fn ($q2) => $q2->where('status', $request->string('document_status')));
             })
-            ->with(['supplierProfile', 'activeSubscription.plan', 'capabilities' => fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'supplier'))])
+            ->with(['supplierProfile.country', 'activeSubscription.plan', 'primaryOwner', 'supplierDocuments' => fn ($q) => $q->current(), 'capabilities' => fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'supplier'))])
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -34,6 +34,36 @@ class SupplierController extends Controller
             'search' => $request->string('search')->toString(),
             'status' => $request->string('status')->toString(),
         ]);
+    }
+
+    public function update(Request $request, Account $account)
+    {
+        $this->authorize('platform.accounts.suspend');
+        abort_unless($account->hasCapability('supplier'), 404);
+
+        $validated = $request->validate([
+            'display_name'  => ['required', 'string', 'max:200'],
+            'legal_name'    => ['nullable', 'string', 'max:200'],
+            'contact_email' => ['nullable', 'email', 'max:150'],
+            'contact_phone' => ['nullable', 'string', 'max:30'],
+            'address'       => ['nullable', 'string'],
+        ]);
+
+        $account->update(['display_name' => $validated['display_name']]);
+
+        if ($account->supplierProfile) {
+            $account->supplierProfile->update($validated);
+        }
+
+        activity('moderation')->causedBy($this->admin())->performedOn($account)
+            ->withProperties($validated)
+            ->log('Supplier profile updated');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Supplier profile updated successfully.']);
+        }
+
+        return back()->with('success', 'Supplier profile updated successfully.');
     }
 
     public function show(Account $account)

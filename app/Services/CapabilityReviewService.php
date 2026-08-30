@@ -119,6 +119,38 @@ class CapabilityReviewService
     }
 
     /**
+     * Revert an active (approved) capability application back to pending.
+     */
+    public function undoApprove(AccountCapability $cap, User $admin, ?string $reason = null): void
+    {
+        DB::transaction(function () use ($cap, $admin, $reason) {
+            $cap = AccountCapability::whereKey($cap->id)->lockForUpdate()->firstOrFail();
+
+            if ($cap->status !== 'active') {
+                throw new \RuntimeException(
+                    "Cannot undo approval: capability [{$cap->capabilityType?->code}] is not active (current: {$cap->status})."
+                );
+            }
+
+            $cap->update([
+                'status'              => 'pending',
+                'activated_at'        => null,
+                'reviewed_by_user_id' => $admin->id,
+                'reviewed_at'         => now(),
+            ]);
+
+            CapabilityApplicationHistory::where('account_capability_id', $cap->id)
+                ->where('attempt_no', $cap->application_attempts)
+                ->update([
+                    'status'              => 'submitted',
+                    'reviewed_by_user_id' => $admin->id,
+                    'review_comment'      => $reason ?: 'Approval undone by administrator.',
+                    'reviewed_at'         => now(),
+                ]);
+        });
+    }
+
+    /**
      * Guard: all review actions require status = pending.
      */
     private function assertPending(AccountCapability $cap, string $action): void

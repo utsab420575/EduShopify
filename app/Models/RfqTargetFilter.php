@@ -16,6 +16,7 @@ class RfqTargetFilter extends Model
     protected $fillable = [
         'rfq_id',
         'category_id',
+        'location_match_level',
         'country_id',
         'state_id',
         'city_id',

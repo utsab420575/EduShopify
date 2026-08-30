@@ -24,6 +24,7 @@ class QuotationItem extends Model
         'offered_listing_id',
         'offered_variant_id',
         'is_alternative',
+        'is_optional_addon',
         'item_name',
         'description',
         'quantity',
@@ -41,7 +42,8 @@ class QuotationItem extends Model
     protected function casts(): array
     {
         return [
-            'is_alternative'  => 'boolean',
+            'is_alternative'    => 'boolean',
+            'is_optional_addon' => 'boolean',
             'quantity'        => 'decimal:3',
             'unit_price'      => 'decimal:2',
             'tax_rate'        => 'decimal:4',
@@ -83,8 +85,23 @@ class QuotationItem extends Model
         return $this->hasMany(PurchaseOrderItem::class, 'quotation_item_id');
     }
 
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(QuotationItemAttributeValue::class, 'quotation_item_id');
+    }
+
     public function scopeAlternatives(Builder $query): Builder
     {
         return $query->where('is_alternative', true);
+    }
+
+    public function scopeAddons(Builder $query): Builder
+    {
+        return $query->where('is_optional_addon', true);
+    }
+
+    public function scopeRequestedItems(Builder $query): Builder
+    {
+        return $query->where('is_optional_addon', false);
     }
 }

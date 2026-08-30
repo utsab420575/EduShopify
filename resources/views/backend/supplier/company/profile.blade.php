@@ -55,6 +55,19 @@
                     </div>
                 </x-backend.form-card>
 
+                <x-backend.form-card title="Categories You Supply" description="Used to match you against Buyer RFQs that are open to eligible suppliers — separate from your published listings, so you can be matched for a category even before you have a live listing in it.">
+                    <div class="max-h-64 overflow-y-auto pr-1 space-y-1 border border-gray-200 rounded-lg p-3">
+                        @forelse($categoryOptions as $node)
+                            <label class="flex items-center gap-2 text-xs py-1 px-1.5 rounded-lg hover:bg-gray-50 cursor-pointer" style="padding-left: {{ 6 + $node['depth'] * 16 }}px">
+                                <input type="checkbox" name="category_ids[]" value="{{ $node['id'] }}" @checked($selectedCategoryIds->contains($node['id'])) style="accent-color:var(--theme-primary)">
+                                <span class="text-gray-800">{{ $node['name'] }}</span>
+                            </label>
+                        @empty
+                            <p class="text-xs text-gray-400 py-2">No categories available yet.</p>
+                        @endforelse
+                    </div>
+                </x-backend.form-card>
+
                 <x-backend.form-card title="Contact Information">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <x-backend.input name="contact_person" label="Primary Contact Person" required :value="old('contact_person', $profile?->contact_person)" />

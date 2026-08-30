@@ -24,7 +24,7 @@ class AccountController extends Controller
             })
             ->when($request->filled('type'), fn ($q) => $q->where('account_type', $request->string('type')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->with('primaryOwner')
+            ->with(['primaryOwner', 'capabilities.capabilityType', 'locations', 'members.user'])
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -47,6 +47,44 @@ class AccountController extends Controller
         ]);
 
         return view('backend.admin.accounts.show', ['account' => $account]);
+    }
+
+    public function update(Request $request, Account $account)
+    {
+        $this->authorize('platform.accounts.suspend');
+
+        $validated = $request->validate([
+            'display_name' => ['required', 'string', 'max:200'],
+            'account_type' => ['required', 'in:individual,organization'],
+            'status'       => ['required', 'in:draft,pending_approval,active,inactive,suspended,deletion_pending,deleted'],
+        ]);
+
+        $account->update($validated);
+
+        activity('moderation')->causedBy($this->admin())->performedOn($account)
+            ->withProperties($validated)
+            ->log('Account details updated');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Account updated successfully.']);
+        }
+
+        return back()->with('success', 'Account updated successfully.');
+    }
+
+    public function destroy(Request $request, Account $account)
+    {
+        $this->authorize('platform.accounts.suspend');
+
+        $account->update(['status' => 'deleted', 'deleted_at' => now(), 'deleted_by_user_id' => $this->admin()->id]);
+
+        activity('moderation')->causedBy($this->admin())->performedOn($account)->log('Account deleted');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Account deleted successfully.']);
+        }
+
+        return back()->with('success', 'Account deleted successfully.');
     }
 
     public function approve(Account $account)

@@ -4,6 +4,7 @@
 @section('breadcrumb', 'Catalog & Taxonomy / Listings / ' . $listing->name)
 
 @section('body')
+<<<<<<< Updated upstream
 
     {{-- Page Header --}}
     <x-backend.page-header :title="$listing->name" :subtitle="'Listing #' . ($listing->sku ?? $listing->id)">
@@ -506,4 +507,10 @@
         </x-backend.modal>
     @endif
 
+=======
+    @include('backend.admin.catalog.listings._panel', [
+        'listing' => $listing,
+        'groupedSpecifications' => $groupedSpecifications,
+    ])
+>>>>>>> Stashed changes
 @endsection

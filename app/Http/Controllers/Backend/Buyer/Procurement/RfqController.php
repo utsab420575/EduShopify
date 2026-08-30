@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Listing;
 use App\Models\Rfq;
+use App\Models\RfqItem;
 use App\Models\RfqQuestion;
 use App\Models\Unit;
 use App\Services\RfqService;
@@ -51,6 +52,7 @@ class RfqController extends Controller
         $this->authorize('create', Rfq::class);
 
         $preselectedSupplier = null;
+        $itemAttributeValues = [];
 
         if ($request->filled('supplier')) {
             $preselectedSupplier = Account::with('supplierProfile')->find($request->integer('supplier'));
@@ -75,15 +77,134 @@ class RfqController extends Controller
                     'estimated_unit_price' => $listing->base_price,
                 ]]);
 
+                $itemAttributeValues[0] = $this->listingAttributeValuesForPrefill($listing);
+
                 $preselectedSupplier ??= $listing->supplierAccount()->with('supplierProfile')->first();
             }
         }
 
+        // A product-page "Request Quotation" starts the RFQ locked to that
+        // one supplier by default (spec §11) — the buyer can still switch
+        // to Selected Suppliers or Open to Eligible Suppliers from the form.
+        $defaultVisibility = $preselectedSupplier
+            ? \App\Models\VisibilityType::where('code', 'direct')->first()
+            : \App\Models\VisibilityType::where('code', 'open_matching')->first();
+
         return view('backend.buyer.procurement.rfqs.create', [
-            'rfq' => new Rfq(['visibility_type' => 'global', 'allow_partial_quotation' => true, 'allow_alternative_products' => true]),
+            'rfq' => new Rfq([
+                'visibility_type_id' => $defaultVisibility?->id,
+                'allow_partial_quotation' => true,
+                'allow_alternative_products' => true,
+            ]),
             'items' => $items,
+            'itemAttributeValues' => $itemAttributeValues,
+            'targetFilter' => null,
             'invitedSuppliers' => $preselectedSupplier ? collect([$preselectedSupplier]) : collect(),
         ] + $this->lookups());
+    }
+
+    /**
+     * GET buyer/rfqs/categories/{category}/attributes — same JSON shape the
+     * supplier listing wizard's equivalent endpoint returns, so the item
+     * attribute form can be a near-direct reuse of that Alpine component.
+     */
+    public function categoryAttributes(Category $category)
+    {
+        return response()->json($category->attributesGroupedForForm());
+    }
+
+    /**
+     * GET buyer/rfqs/listings/search?q= — typeahead for "select an existing
+     * marketplace listing" when adding an RFQ item (spec §4 Option A).
+     */
+    public function searchListings(Request $request)
+    {
+        $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+
+        $listings = Listing::published()
+            ->where('name', 'like', '%'.$request->string('q').'%')
+            ->with('mainCategory', 'unit')
+            ->limit(15)
+            ->get()
+            ->map(fn (Listing $l) => [
+                'id' => $l->id,
+                'name' => $l->name,
+                'listing_type' => $l->listing_type,
+                'category_id' => $l->main_category_id,
+                'category_name' => $l->mainCategory?->name,
+            ]);
+
+        return response()->json($listings);
+    }
+
+    /**
+     * GET buyer/rfqs/listings/{listing}/prefill — one round trip covering
+     * spec §4 Option A + §7 (existing listing, buyer may still override):
+     * the item fields, that category's attribute form definition, and the
+     * listing's own current attribute values as the buyer's starting point.
+     */
+    public function listingPrefill(Listing $listing)
+    {
+        abort_unless($listing->approval_status === 'approved', 404);
+
+        $categoryAttributes = $listing->main_category_id
+            ? $listing->mainCategory?->attributesGroupedForForm()
+            : null;
+
+        return response()->json([
+            'item' => [
+                'item_type' => $listing->listing_type,
+                'listing_id' => $listing->id,
+                'category_id' => $listing->main_category_id,
+                'item_name' => $listing->name,
+                'description' => $listing->short_description,
+                'quantity' => (string) ($listing->min_order_quantity ?: 1),
+                'unit_id' => $listing->unit_id,
+                'estimated_unit_price' => $listing->base_price,
+            ],
+            'category_attributes' => $categoryAttributes,
+            'attribute_values' => $this->listingAttributeValuesForPrefill($listing),
+        ]);
+    }
+
+    /**
+     * The listing's own attribute values, shaped exactly like the buyer
+     * form's item.attribute_values — a starting point the buyer can
+     * override without ever touching the supplier's original listing.
+     */
+    private function listingAttributeValuesForPrefill(Listing $listing): array
+    {
+        return $listing->attributeValues->mapWithKeys(fn ($v) => [
+            $v->attribute_id => [
+                'attribute_value_id' => $v->attribute_value_id,
+                'custom_value' => $v->custom_value,
+                'value_text' => $v->value_text,
+                'value_number' => $v->value_number,
+                'value_boolean' => $v->value_boolean,
+                'value_date' => $v->value_date,
+                'value_json' => $v->value_json,
+            ],
+        ])->all();
+    }
+
+    /**
+     * Same shape as listingAttributeValuesForPrefill(), sourced from an
+     * already-saved RfqItem's own attribute_values instead of a listing's —
+     * used to prefill the edit form.
+     */
+    private function itemAttributeValuesForPrefill(RfqItem $item): array
+    {
+        return $item->attributeValues->mapWithKeys(fn ($v) => [
+            $v->attribute_id => [
+                'attribute_value_id' => $v->attribute_value_id,
+                'custom_value' => $v->custom_value,
+                'value_text' => $v->value_text,
+                'value_number' => $v->value_number,
+                'value_boolean' => $v->value_boolean,
+                'value_date' => $v->value_date,
+                'value_json' => $v->value_json,
+            ],
+        ])->all();
     }
 
     public function store(SaveRfqRequest $request, RfqService $service)
@@ -108,11 +229,17 @@ class RfqController extends Controller
     {
         $this->authorize('update', $rfq);
 
-        $rfq->load(['items', 'invitedSupplierAccounts.supplierProfile']);
+        $rfq->load(['items.attributeValues', 'invitedSupplierAccounts.supplierProfile', 'targetFilters']);
+
+        $itemAttributeValues = $rfq->items->values()
+            ->mapWithKeys(fn (RfqItem $item, int $idx) => [$idx => $this->itemAttributeValuesForPrefill($item)])
+            ->all();
 
         return view('backend.buyer.procurement.rfqs.edit', [
             'rfq' => $rfq,
             'items' => $rfq->items,
+            'itemAttributeValues' => $itemAttributeValues,
+            'targetFilter' => $rfq->targetFilters->first(),
             'invitedSuppliers' => $rfq->invitedSupplierAccounts,
         ] + $this->lookups());
     }
@@ -141,7 +268,7 @@ class RfqController extends Controller
         $this->authorize('view', $rfq);
 
         $rfq->load([
-            'items.category', 'items.unit',
+            'items.category', 'items.unit', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
             'invitedSupplierAccounts.supplierProfile',
             'deliveryCountry', 'deliveryState', 'deliveryCity',
             'targetFilters.category', 'targetFilters.country', 'targetFilters.state', 'targetFilters.city',
@@ -244,9 +371,10 @@ class RfqController extends Controller
     private function lookups(): array
     {
         return [
-            'categories' => Category::active()->approved()->orderBy('name')->get(['id', 'name', 'parent_id']),
-            'units' => Unit::active()->orderBy('name')->get(['id', 'name', 'symbol']),
-            'currencies' => Currency::active()->orderBy('code')->get(['code', 'name', 'symbol']),
+            'categories'      => Category::active()->approved()->orderBy('name')->get(['id', 'name', 'parent_id']),
+            'units'           => Unit::active()->orderBy('name')->get(['id', 'name', 'symbol']),
+            'currencies'      => Currency::active()->orderBy('code')->get(['code', 'name', 'symbol']),
+            'visibilityTypes' => \App\Models\VisibilityType::active()->ordered()->get(),
         ];
     }
 

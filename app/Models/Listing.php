@@ -26,20 +26,83 @@ class Listing extends Model implements HasMedia
         $this->addMediaCollection('gallery');
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (Listing $listing) {
+            if (! $listing->listing_type_id) {
+                $listing->listing_type_id = ListingType::firstOrCreate(
+                    ['code' => 'product'],
+                    ['name' => 'Product', 'is_active' => true]
+                )->id;
+            }
+            if (! $listing->pricing_type_id) {
+                $listing->pricing_type_id = PricingType::firstOrCreate(
+                    ['code' => 'fixed'],
+                    ['name' => 'Fixed Catalog Price', 'is_active' => true]
+                )->id;
+            }
+            if (! $listing->sales_mode_id) {
+                $listing->sales_mode_id = SalesMode::firstOrCreate(
+                    ['code' => 'both'],
+                    ['name' => 'Both', 'is_active' => true]
+                )->id;
+            }
+        });
+    }
+
+    public function fill(array $attributes)
+    {
+        if (isset($attributes['listing_type']) && ! isset($attributes['listing_type_id'])) {
+            $val = $attributes['listing_type'];
+            $attributes['listing_type_id'] = is_numeric($val)
+                ? (int)$val
+                : ListingType::firstOrCreate(
+                    ['code' => $val],
+                    ['name' => ucfirst($val), 'is_active' => true]
+                )->id;
+            unset($attributes['listing_type']);
+        }
+
+        if (isset($attributes['pricing_type']) && ! isset($attributes['pricing_type_id'])) {
+            $val = $attributes['pricing_type'];
+            $attributes['pricing_type_id'] = is_numeric($val)
+                ? (int)$val
+                : PricingType::firstOrCreate(
+                    ['code' => $val],
+                    ['name' => ucfirst(str_replace('_', ' ', $val)), 'is_active' => true]
+                )->id;
+            unset($attributes['pricing_type']);
+        }
+
+        if (isset($attributes['sales_mode']) && ! isset($attributes['sales_mode_id'])) {
+            $val = $attributes['sales_mode'];
+            $attributes['sales_mode_id'] = is_numeric($val)
+                ? (int)$val
+                : SalesMode::firstOrCreate(
+                    ['code' => $val],
+                    ['name' => ucfirst(str_replace('_', ' ', $val)), 'is_active' => true]
+                )->id;
+            unset($attributes['sales_mode']);
+        }
+
+        return parent::fill($attributes);
+    }
+
     protected $fillable = [
         'supplier_account_id',
         'created_by_user_id',
-        'listing_type',
+        'listing_type_id',
         'listing_number',
         'main_category_id',
         'brand_id',
+        'primary_image_media_id',
         'name',
         'slug',
         'sku',
         'short_description',
         'description',
-        'pricing_type',
-        'sales_mode',
+        'pricing_type_id',
+        'sales_mode_id',
         'base_price',
         'compare_at_price',
         'currency_code',
@@ -47,6 +110,9 @@ class Listing extends Model implements HasMedia
         'unit_id',
         'extra_specs',
         'approval_status',
+        'setup_step',
+        'setup_completed_at',
+        'last_autosaved_at',
         'rejection_reason',
         'approved_by_user_id',
         'approved_at',
@@ -62,11 +128,19 @@ class Listing extends Model implements HasMedia
             'compare_at_price'   => 'decimal:2',
             'min_order_quantity' => 'decimal:3',
             'extra_specs'        => 'array',
+            'setup_step'         => 'integer',
+            'setup_completed_at' => 'datetime',
+            'last_autosaved_at'  => 'datetime',
             'approved_at'        => 'datetime',
             'is_active'          => 'boolean',
             'is_featured'        => 'boolean',
             'published_at'       => 'datetime',
         ];
+    }
+
+    public function primaryImage(): BelongsTo
+    {
+        return $this->belongsTo(\Spatie\MediaLibrary\MediaCollections\Models\Media::class, 'primary_image_media_id');
     }
 
     /* ── Ownership ──────────────────────────────────────────────────────── */
@@ -101,6 +175,23 @@ class Listing extends Model implements HasMedia
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'unit_id');
+    }
+
+    /* ── Listing classification lookup relations ─────────────────────────── */
+
+    public function listingType(): BelongsTo
+    {
+        return $this->belongsTo(ListingType::class, 'listing_type_id');
+    }
+
+    public function pricingType(): BelongsTo
+    {
+        return $this->belongsTo(PricingType::class, 'pricing_type_id');
+    }
+
+    public function salesMode(): BelongsTo
+    {
+        return $this->belongsTo(SalesMode::class, 'sales_mode_id');
     }
 
     public function categories(): BelongsToMany
@@ -202,24 +293,85 @@ class Listing extends Model implements HasMedia
 
     public function scopeProducts(Builder $query): Builder
     {
-        return $query->where('listing_type', 'product');
+        return $query->whereHas('listingType', fn ($q) => $q->where('code', 'product'));
     }
 
     public function scopeServices(Builder $query): Builder
     {
-        return $query->where('listing_type', 'service');
+        return $query->whereHas('listingType', fn ($q) => $q->where('code', 'service'));
     }
 
     /* ── Helpers ────────────────────────────────────────────────────────── */
 
     public function isProduct(): bool
     {
-        return $this->listing_type === 'product';
+        $type = $this->getRelationValue('listingType');
+        return is_object($type) ? ($type->code === 'product') : ($type === 'product');
     }
 
     public function isService(): bool
     {
-        return $this->listing_type === 'service';
+        $type = $this->getRelationValue('listingType');
+        return is_object($type) ? ($type->code === 'service') : ($type === 'service');
+    }
+
+    /**
+     * Backward-compatible code accessors so existing code like
+     * `$listing->listing_type`, `$listing->pricing_type`, `$listing->sales_mode`
+     * continues to return the string code after the enum→FK migration.
+     */
+    public function getListingTypeAttribute(): ?string
+    {
+        $type = $this->getRelationValue('listingType');
+        return is_object($type) ? $type->code : (is_string($type) ? $type : null);
+    }
+
+    public function getPricingTypeAttribute(): ?string
+    {
+        $type = $this->getRelationValue('pricingType');
+        return is_object($type) ? $type->code : (is_string($type) ? $type : null);
+    }
+
+    public function getSalesModeAttribute(): ?string
+    {
+        $type = $this->getRelationValue('salesMode');
+        return is_object($type) ? $type->code : (is_string($type) ? $type : null);
+    }
+
+    public function setListingTypeAttribute($value): void
+    {
+        if (is_numeric($value)) {
+            $this->attributes['listing_type_id'] = (int)$value;
+        } elseif (is_string($value)) {
+            $this->attributes['listing_type_id'] = ListingType::firstOrCreate(
+                ['code' => $value],
+                ['name' => ucfirst($value), 'is_active' => true]
+            )->id;
+        }
+    }
+
+    public function setPricingTypeAttribute($value): void
+    {
+        if (is_numeric($value)) {
+            $this->attributes['pricing_type_id'] = (int)$value;
+        } elseif (is_string($value)) {
+            $this->attributes['pricing_type_id'] = PricingType::firstOrCreate(
+                ['code' => $value],
+                ['name' => ucfirst(str_replace('_', ' ', $value)), 'is_active' => true]
+            )->id;
+        }
+    }
+
+    public function setSalesModeAttribute($value): void
+    {
+        if (is_numeric($value)) {
+            $this->attributes['sales_mode_id'] = (int)$value;
+        } elseif (is_string($value)) {
+            $this->attributes['sales_mode_id'] = SalesMode::firstOrCreate(
+                ['code' => $value],
+                ['name' => ucfirst(str_replace('_', ' ', $value)), 'is_active' => true]
+            )->id;
+        }
     }
 
     public function isPublished(): bool

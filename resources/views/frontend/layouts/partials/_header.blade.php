@@ -54,6 +54,11 @@
 
             {{-- Auth actions --}}
             <div class="hidden lg:flex items-center gap-2 shrink-0">
+                <a href="{{ route('frontend.compare.index') }}" x-data="compareBadge" class="fe-focus-ring relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-[--fe-primary]" aria-label="Product comparison">
+                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                    <span class="hidden xl:inline">Compare</span>
+                    <span x-show="count > 0" x-cloak x-text="'(' + count + ')'" class="text-xs font-semibold"></span>
+                </a>
                 @guest
                     <a href="{{ route('login') }}" class="fe-focus-ring px-3 py-2 text-sm font-medium text-slate-600 hover:text-[--fe-primary]">Log in</a>
                     <a href="{{ route('frontend.handoff.post-rfq') }}" class="fe-focus-ring px-3.5 py-2 rounded-lg text-sm font-semibold border" style="border-color:var(--fe-border-strong);color:var(--fe-text);">Post an RFQ</a>

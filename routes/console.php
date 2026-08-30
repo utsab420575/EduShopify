@@ -10,3 +10,7 @@ Artisan::command('inspire', function () {
 
 // Run daily to send expiry reminders and mark expired subscriptions
 Schedule::command('subscriptions:send-expiry-reminders')->dailyAt('08:00');
+
+// Run hourly to check for overdue unread messages based on user preferences
+Schedule::command('messages:send-unread-reminders')->hourly();
+

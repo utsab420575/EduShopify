@@ -3,14 +3,14 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * A small, generic in-app (database channel) notification for dashboard
- * events that don't warrant their own dedicated Notification class — shows
- * up in the Buyer/Supplier notification bell via $user->notifications().
+ * Generic in-app database + real-time broadcast notification for business dashboard events.
  */
-class DashboardNotification extends Notification
+class DashboardNotification extends Notification implements ShouldBroadcastNow
 {
     use Queueable;
 
@@ -21,15 +21,25 @@ class DashboardNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     public function toDatabase(object $notifiable): array
     {
         return [
             'message' => $this->message,
-            'url' => $this->url,
+            'url'     => $this->url,
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage([
+            'id'         => $this->id,
+            'message'    => $this->message,
+            'url'        => $this->url,
+            'created_at' => now()->toIso8601String(),
+        ]);
     }
 
     public function toArray(object $notifiable): array

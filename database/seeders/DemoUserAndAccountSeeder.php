@@ -8,9 +8,11 @@ use App\Models\AccountDashboardPreference;
 use App\Models\AccountMember;
 use App\Models\BuyerProfile;
 use App\Models\BuyerType;
+use App\Models\CapabilityType;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\SupplierProfile;
+use App\Models\SupplierType;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -22,316 +24,173 @@ class DemoUserAndAccountSeeder extends Seeder
     {
         $passwordHash = Hash::make('11111111');
         $buyerType = BuyerType::first();
-        $growthPlan = SubscriptionPlan::where('slug', 'growth-pro')->first();
-        $enterprisePlan = SubscriptionPlan::where('slug', 'enterprise-unlimited')->first();
+        $supplierType = SupplierType::first();
+        $growthPlan = SubscriptionPlan::where('slug', 'growth-pro')->first() ?? SubscriptionPlan::first();
+        $enterprisePlan = SubscriptionPlan::where('slug', 'enterprise-unlimited')->first() ?? SubscriptionPlan::first();
+        $starterPlan = SubscriptionPlan::where('slug', 'starter-launch')->first() ?? SubscriptionPlan::first();
         $permissionRegistrar = app(PermissionRegistrar::class);
 
-        $buyerCapType = \App\Models\CapabilityType::where('code', 'buyer')->first();
-        $supplierCapType = \App\Models\CapabilityType::where('code', 'supplier')->first();
+        $buyerCapType = CapabilityType::firstOrCreate(['code' => 'buyer'], ['name' => 'Buyer', 'is_active' => true]);
+        $supplierCapType = CapabilityType::firstOrCreate(['code' => 'supplier'], ['name' => 'Supplier', 'is_active' => true]);
 
-        // ── 1. Buyer 1 (Greenwood Academy) ──
-        $buyerUser = User::firstOrCreate(
-            ['email' => 'buyer@school.edu'],
-            [
-                'name'              => 'John Buyer',
-                'phone'             => '+18005550101',
-                'password'          => $passwordHash,
-                'email_verified_at' => now(),
-                'phone_verified_at' => now(),
-                'status'            => 'active',
-            ]
+        // ══════════════════════════════════════════════════════════════════════
+        // 1. BUYER ACCOUNTS
+        // ══════════════════════════════════════════════════════════════════════
+
+        // Buyer 1: Greenwood Academy
+        $this->createBuyerAccount(
+            email: 'buyer@school.edu',
+            name: 'John Buyer',
+            phone: '+18005550101',
+            accountNumber: 'ACC-BUY-001',
+            orgName: 'Greenwood Academy',
+            slug: 'greenwood-academy',
+            contactPerson: 'John Buyer',
+            position: 'Procurement Director',
+            address: '100 School Lane, Boston, MA',
+            buyerTypeId: $buyerType?->id,
+            passwordHash: $passwordHash,
+            buyerCapTypeId: $buyerCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        $buyerAccount = Account::firstOrCreate(
-            ['account_number' => 'ACC-BUY-001'],
-            [
-                'account_type'          => 'organization',
-                'display_name'          => 'Greenwood Academy',
-                'slug'                  => 'greenwood-academy',
-                'status'                => 'active',
-                'primary_owner_user_id' => $buyerUser->id,
-                'approved_at'           => now(),
-            ]
+        // Buyer 2: Metro State University
+        $this->createBuyerAccount(
+            email: 'buyer2@university.edu',
+            name: 'Dr. Sarah Jenkins',
+            phone: '+18005550102',
+            accountNumber: 'ACC-BUY-002',
+            orgName: 'Metro State University',
+            slug: 'metro-state-university',
+            contactPerson: 'Dr. Sarah Jenkins',
+            position: 'Dean of Sciences & Lab Facilities',
+            address: '500 University Ave, Chicago, IL',
+            buyerTypeId: $buyerType?->id,
+            passwordHash: $passwordHash,
+            buyerCapTypeId: $buyerCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        AccountMember::firstOrCreate(
-            ['user_id' => $buyerUser->id],
-            [
-                'account_id'       => $buyerAccount->id,
-                'member_type'      => 'owner',
-                'is_primary_owner' => true,
-                'status'           => 'active',
-                'joined_at'        => now(),
-            ]
+        // Buyer 3: Oakridge STEM District
+        $this->createBuyerAccount(
+            email: 'buyer3@oakridge.edu',
+            name: 'Robert Vance',
+            phone: '+18005550103',
+            accountNumber: 'ACC-BUY-003',
+            orgName: 'Oakridge STEM District',
+            slug: 'oakridge-stem-district',
+            contactPerson: 'Robert Vance',
+            position: 'District Operations Manager',
+            address: '750 Innovation Blvd, Austin, TX',
+            buyerTypeId: $buyerType?->id,
+            passwordHash: $passwordHash,
+            buyerCapTypeId: $buyerCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        $permissionRegistrar->setPermissionsTeamId($buyerAccount->id);
-        $buyerUser->assignRole('primary_owner');
+        // ══════════════════════════════════════════════════════════════════════
+        // 2. SUPPLIER ACCOUNTS
+        // ══════════════════════════════════════════════════════════════════════
 
-        AccountCapability::firstOrCreate(
-            ['account_id' => $buyerAccount->id, 'capability_type_id' => $buyerCapType->id],
-            ['status' => 'active', 'activated_at' => now()]
+        // Supplier 1: Apex EdTech Solutions Inc.
+        $this->createSupplierAccount(
+            email: 'supplier@edtech.com',
+            name: 'Alex Supplier',
+            phone: '+18005550201',
+            accountNumber: 'ACC-SUP-001',
+            orgName: 'Apex EdTech Solutions Inc.',
+            slug: 'apex-edtech-solutions',
+            contactPerson: 'Alex Supplier',
+            description: 'Leading provider of interactive classroom displays, laptops, and STEM learning kits.',
+            plan: $growthPlan,
+            passwordHash: $passwordHash,
+            supplierCapTypeId: $supplierCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        BuyerProfile::firstOrCreate(
-            ['account_id' => $buyerAccount->id],
-            [
-                'buyer_type_id'        => $buyerType?->id,
-                'display_name'         => 'Greenwood Academy Procurement',
-                'organization_name'    => 'Greenwood Academy',
-                'contact_person'       => 'John Buyer',
-                'position'             => 'Procurement Director',
-                'email'                => 'buyer@school.edu',
-                'phone'                => '+18005550101',
-                'website'              => 'https://greenwood.edu',
-                'address'              => '100 School Lane, Boston, MA',
-                'profile_completed_at' => now(),
-            ]
+        // Supplier 2: Global School Furniture Corp
+        $this->createSupplierAccount(
+            email: 'supplier2@furniture.com',
+            name: 'David Craft',
+            phone: '+18005550202',
+            accountNumber: 'ACC-SUP-002',
+            orgName: 'Global School Furniture Corp',
+            slug: 'global-school-furniture',
+            contactPerson: 'David Craft',
+            description: 'Ergonomic classroom desks, chairs, science lab benches, and library shelving.',
+            plan: $enterprisePlan,
+            passwordHash: $passwordHash,
+            supplierCapTypeId: $supplierCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        AccountDashboardPreference::firstOrCreate(
-            ['account_id' => $buyerAccount->id],
-            ['default_mode' => 'buyer']
+        // Supplier 3: BioScience & Lab Supplies LLC
+        $this->createSupplierAccount(
+            email: 'supplier3@bioscience.com',
+            name: 'Elena Rostova',
+            phone: '+18005550203',
+            accountNumber: 'ACC-SUP-003',
+            orgName: 'BioScience & Lab Supplies LLC',
+            slug: 'bioscience-lab-supplies',
+            contactPerson: 'Elena Rostova',
+            description: 'High-precision microscopes, lab glassware, chemical apparatus, and biology anatomy models.',
+            plan: $growthPlan,
+            passwordHash: $passwordHash,
+            supplierCapTypeId: $supplierCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-
-        // ── 2. Buyer 2 (Metro State University) ──
-        $buyer2User = User::firstOrCreate(
-            ['email' => 'buyer2@university.edu'],
-            [
-                'name'              => 'Sarah Procurement',
-                'phone'             => '+18005550102',
-                'password'          => $passwordHash,
-                'email_verified_at' => now(),
-                'phone_verified_at' => now(),
-                'status'            => 'active',
-            ]
+        // Supplier 4: Horizon Educational Publishing
+        $this->createSupplierAccount(
+            email: 'supplier4@horizonbooks.com',
+            name: 'Marcus Sterling',
+            phone: '+18005550204',
+            accountNumber: 'ACC-SUP-004',
+            orgName: 'Horizon Educational Publishing',
+            slug: 'horizon-educational-publishing',
+            contactPerson: 'Marcus Sterling',
+            description: 'Comprehensive K-12 STEM coursebooks, guided reading libraries, and teacher pedagogical guides.',
+            plan: $starterPlan,
+            passwordHash: $passwordHash,
+            supplierCapTypeId: $supplierCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        $buyer2Account = Account::firstOrCreate(
-            ['account_number' => 'ACC-BUY-002'],
-            [
-                'account_type'          => 'organization',
-                'display_name'          => 'Metro State University',
-                'slug'                  => 'metro-state-university',
-                'status'                => 'active',
-                'primary_owner_user_id' => $buyer2User->id,
-                'approved_at'           => now(),
-            ]
+        // Supplier 5: Champion School Sports & Athletics
+        $this->createSupplierAccount(
+            email: 'supplier5@championsports.com',
+            name: 'Coach Thomas Miller',
+            phone: '+18005550205',
+            accountNumber: 'ACC-SUP-005',
+            orgName: 'Champion School Sports & Athletics',
+            slug: 'champion-school-sports',
+            contactPerson: 'Thomas Miller',
+            description: 'Commercial gymnasium mats, institutional basketball/volleyball gear, and agility equipment.',
+            plan: $starterPlan,
+            passwordHash: $passwordHash,
+            supplierCapTypeId: $supplierCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        AccountMember::firstOrCreate(
-            ['user_id' => $buyer2User->id],
-            [
-                'account_id'       => $buyer2Account->id,
-                'member_type'      => 'owner',
-                'is_primary_owner' => true,
-                'status'           => 'active',
-                'joined_at'        => now(),
-            ]
+        // Supplier 6: Artisan School Crafts & Uniforms
+        $this->createSupplierAccount(
+            email: 'supplier6@artisanapparel.com',
+            name: 'Clara Bennett',
+            phone: '+18005550206',
+            accountNumber: 'ACC-SUP-006',
+            orgName: 'Artisan School Crafts & Uniforms',
+            slug: 'artisan-school-crafts-uniforms',
+            contactPerson: 'Clara Bennett',
+            description: 'Durable cotton-blend school uniform polos, safety lab coats, and classroom art classpacks.',
+            plan: $growthPlan,
+            passwordHash: $passwordHash,
+            supplierCapTypeId: $supplierCapType->id,
+            permissionRegistrar: $permissionRegistrar
         );
 
-        $permissionRegistrar->setPermissionsTeamId($buyer2Account->id);
-        $buyer2User->assignRole('primary_owner');
-
-        AccountCapability::firstOrCreate(
-            ['account_id' => $buyer2Account->id, 'capability_type_id' => $buyerCapType->id],
-            ['status' => 'active', 'activated_at' => now()]
-        );
-
-        BuyerProfile::firstOrCreate(
-            ['account_id' => $buyer2Account->id],
-            [
-                'buyer_type_id'        => $buyerType?->id,
-                'display_name'         => 'Metro State University Purchasing',
-                'organization_name'    => 'Metro State University',
-                'contact_person'       => 'Sarah Procurement',
-                'position'             => 'Chief Purchasing Officer',
-                'email'                => 'buyer2@university.edu',
-                'phone'                => '+18005550102',
-                'website'              => 'https://metro.edu',
-                'address'              => '500 University Ave, Chicago, IL',
-                'profile_completed_at' => now(),
-            ]
-        );
-
-        AccountDashboardPreference::firstOrCreate(
-            ['account_id' => $buyer2Account->id],
-            ['default_mode' => 'buyer']
-        );
-
-
-        // ── 3. Supplier 1 (Apex EdTech Solutions) ──
-        $supplierUser = User::firstOrCreate(
-            ['email' => 'supplier@edtech.com'],
-            [
-                'name'              => 'Alex Supplier',
-                'phone'             => '+18005550201',
-                'password'          => $passwordHash,
-                'email_verified_at' => now(),
-                'phone_verified_at' => now(),
-                'status'            => 'active',
-            ]
-        );
-
-        $supplierAccount = Account::firstOrCreate(
-            ['account_number' => 'ACC-SUP-001'],
-            [
-                'account_type'          => 'organization',
-                'display_name'          => 'Apex EdTech Solutions',
-                'slug'                  => 'apex-edtech-solutions',
-                'status'                => 'active',
-                'primary_owner_user_id' => $supplierUser->id,
-                'approved_at'           => now(),
-            ]
-        );
-
-        AccountMember::firstOrCreate(
-            ['user_id' => $supplierUser->id],
-            [
-                'account_id'       => $supplierAccount->id,
-                'member_type'      => 'owner',
-                'is_primary_owner' => true,
-                'status'           => 'active',
-                'joined_at'        => now(),
-            ]
-        );
-
-        $permissionRegistrar->setPermissionsTeamId($supplierAccount->id);
-        $supplierUser->assignRole('primary_owner');
-
-        AccountCapability::firstOrCreate(
-            ['account_id' => $supplierAccount->id, 'capability_type_id' => $supplierCapType->id],
-            ['status' => 'active', 'activated_at' => now()]
-        );
-
-        SupplierProfile::firstOrCreate(
-            ['account_id' => $supplierAccount->id],
-            [
-                'display_name'         => 'Apex EdTech Solutions Inc.',
-                'legal_name'           => 'Apex EdTech Solutions Incorporated',
-                'company_type'         => 'LLC',
-                'contact_person'       => 'Alex Supplier',
-                'contact_email'        => 'supplier@edtech.com',
-                'contact_phone'        => '+18005550201',
-                'website'              => 'https://apexedtech.com',
-                'founded_year'         => 2018,
-                'employees'            => 45,
-                'description'          => 'Leading provider of interactive classroom displays, laptops, and STEM learning kits.',
-                'rating'               => 4.85,
-                'reviews_count'        => 24,
-                'profile_completed_at' => now(),
-            ]
-        );
-
-        if ($growthPlan) {
-            Subscription::firstOrCreate(
-                ['supplier_account_id' => $supplierAccount->id],
-                [
-                    'plan_id'             => $growthPlan->id,
-                    'selected_by_user_id' => $supplierUser->id,
-                    'provider'            => 'manual',
-                    'plan_name_snapshot'  => $growthPlan->name,
-                    'price_snapshot'      => $growthPlan->price,
-                    'status'              => 'active',
-                    'starts_at'           => now(),
-                    'expires_at'          => now()->addYear(),
-                ]
-            );
-        }
-
-        AccountDashboardPreference::firstOrCreate(
-            ['account_id' => $supplierAccount->id],
-            ['default_mode' => 'supplier']
-        );
-
-
-        // ── 4. Supplier 2 (Global School Furniture) ──
-        $supplier2User = User::firstOrCreate(
-            ['email' => 'supplier2@furniture.com'],
-            [
-                'name'              => 'David Craft',
-                'phone'             => '+18005550202',
-                'password'          => $passwordHash,
-                'email_verified_at' => now(),
-                'phone_verified_at' => now(),
-                'status'            => 'active',
-            ]
-        );
-
-        $supplier2Account = Account::firstOrCreate(
-            ['account_number' => 'ACC-SUP-002'],
-            [
-                'account_type'          => 'organization',
-                'display_name'          => 'Global School Furniture',
-                'slug'                  => 'global-school-furniture',
-                'status'                => 'active',
-                'primary_owner_user_id' => $supplier2User->id,
-                'approved_at'           => now(),
-            ]
-        );
-
-        AccountMember::firstOrCreate(
-            ['user_id' => $supplier2User->id],
-            [
-                'account_id'       => $supplier2Account->id,
-                'member_type'      => 'owner',
-                'is_primary_owner' => true,
-                'status'           => 'active',
-                'joined_at'        => now(),
-            ]
-        );
-
-        $permissionRegistrar->setPermissionsTeamId($supplier2Account->id);
-        $supplier2User->assignRole('primary_owner');
-
-        AccountCapability::firstOrCreate(
-            ['account_id' => $supplier2Account->id, 'capability_type_id' => $supplierCapType->id],
-            ['status' => 'active', 'activated_at' => now()]
-        );
-
-        SupplierProfile::firstOrCreate(
-            ['account_id' => $supplier2Account->id],
-            [
-                'display_name'         => 'Global School Furniture Corp',
-                'legal_name'           => 'Global School Furniture Corporation',
-                'company_type'         => 'Corporation',
-                'contact_person'       => 'David Craft',
-                'contact_email'        => 'supplier2@furniture.com',
-                'contact_phone'        => '+18005550202',
-                'website'              => 'https://globalschoolfurniture.com',
-                'founded_year'         => 2012,
-                'employees'            => 120,
-                'description'          => 'Ergonomic classroom desks, chairs, science lab benches, and library shelving.',
-                'rating'               => 4.90,
-                'reviews_count'        => 58,
-                'profile_completed_at' => now(),
-            ]
-        );
-
-        if ($enterprisePlan) {
-            Subscription::firstOrCreate(
-                ['supplier_account_id' => $supplier2Account->id],
-                [
-                    'plan_id'             => $enterprisePlan->id,
-                    'selected_by_user_id' => $supplier2User->id,
-                    'provider'            => 'manual',
-                    'plan_name_snapshot'  => $enterprisePlan->name,
-                    'price_snapshot'      => $enterprisePlan->price,
-                    'status'              => 'active',
-                    'starts_at'           => now(),
-                    'expires_at'          => now()->addYear(),
-                ]
-            );
-        }
-
-        AccountDashboardPreference::firstOrCreate(
-            ['account_id' => $supplier2Account->id],
-            ['default_mode' => 'supplier']
-        );
-
-
-        // ── 5. Dual Account (EduPartners Ltd) ──
+        // ══════════════════════════════════════════════════════════════════════
+        // 3. DUAL CAPABILITY ACCOUNT
+        // ══════════════════════════════════════════════════════════════════════
         $dualUser = User::firstOrCreate(
             ['email' => 'dual@edupartners.com'],
             [
@@ -357,9 +216,8 @@ class DemoUserAndAccountSeeder extends Seeder
         );
 
         AccountMember::firstOrCreate(
-            ['user_id' => $dualUser->id],
+            ['user_id' => $dualUser->id, 'account_id' => $dualAccount->id],
             [
-                'account_id'       => $dualAccount->id,
                 'member_type'      => 'owner',
                 'is_primary_owner' => true,
                 'status'           => 'active',
@@ -404,6 +262,178 @@ class DemoUserAndAccountSeeder extends Seeder
         AccountDashboardPreference::firstOrCreate(
             ['account_id' => $dualAccount->id],
             ['default_mode' => 'buyer']
+        );
+    }
+
+    private function createBuyerAccount(
+        string $email,
+        string $name,
+        string $phone,
+        string $accountNumber,
+        string $orgName,
+        string $slug,
+        string $contactPerson,
+        string $position,
+        string $address,
+        ?int $buyerTypeId,
+        string $passwordHash,
+        int $buyerCapTypeId,
+        PermissionRegistrar $permissionRegistrar
+    ): void {
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name'              => $name,
+                'phone'             => $phone,
+                'password'          => $passwordHash,
+                'email_verified_at' => now(),
+                'phone_verified_at' => now(),
+                'status'            => 'active',
+            ]
+        );
+
+        $account = Account::firstOrCreate(
+            ['account_number' => $accountNumber],
+            [
+                'account_type'          => 'organization',
+                'display_name'          => $orgName,
+                'slug'                  => $slug,
+                'status'                => 'active',
+                'primary_owner_user_id' => $user->id,
+                'approved_at'           => now(),
+            ]
+        );
+
+        AccountMember::firstOrCreate(
+            ['user_id' => $user->id, 'account_id' => $account->id],
+            [
+                'member_type'      => 'owner',
+                'is_primary_owner' => true,
+                'status'           => 'active',
+                'joined_at'        => now(),
+            ]
+        );
+
+        $permissionRegistrar->setPermissionsTeamId($account->id);
+        $user->assignRole('primary_owner');
+
+        AccountCapability::firstOrCreate(
+            ['account_id' => $account->id, 'capability_type_id' => $buyerCapTypeId],
+            ['status' => 'active', 'activated_at' => now()]
+        );
+
+        BuyerProfile::firstOrCreate(
+            ['account_id' => $account->id],
+            [
+                'buyer_type_id'        => $buyerTypeId,
+                'display_name'         => "{$orgName} Procurement",
+                'organization_name'    => $orgName,
+                'contact_person'       => $contactPerson,
+                'position'             => $position,
+                'email'                => $email,
+                'phone'                => $phone,
+                'address'              => $address,
+                'profile_completed_at' => now(),
+            ]
+        );
+
+        AccountDashboardPreference::firstOrCreate(
+            ['account_id' => $account->id],
+            ['default_mode' => 'buyer']
+        );
+    }
+
+    private function createSupplierAccount(
+        string $email,
+        string $name,
+        string $phone,
+        string $accountNumber,
+        string $orgName,
+        string $slug,
+        string $contactPerson,
+        string $description,
+        ?SubscriptionPlan $plan,
+        string $passwordHash,
+        int $supplierCapTypeId,
+        PermissionRegistrar $permissionRegistrar
+    ): void {
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name'              => $name,
+                'phone'             => $phone,
+                'password'          => $passwordHash,
+                'email_verified_at' => now(),
+                'phone_verified_at' => now(),
+                'status'            => 'active',
+            ]
+        );
+
+        $account = Account::firstOrCreate(
+            ['account_number' => $accountNumber],
+            [
+                'account_type'          => 'organization',
+                'display_name'          => $orgName,
+                'slug'                  => $slug,
+                'status'                => 'active',
+                'primary_owner_user_id' => $user->id,
+                'approved_at'           => now(),
+            ]
+        );
+
+        AccountMember::firstOrCreate(
+            ['user_id' => $user->id, 'account_id' => $account->id],
+            [
+                'member_type'      => 'owner',
+                'is_primary_owner' => true,
+                'status'           => 'active',
+                'joined_at'        => now(),
+            ]
+        );
+
+        $permissionRegistrar->setPermissionsTeamId($account->id);
+        $user->assignRole('primary_owner');
+
+        AccountCapability::firstOrCreate(
+            ['account_id' => $account->id, 'capability_type_id' => $supplierCapTypeId],
+            ['status' => 'active', 'activated_at' => now()]
+        );
+
+        SupplierProfile::firstOrCreate(
+            ['account_id' => $account->id],
+            [
+                'display_name'         => $orgName,
+                'legal_name'           => $orgName,
+                'company_type'         => 'LLC',
+                'contact_person'       => $contactPerson,
+                'contact_email'        => $email,
+                'contact_phone'        => $phone,
+                'description'          => $description,
+                'rating'               => 4.85,
+                'reviews_count'        => 32,
+                'profile_completed_at' => now(),
+            ]
+        );
+
+        if ($plan) {
+            Subscription::firstOrCreate(
+                ['supplier_account_id' => $account->id],
+                [
+                    'plan_id'             => $plan->id,
+                    'selected_by_user_id' => $user->id,
+                    'provider'            => 'manual',
+                    'plan_name_snapshot'  => $plan->name,
+                    'price_snapshot'      => $plan->price,
+                    'status'              => 'active',
+                    'starts_at'           => now(),
+                    'expires_at'          => now()->addYear(),
+                ]
+            );
+        }
+
+        AccountDashboardPreference::firstOrCreate(
+            ['account_id' => $account->id],
+            ['default_mode' => 'supplier']
         );
     }
 }

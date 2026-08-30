@@ -59,6 +59,11 @@ class RfqItem extends Model
         return $this->belongsTo(Unit::class, 'unit_id');
     }
 
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(RfqItemAttributeValue::class, 'rfq_item_id');
+    }
+
     public function quotationItems(): HasMany
     {
         return $this->hasMany(QuotationItem::class, 'rfq_item_id');

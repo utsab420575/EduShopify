@@ -111,15 +111,25 @@
 
                                     {{-- SELECT --}}
                                     <template x-if="attr.input_type === 'select'">
-                                        <select :id="'attr_' + attr.id"
-                                                :name="'attributes[' + attr.id + '][attribute_value_id]'"
-                                                x-model="getVal(attr.id).attribute_value_id"
-                                                class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                                            <option value="">Select option</option>
-                                            <template x-for="opt in attr.values" :key="opt.id">
-                                                <option :value="opt.id" x-text="opt.value" :selected="getVal(attr.id).attribute_value_id == opt.id"></option>
-                                            </template>
-                                        </select>
+                                        <div class="space-y-1.5">
+                                            <select :id="'attr_' + attr.id"
+                                                    :name="'attributes[' + attr.id + '][attribute_value_id]'"
+                                                    x-model="getVal(attr.id).attribute_value_id"
+                                                    class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <option value="">Select option</option>
+                                                <template x-for="opt in attr.values" :key="opt.id">
+                                                    <option :value="opt.id" x-text="opt.value" :selected="getVal(attr.id).attribute_value_id == opt.id"></option>
+                                                </template>
+                                                <template x-if="attr.allow_custom_value">
+                                                    <option value="__other__">Other</option>
+                                                </template>
+                                            </select>
+                                            <input type="text" x-show="isOtherSelected(attr.id)"
+                                                   :name="'attributes[' + attr.id + '][custom_value]'"
+                                                   placeholder="Please specify..."
+                                                   x-model="getVal(attr.id).custom_value"
+                                                   class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                        </div>
                                     </template>
 
                                     {{-- MULTI SELECT / CHECKBOXES --}}
@@ -146,6 +156,16 @@
                                                        placeholder="Enter comma separated values..."
                                                        x-model="getVal(attr.id).value_text"
                                                        class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                            </template>
+                                            <template x-if="attr.allow_custom_value">
+                                                <div class="pt-1.5 mt-1.5 border-t border-gray-200">
+                                                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Other (please specify)</label>
+                                                    <input type="text"
+                                                           :name="'attributes[' + attr.id + '][custom_value]'"
+                                                           placeholder="Type a value not listed above..."
+                                                           x-model="getVal(attr.id).custom_value"
+                                                           class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                                </div>
                                             </template>
                                         </div>
                                     </template>
@@ -186,7 +206,7 @@
                                     {{-- COLOR --}}
                                     <template x-if="attr.input_type === 'color'">
                                         <div class="space-y-2">
-                                            <template x-if="attr.values.length > 0">
+                                            <template x-if="attr.values.length > 0 || attr.allow_custom_value">
                                                 <div class="flex flex-wrap gap-2">
                                                     <template x-for="opt in attr.values" :key="opt.id">
                                                         <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs cursor-pointer transition-all"
@@ -200,15 +220,24 @@
                                                             <span x-text="opt.value"></span>
                                                         </label>
                                                     </template>
+                                                    <template x-if="attr.allow_custom_value">
+                                                        <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs cursor-pointer transition-all"
+                                                               :class="isOtherSelected(attr.id) ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500 font-semibold' : 'border-gray-200 bg-white hover:bg-gray-50'">
+                                                            <input type="radio"
+                                                                   :name="'attributes[' + attr.id + '][attribute_value_id]'"
+                                                                   value="__other__"
+                                                                   x-model="getVal(attr.id).attribute_value_id"
+                                                                   class="sr-only">
+                                                            <span>Other</span>
+                                                        </label>
+                                                    </template>
                                                 </div>
                                             </template>
-                                            <div class="flex items-center gap-2">
-                                                <input type="text"
-                                                       :name="'attributes[' + attr.id + '][value_text]'"
-                                                       placeholder="Custom color or hex (e.g. #0055FF)"
-                                                       x-model="getVal(attr.id).value_text"
-                                                       class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
-                                            </div>
+                                            <input type="text" x-show="isOtherSelected(attr.id)"
+                                                   :name="'attributes[' + attr.id + '][custom_value]'"
+                                                   placeholder="Custom color or hex (e.g. #0055FF)"
+                                                   x-model="getVal(attr.id).custom_value"
+                                                   class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
                                         </div>
                                     </template>
                                 </div>
@@ -306,16 +335,13 @@ function categoryAttributesManager(config) {
         endpointUrl: config.endpointUrl,
 
         init() {
-            // Listen for category changes from parent select element
-            const catSelect = document.querySelector('select[name="main_category_id"]');
-            if (catSelect) {
-                this.selectedCategoryId = catSelect.value;
-                this.previousCategoryId = catSelect.value;
-
-                catSelect.addEventListener('change', (e) => {
-                    this.handleCategorySelectChange(e.target.value);
-                });
-            }
+            // The wizard's Step 2 category tree is the only source of
+            // category changes — it dispatches this event on selection.
+            window.addEventListener('category-selected', (e) => {
+                if (e.detail && e.detail.categoryId) {
+                    this.handleCategorySelectChange(e.detail.categoryId);
+                }
+            });
 
             if (this.selectedCategoryId) {
                 this.fetchAttributes(this.selectedCategoryId, true);
@@ -330,7 +356,8 @@ function categoryAttributesManager(config) {
                     value_number: null,
                     value_boolean: null,
                     value_date: null,
-                    value_json: []
+                    value_json: [],
+                    custom_value: null
                 };
             } else {
                 const item = this.enteredValues[attrId];
@@ -353,6 +380,10 @@ function categoryAttributesManager(config) {
                 return val.value_text.split(',').map(s => s.trim()).includes(value);
             }
             return false;
+        },
+
+        isOtherSelected(attrId) {
+            return this.getVal(attrId).attribute_value_id === '__other__';
         },
 
         toggleMultiSelect(attrId, value) {
@@ -450,11 +481,6 @@ function categoryAttributesManager(config) {
         cancelCategoryChange() {
             this.discardModalOpen = false;
             this.pendingCategoryId = null;
-            // Revert select in DOM
-            const catSelect = document.querySelector('select[name="main_category_id"]');
-            if (catSelect) {
-                catSelect.value = this.previousCategoryId;
-            }
         },
 
         async fetchAttributes(categoryId, isInitial = false) {

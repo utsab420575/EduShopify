@@ -62,17 +62,19 @@ class DocumentTypeSeeder extends Seeder
         ];
 
         foreach ($types as $type) {
-            DB::table('document_types')->insert([
-                'name'             => $type['name'],
-                'slug'             => $type['slug'],
-                'description'      => $type['description'],
-                'accepted_formats' => json_encode($type['accepted_formats']),
-                'max_size_kb'      => $type['max_size_kb'],
-                'is_active'        => true,
-                'sort_order'       => $type['sort_order'],
-                'created_at'       => now(),
-                'updated_at'       => now(),
-            ]);
+            DB::table('document_types')->updateOrInsert(
+                ['slug' => $type['slug']],
+                [
+                    'name'             => $type['name'],
+                    'description'      => $type['description'],
+                    'accepted_formats' => json_encode($type['accepted_formats']),
+                    'max_size_kb'      => $type['max_size_kb'],
+                    'is_active'        => true,
+                    'sort_order'       => $type['sort_order'],
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]
+            );
         }
     }
 }

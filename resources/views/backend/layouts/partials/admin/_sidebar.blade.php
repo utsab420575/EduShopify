@@ -85,9 +85,9 @@
         </div>
         @endif
 
-        @if($u && $u->hasAnyPermission(['platform.categories.manage', 'platform.attributes.manage', 'platform.brands.manage', 'platform.listings.moderate']))
+        @canany(['platform.categories.manage', 'platform.attributes.manage', 'platform.brands.manage', 'platform.listings.moderate'])
         <div x-data="{ open: {{ $groupActive($groups['catalog']) ? 'true' : 'false' }} }">
-            <button @click="open = !open" class="sidebar-menu-item {{ $groupActive($groups['catalog']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive($groups['catalog']) ? '' : 'border-transparent' }}">
+            <button @click="open = !open" class="sidebar-menu-item {{ $groupActive($groups['catalog']) ? 'active' : 'border-transparent' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4">
                 <i class="fa-solid fa-layer-group sidebar-menu-icon w-5 text-center"></i>
                 <span class="ml-3 flex-1 text-sm font-medium text-left">Catalog &amp; Taxonomy</span>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
@@ -95,6 +95,9 @@
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
                 @can('platform.categories.manage')
                 <a href="{{ route('admin.catalog.categories.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.categories.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Categories</a>
+                <a href="{{ route('admin.catalog.builder.categories') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.builder.*') ? 'active' : '' }} flex items-center gap-2 px-3 py-2 text-sm rounded-md">
+                    <i class="fa-solid fa-folder-plus text-[11px]"></i> Category Builder
+                </a>
                 <a href="{{ route('admin.catalog.buyer-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.buyer-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Buyer Types</a>
                 <a href="{{ route('admin.catalog.supplier-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.supplier-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Supplier Types</a>
                 <a href="{{ route('admin.catalog.document-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.document-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Document Types</a>
@@ -104,7 +107,13 @@
                 @can('platform.attributes.manage')
                 <a href="{{ route('admin.catalog.attribute-groups.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.attribute-groups.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Attribute Groups</a>
                 <a href="{{ route('admin.catalog.attributes.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.attributes.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Attributes</a>
-                <a href="{{ route('admin.catalog.units.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.units.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Units</a>
+                <a href="{{ route('admin.catalog.units.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.units.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Pricing Units</a>
+                <a href="{{ route('admin.catalog.currencies.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.currencies.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Currencies</a>
+                <a href="{{ route('admin.catalog.input-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.input-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Input Types</a>
+                <a href="{{ route('admin.catalog.pricing-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.pricing-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Pricing Types</a>
+                <a href="{{ route('admin.catalog.sales-modes.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.sales-modes.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Sales Modes</a>
+                <a href="{{ route('admin.catalog.listing-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.listing-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Listing Types</a>
+                <a href="{{ route('admin.catalog.visibility-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.visibility-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Visibility Types</a>
                 @endcan
                 @can('platform.brands.manage')
                 <a href="{{ route('admin.catalog.brands.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.brands.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Brands</a>
@@ -114,7 +123,7 @@
                 @endcan
             </div>
         </div>
-        @endif
+        @endcanany
 
         @can('platform.rfqs.moderate')
         <div x-data="{ open: {{ $groupActive($groups['procurement']) ? 'true' : 'false' }} }">
@@ -192,12 +201,16 @@
         <div x-data="{ open: {{ $groupActive($groups['access-control']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive($groups['access-control']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive($groups['access-control']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-shield-halved sidebar-menu-icon w-5 text-center"></i>
-                <span class="ml-3 flex-1 text-sm font-medium text-left">Access Control</span>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">Roles &amp; Permission</span>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
             </button>
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                <a href="{{ route('admin.access-control.roles.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.roles.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Platform Roles</a>
-                <a href="{{ route('admin.access-control.permissions.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.permissions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Permissions</a>
+                <a href="{{ route('admin.access-control.permissions.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.permissions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">All Permission</a>
+                <a href="{{ route('admin.access-control.roles.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.roles.index') || $isActive('admin.access-control.roles.create') || $isActive('admin.access-control.roles.edit') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">All Roles</a>
+                <a href="{{ route('admin.access-control.roles-in-permission.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.roles-in-permission.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">All Roles in Permission</a>
+                <a href="{{ route('admin.access-control.route-permissions.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.route-permissions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Route Discovery</a>
+                <a href="{{ route('admin.access-control.user-roles.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.user-roles.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">User Role Assignment</a>
+                <a href="{{ route('admin.access-control.audit-logs.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.audit-logs.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Permission Audit Logs</a>
                 <a href="{{ route('admin.access-control.role-requests.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.role-requests.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Account Role Requests</a>
             </div>
         </div>
@@ -215,7 +228,6 @@
                     <a href="{{ route('admin.system.settings.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.settings.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">General Settings</a>
                     <a href="{{ route('admin.system.theme.edit') }}" class="sidebar-submenu-item {{ $isActive('admin.system.theme.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Appearance / Theme</a>
                     <a href="{{ route('admin.system.geography.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.geography.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Geography</a>
-                    <a href="{{ route('admin.system.currencies.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.currencies.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Currencies</a>
                     <a href="{{ route('admin.system.languages.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.languages.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Languages</a>
                     <a href="{{ route('admin.system.jobs.index') }}" class="sidebar-submenu-item {{ $isActive('admin.system.jobs.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Failed Jobs</a>
                 </div>

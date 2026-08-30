@@ -21,7 +21,7 @@ class UserController extends Controller
                 $q->where(fn ($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"));
             })
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->with('accountMember.account')
+            ->with(['accountMember.account', 'roles', 'socialAccounts'])
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -40,6 +40,48 @@ class UserController extends Controller
         $user->load(['accountMember.account.capabilities.capabilityType', 'roles', 'socialAccounts']);
 
         return view('backend.admin.users.show', ['targetUser' => $user]);
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $this->authorize('platform.users.suspend');
+
+        $validated = $request->validate([
+            'name'   => ['required', 'string', 'max:255'],
+            'email'  => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'phone'  => ['nullable', 'string', 'max:30'],
+            'status' => ['required', 'in:pending_verification,active,inactive,suspended,deleted'],
+        ]);
+
+        $user->update($validated);
+
+        activity('moderation')->causedBy($this->admin())->performedOn($user)
+            ->withProperties($validated)
+            ->log('User details updated');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'User updated successfully.']);
+        }
+
+        return back()->with('success', 'User updated successfully.');
+    }
+
+    public function destroy(Request $request, User $user)
+    {
+        $this->authorize('platform.users.suspend');
+
+        abort_if($user->id === $this->admin()->id, 422, 'You cannot delete your own account.');
+
+        $user->update(['status' => 'deleted']);
+        $user->delete();
+
+        activity('moderation')->causedBy($this->admin())->performedOn($user)->log('User deleted');
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'User deleted successfully.']);
+        }
+
+        return back()->with('success', 'User deleted successfully.');
     }
 
     public function suspend(Request $request, User $user)

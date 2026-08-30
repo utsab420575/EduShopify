@@ -22,6 +22,7 @@ class Conversation extends Model
     use HasFactory;
 
     protected $fillable = [
+        'direct_key',
         'context_type',
         'context_id',
         'title',
@@ -39,12 +40,19 @@ class Conversation extends Model
     }
 
     /**
-     * The RFQ / quotation / listing / purchase order this conversation is about.
-     * Resolution relies on the morph map registered in AppServiceProvider.
+     * The original/primary context (Listing, Rfq, Quotation, PurchaseOrder).
      */
     public function context(): MorphTo
     {
         return $this->morphTo(__FUNCTION__, 'context_type', 'context_id');
+    }
+
+    /**
+     * All associated business contexts (Listing, RFQ, Quotation, PO).
+     */
+    public function contexts(): HasMany
+    {
+        return $this->hasMany(ConversationContext::class, 'conversation_id');
     }
 
     public function createdByAccount(): BelongsTo
@@ -91,6 +99,52 @@ class Conversation extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class, 'conversation_id');
+    }
+
+    public function latestMessage(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Message::class, 'conversation_id')->latestOfMany();
+    }
+
+    /* ── Helpers ────────────────────────────────────────────────────────── */
+
+    public function getOtherAccount(int $currentAccountId): ?Account
+    {
+        if ($this->relationLoaded('accounts')) {
+            return $this->accounts->firstWhere('id', '!=', $currentAccountId);
+        }
+
+        return $this->accounts()->where('accounts.id', '!=', $currentAccountId)->first();
+    }
+
+    public function unreadCountForUser(int $userId): int
+    {
+        $lastReadAt = $this->userStates()
+            ->where('user_id', $userId)
+            ->value('last_read_at');
+
+        return $this->messages()
+            ->where('sender_user_id', '!=', $userId)
+            ->when($lastReadAt, fn ($q) => $q->where('created_at', '>', $lastReadAt))
+            ->count();
+    }
+
+    public function isMutedBy(int $userId): bool
+    {
+        $state = $this->relationLoaded('userStates')
+            ? $this->userStates->firstWhere('user_id', $userId)
+            : $this->userStates()->where('user_id', $userId)->first();
+
+        return $state?->muted_at !== null;
+    }
+
+    public function isArchivedBy(int $userId): bool
+    {
+        $state = $this->relationLoaded('userStates')
+            ? $this->userStates->firstWhere('user_id', $userId)
+            : $this->userStates()->where('user_id', $userId)->first();
+
+        return $state?->archived_at !== null;
     }
 
     /* ── Scopes ─────────────────────────────────────────────────────────── */

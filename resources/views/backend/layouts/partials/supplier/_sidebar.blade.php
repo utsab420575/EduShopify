@@ -1,6 +1,8 @@
 @php
     $isActive    = fn (string $pattern) => request()->routeIs($pattern);
     $groupActive = fn (array $patterns) => collect($patterns)->contains(fn ($p) => request()->routeIs($p));
+    $account = $account ?? auth()->user()?->accountMember?->account;
+    $user = $user ?? auth()->user();
 @endphp
 
 <aside class="w-64 flex flex-col border-r fixed lg:static inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:translate-x-0 bg-white"
@@ -27,6 +29,7 @@
         </a>
 
         {{-- Business Profile --}}
+        @canany(['supplier.profile.view', 'supplier.profile.update', 'supplier.documents.manage', 'supplier.service_areas.manage', 'supplier.company.profile', 'account.view', 'account.update'])
         <div x-data="{ open: {{ $groupActive(['supplier.company.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['supplier.company.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.company.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-building sidebar-menu-icon w-5 text-center"></i>
@@ -34,16 +37,30 @@
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
             </button>
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                <a href="{{ route('supplier.company.profile') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.profile') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Company Information</a>
-                <a href="{{ route('supplier.company.documents') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.documents*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Documents &amp; Verification</a>
-                <a href="{{ route('supplier.company.service-areas') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.service-areas*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Locations &amp; Service Areas</a>
-                <a href="{{ route('supplier.company.business-hours') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.business-hours') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Business Hours</a>
-                <a href="{{ route('supplier.company.gallery') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.gallery*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Gallery &amp; Videos</a>
-                <a href="{{ route('supplier.company.exhibitions') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.exhibitions*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Exhibitions</a>
+                @canany(['supplier.profile.view', 'supplier.profile.update', 'supplier.company.profile', 'account.view'])
+                    <a href="{{ route('supplier.company.profile') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.profile') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Company Information</a>
+                @endcanany
+                @canany(['supplier.documents.manage', 'supplier.company.documents'])
+                    <a href="{{ route('supplier.company.documents') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.documents*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Documents &amp; Verification</a>
+                @endcanany
+                @canany(['supplier.service_areas.manage', 'locations.view', 'locations.manage', 'supplier.company.service-areas'])
+                    <a href="{{ route('supplier.company.service-areas') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.service-areas*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Locations &amp; Service Areas</a>
+                @endcanany
+                @canany(['supplier.profile.view', 'supplier.profile.update', 'supplier.company.business-hours'])
+                    <a href="{{ route('supplier.company.business-hours') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.business-hours') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Business Hours</a>
+                @endcanany
+                @canany(['supplier.profile.view', 'supplier.profile.update', 'supplier.company.gallery'])
+                    <a href="{{ route('supplier.company.gallery') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.gallery*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Gallery &amp; Videos</a>
+                @endcanany
+                @canany(['supplier.profile.view', 'supplier.profile.update', 'supplier.company.exhibitions'])
+                    <a href="{{ route('supplier.company.exhibitions') }}" class="sidebar-submenu-item {{ $isActive('supplier.company.exhibitions*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Exhibitions</a>
+                @endcanany
             </div>
         </div>
+        @endcanany
 
         {{-- Catalog --}}
+        @canany(['listing.view', 'listing.create', 'listing.update', 'supplier.catalog.listings.index', 'supplier.catalog.listings.create'])
         <div x-data="{ open: {{ $groupActive(['supplier.catalog.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['supplier.catalog.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.catalog.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-box-open sidebar-menu-icon w-5 text-center"></i>
@@ -51,13 +68,21 @@
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
             </button>
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                <a href="{{ route('supplier.catalog.listings.index') }}" class="sidebar-submenu-item {{ ($isActive('supplier.catalog.listings.*') && !$isActive('supplier.catalog.listings.create')) ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">All Listings</a>
-                <a href="{{ route('supplier.catalog.listings.create') }}" class="sidebar-submenu-item {{ $isActive('supplier.catalog.listings.create') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Add Listing</a>
-                <a href="{{ route('supplier.catalog.suggestions.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.catalog.suggestions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Suggestions</a>
+                @canany(['listing.view', 'supplier.catalog.listings.index'])
+                    <a href="{{ route('supplier.catalog.listings.index') }}" class="sidebar-submenu-item {{ ($isActive('supplier.catalog.listings.*') && !$isActive('supplier.catalog.listings.create')) ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">All Listings</a>
+                @endcanany
+                @canany(['listing.create', 'supplier.catalog.listings.create'])
+                    <a href="{{ route('supplier.catalog.listings.create') }}" class="sidebar-submenu-item {{ $isActive('supplier.catalog.listings.create') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Add Listing</a>
+                @endcanany
+                @canany(['listing.view', 'listing.create', 'supplier.catalog.suggestions.index'])
+                    <a href="{{ route('supplier.catalog.suggestions.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.catalog.suggestions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Suggestions</a>
+                @endcanany
             </div>
         </div>
+        @endcanany
 
         {{-- RFQ Opportunities --}}
+        @canany(['rfq_opportunity.view', 'opportunity.view', 'supplier.opportunities.index'])
         <div x-data="{ open: {{ $groupActive(['supplier.opportunities.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['supplier.opportunities.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.opportunities.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-magnifying-glass-chart sidebar-menu-icon w-5 text-center"></i>
@@ -69,8 +94,10 @@
                 <a href="{{ route('supplier.opportunities.index', ['filter' => 'invited']) }}" class="sidebar-submenu-item {{ $isActive('supplier.opportunities.index') && request('filter') === 'invited' ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Invited RFQs</a>
             </div>
         </div>
+        @endcanany
 
         {{-- Quotations --}}
+        @canany(['quotation.view_own', 'quotation.create', 'quotation.submit', 'quotation.revise', 'supplier.quotations.index'])
         <div x-data="{ open: {{ $groupActive(['supplier.quotations.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['supplier.quotations.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.quotations.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-file-invoice sidebar-menu-icon w-5 text-center"></i>
@@ -83,20 +110,26 @@
                 <a href="{{ route('supplier.quotations.index', ['status' => 'revision_requested']) }}" class="sidebar-submenu-item {{ $isActive('supplier.quotations.index') && request('status') === 'revision_requested' ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Revision Requests</a>
             </div>
         </div>
+        @endcanany
 
         {{-- Awards --}}
+        @canany(['award.view', 'award.accept', 'award.reject', 'supplier.awards.index'])
         <a href="{{ route('supplier.awards.index') }}" class="sidebar-menu-item {{ $isActive('supplier.awards.*') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('supplier.awards.*') ? '' : 'border-transparent' }}">
             <i class="fa-solid fa-trophy sidebar-menu-icon w-5 text-center"></i>
             <span class="ml-3 flex-1 text-sm font-medium">Awards</span>
         </a>
+        @endcanany
 
         {{-- Purchase Orders --}}
+        @canany(['purchase_order.view_supplier', 'purchase_order.update_supplier', 'supplier.purchase-orders.index'])
         <a href="{{ route('supplier.purchase-orders.index') }}" class="sidebar-menu-item {{ $isActive('supplier.purchase-orders.*') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('supplier.purchase-orders.*') ? '' : 'border-transparent' }}">
             <i class="fa-solid fa-clipboard-list sidebar-menu-icon w-5 text-center"></i>
             <span class="ml-3 flex-1 text-sm font-medium">Purchase Orders</span>
         </a>
+        @endcanany
 
         {{-- Subscription & Billing --}}
+        @canany(['subscription.view', 'subscription.select', 'subscription.cancel', 'billing.view', 'billing.manage', 'supplier.subscription.current'])
         <div x-data="{ open: {{ $groupActive(['supplier.subscription.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['supplier.subscription.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.subscription.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-credit-card sidebar-menu-icon w-5 text-center"></i>
@@ -109,8 +142,10 @@
                 <a href="{{ route('supplier.subscription.payments') }}" class="sidebar-submenu-item {{ $isActive('supplier.subscription.payments') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Payment History</a>
             </div>
         </div>
+        @endcanany
 
         {{-- Communication --}}
+        @canany(['messages.view', 'messages.send', 'tickets.view', 'tickets.create', 'tickets.reply', 'supplier.messages.index'])
         <div x-data="{ open: {{ $groupActive(['supplier.messages.*', 'supplier.notifications.*', 'supplier.tickets.*', 'supplier.contact-inquiries.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['supplier.messages.*', 'supplier.notifications.*', 'supplier.tickets.*', 'supplier.contact-inquiries.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.messages.*', 'supplier.notifications.*', 'supplier.tickets.*', 'supplier.contact-inquiries.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-comments sidebar-menu-icon w-5 text-center"></i>
@@ -124,15 +159,19 @@
                 <a href="{{ route('supplier.contact-inquiries.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.contact-inquiries.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Contact Inquiries</a>
             </div>
         </div>
+        @endcanany
 
         {{-- Reviews --}}
+        @canany(['review.reply', 'supplier.reviews.index'])
         <a href="{{ route('supplier.reviews.index') }}" class="sidebar-menu-item {{ $isActive('supplier.reviews.*') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('supplier.reviews.*') ? '' : 'border-transparent' }}">
             <i class="fa-solid fa-star sidebar-menu-icon w-5 text-center"></i>
             <span class="ml-3 flex-1 text-sm font-medium">Reviews</span>
         </a>
+        @endcanany
 
         {{-- Organization (only for organization accounts) --}}
-        @if($account->isOrganization())
+        @if($account && $account->isOrganization())
+            @canany(['members.view', 'members.invite', 'members.update', 'members.remove', 'roles.view', 'roles.create', 'roles.update', 'roles.delete', 'roles.assign', 'ownership.transfer', 'supplier.members.index'])
             <div x-data="{ open: {{ $groupActive(['supplier.members.*', 'supplier.invitations.*', 'supplier.roles.*', 'supplier.role-requests.*', 'supplier.ownership.*']) ? 'true' : 'false' }} }">
                 <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['supplier.members.*', 'supplier.invitations.*', 'supplier.roles.*', 'supplier.role-requests.*', 'supplier.ownership.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.members.*', 'supplier.invitations.*', 'supplier.roles.*', 'supplier.role-requests.*', 'supplier.ownership.*']) ? '' : 'border-transparent' }}">
                     <i class="fa-solid fa-users sidebar-menu-icon w-5 text-center"></i>
@@ -140,13 +179,24 @@
                     <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
                 </button>
                 <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                    <a href="{{ route('supplier.members.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.members.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Members</a>
-                    <a href="{{ route('supplier.invitations.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.invitations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Invitations</a>
-                    <a href="{{ route('supplier.roles.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.roles.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Roles &amp; Permissions</a>
-                    <a href="{{ route('supplier.role-requests.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.role-requests.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Role Requests</a>
-                    <a href="{{ route('supplier.ownership.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.ownership.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Ownership</a>
+                    @canany(['members.view', 'supplier.members.index'])
+                        <a href="{{ route('supplier.members.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.members.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Members</a>
+                    @endcanany
+                    @canany(['members.invite', 'supplier.invitations.index'])
+                        <a href="{{ route('supplier.invitations.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.invitations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Invitations</a>
+                    @endcanany
+                    @canany(['roles.view', 'roles.create', 'roles.update', 'roles.assign', 'supplier.roles.index'])
+                        <a href="{{ route('supplier.roles.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.roles.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Roles &amp; Permissions</a>
+                    @endcanany
+                    @canany(['roles.view', 'roles.assign', 'supplier.role-requests.index'])
+                        <a href="{{ route('supplier.role-requests.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.role-requests.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Role Requests</a>
+                    @endcanany
+                    @canany(['ownership.transfer', 'supplier.ownership.index'])
+                        <a href="{{ route('supplier.ownership.index') }}" class="sidebar-submenu-item {{ $isActive('supplier.ownership.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Ownership</a>
+                    @endcanany
                 </div>
             </div>
+            @endcanany
         @endif
 
         {{-- Settings & Account --}}
@@ -160,8 +210,12 @@
                 <div class="sidebar-submenu ml-8" :class="open && 'open'">
                     <a href="{{ route('supplier.settings.security') }}" class="sidebar-submenu-item {{ $isActive('supplier.settings.security') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Personal &amp; Security</a>
                     <a href="{{ route('supplier.settings.dashboard-mode') }}" class="sidebar-submenu-item {{ $isActive('supplier.settings.dashboard-mode') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Dashboard Mode</a>
-                    <a href="{{ route('supplier.settings.conversion') }}" class="sidebar-submenu-item {{ $isActive('supplier.settings.conversion') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Convert to Organization</a>
-                    <a href="{{ route('supplier.settings.close-account') }}" class="sidebar-submenu-item {{ $isActive('supplier.settings.close-account') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Close Account</a>
+                    @if($account && !$account->isOrganization())
+                        <a href="{{ route('supplier.settings.conversion') }}" class="sidebar-submenu-item {{ $isActive('supplier.settings.conversion') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Convert to Organization</a>
+                    @endif
+                    @canany(['account.close', 'supplier.settings.close-account'])
+                        <a href="{{ route('supplier.settings.close-account') }}" class="sidebar-submenu-item {{ $isActive('supplier.settings.close-account') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Close Account</a>
+                    @endcanany
                 </div>
             </div>
         </div>
@@ -171,10 +225,10 @@
     {{-- User avatar footer --}}
     <div class="p-3 border-t shrink-0" style="border-color:var(--sidebar-border)">
         <div class="flex items-center px-2 py-2 rounded-lg" style="background:var(--theme-primary-soft)">
-            <img src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=4f46e5&color=fff" class="w-8 h-8 rounded-full" alt="">
+            <img src="https://ui-avatars.com/api/?name={{ urlencode($user?->name ?? 'User') }}&background=4f46e5&color=fff" class="w-8 h-8 rounded-full" alt="">
             <div class="ml-2 leading-tight min-w-0">
-                <p class="text-xs font-semibold text-gray-900 truncate">{{ $user->name }}</p>
-                <p class="text-[10px] text-gray-500 truncate">{{ $account->display_name }}</p>
+                <p class="text-xs font-semibold text-gray-900 truncate">{{ $user?->name }}</p>
+                <p class="text-[10px] text-gray-500 truncate">{{ $account?->display_name }}</p>
             </div>
         </div>
     </div>

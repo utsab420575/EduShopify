@@ -21,13 +21,21 @@ use App\Http\Controllers\Backend\Admin\Catalog\AttributeGroupController;
 use App\Http\Controllers\Backend\Admin\Catalog\BrandController;
 use App\Http\Controllers\Backend\Admin\Catalog\BuyerTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryAttributeController;
+use App\Http\Controllers\Backend\Admin\Catalog\CategoryBuilderController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryController;
+use App\Http\Controllers\Backend\Admin\Catalog\CurrencyController as CatalogCurrencyController;
+use App\Http\Controllers\Backend\Admin\Catalog\CustomAttributeValueController;
 use App\Http\Controllers\Backend\Admin\Catalog\DocumentTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\DocumentTypeEnableController;
 use App\Http\Controllers\Backend\Admin\Catalog\ExhibitionController;
+use App\Http\Controllers\Backend\Admin\Catalog\InputTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\ListingController;
+use App\Http\Controllers\Backend\Admin\Catalog\ListingTypeController;
+use App\Http\Controllers\Backend\Admin\Catalog\PricingTypeController;
+use App\Http\Controllers\Backend\Admin\Catalog\SalesModeController;
 use App\Http\Controllers\Backend\Admin\Catalog\SupplierTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\UnitController;
+use App\Http\Controllers\Backend\Admin\Catalog\VisibilityTypeController;
 use App\Http\Controllers\Backend\Admin\Communication\ContactInquiryController;
 use App\Http\Controllers\Backend\Admin\Communication\ConversationController;
 use App\Http\Controllers\Backend\Admin\Communication\NotificationController as AdminNotificationController;
@@ -70,20 +78,26 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         /* Users & Accounts */
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
         Route::post('/users/{user}/suspend', [UserController::class, 'suspend'])->name('users.suspend');
         Route::post('/users/{user}/reactivate', [UserController::class, 'reactivate'])->name('users.reactivate');
 
         Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
         Route::get('/accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
+        Route::put('/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
+        Route::delete('/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
         Route::post('/accounts/{account}/approve', [AccountController::class, 'approve'])->name('accounts.approve');
         Route::post('/accounts/{account}/suspend', [AccountController::class, 'suspend'])->name('accounts.suspend');
         Route::post('/accounts/{account}/reactivate', [AccountController::class, 'reactivate'])->name('accounts.reactivate');
 
         Route::get('/buyers', [BuyerController::class, 'index'])->name('buyers.index');
         Route::get('/buyers/{account}', [BuyerController::class, 'show'])->name('buyers.show');
+        Route::put('/buyers/{account}', [BuyerController::class, 'update'])->name('buyers.update');
 
         Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
         Route::get('/suppliers/{account}', [SupplierController::class, 'show'])->name('suppliers.show');
+        Route::put('/suppliers/{account}', [SupplierController::class, 'update'])->name('suppliers.update');
         Route::post('/suppliers/{account}/documents/{document}/verify', [SupplierDocumentController::class, 'verify'])->name('suppliers.documents.verify');
         Route::post('/suppliers/{account}/documents/{document}/reject', [SupplierDocumentController::class, 'reject'])->name('suppliers.documents.reject');
         Route::post('/suppliers/{account}/documents/{document}/reset', [SupplierDocumentController::class, 'resetToPending'])->name('suppliers.documents.reset');
@@ -93,11 +107,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         Route::post('/documents/{document}/reset', [SupplierDocumentController::class, 'directReset'])->name('documents.reset');
 
         Route::get('/account-members', [AccountMemberController::class, 'index'])->name('account-members.index');
+        Route::put('/account-members/{member}', [AccountMemberController::class, 'update'])->name('account-members.update');
+        Route::delete('/account-members/{member}', [AccountMemberController::class, 'destroy'])->name('account-members.destroy');
 
         Route::get('/capabilities', [CapabilityController::class, 'index'])->name('capabilities.index');
         Route::get('/capabilities/{capability}', [CapabilityController::class, 'show'])->name('capabilities.show');
         Route::get('/capabilities/{capability}/panel', [CapabilityController::class, 'panel'])->name('capabilities.panel');
         Route::post('/capabilities/{capability}/approve', [CapabilityController::class, 'approve'])->name('capabilities.approve');
+        Route::post('/capabilities/{capability}/undo-approve', [CapabilityController::class, 'undoApprove'])->name('capabilities.undo-approve');
         Route::post('/capabilities/{capability}/revision', [CapabilityController::class, 'revision'])->name('capabilities.revision');
         Route::post('/capabilities/{capability}/reject', [CapabilityController::class, 'reject'])->name('capabilities.reject');
         Route::post('/capabilities/{capability}/suspend', [CapabilityController::class, 'suspend'])->name('capabilities.suspend');
@@ -128,12 +145,28 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::get('/categories/{category}/attributes', [CategoryAttributeController::class, 'index'])->name('categories.attributes.index');
             Route::post('/categories/{category}/attributes', [CategoryAttributeController::class, 'store'])->name('categories.attributes.store');
             Route::post('/categories/{category}/attributes/bulk', [CategoryAttributeController::class, 'bulkStore'])->name('categories.attributes.bulk-store');
+            Route::post('/categories/{category}/attributes/sync', [CategoryAttributeController::class, 'sync'])->name('categories.attributes.sync');
             Route::put('/categories/{category}/attributes/{attribute}', [CategoryAttributeController::class, 'update'])->name('categories.attributes.update');
             Route::delete('/categories/{category}/attributes/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('categories.attributes.destroy');
+
+            // Category Builder — unified workspace: Category / Attribute Group / Attribute / Assignment.
+            // Display-only routes; all writes go through the resource controllers above.
+            Route::prefix('builder')->name('builder.')->group(function () {
+                Route::get('/categories', [CategoryBuilderController::class, 'categories'])->name('categories');
+                Route::get('/attribute-groups', [CategoryBuilderController::class, 'attributeGroups'])->name('attribute-groups');
+                Route::get('/attributes', [CategoryBuilderController::class, 'attributes'])->name('attributes');
+                Route::get('/assign', [CategoryBuilderController::class, 'assign'])->name('assign');
+            });
 
             // Attribute Groups
             Route::resource('attribute-groups', AttributeGroupController::class)->except(['show']);
             Route::post('/attribute-groups/{attributeGroup}/toggle-active', [AttributeGroupController::class, 'toggleActive'])->name('attribute-groups.toggle-active');
+
+            // Custom ("Other") attribute value review — supplier-submitted free
+            // text on select/multi_select/color attributes, surfaced via the
+            // Approval Center's "Custom Attribute Values" queue.
+            Route::post('/custom-attribute-values/approve', [CustomAttributeValueController::class, 'approve'])->name('custom-attribute-values.approve');
+            Route::post('/custom-attribute-values/ignore', [CustomAttributeValueController::class, 'ignore'])->name('custom-attribute-values.ignore');
 
             Route::resource('attributes', AttributeController::class)->except(['show']);
             Route::post('/attributes/suggestions/{suggestion}/approve', [AttributeController::class, 'approveSuggestion'])->name('attributes.suggestions.approve');
@@ -147,8 +180,26 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::post('/units/{unit}/approve', [UnitController::class, 'approve'])->name('units.approve');
             Route::post('/units/{unit}/reject', [UnitController::class, 'reject'])->name('units.reject');
 
+            Route::resource('currencies', CatalogCurrencyController::class)->except(['show']);
+            Route::post('/currencies/{currency}/default', [CatalogCurrencyController::class, 'makeDefault'])->name('currencies.default');
+
+            Route::resource('input-types', InputTypeController::class)->except(['show']);
+
+            Route::resource('pricing-types', PricingTypeController::class)->except(['show']);
+            Route::post('/pricing-types/{pricingType}/toggle-active', [PricingTypeController::class, 'toggleActive'])->name('pricing-types.toggle-active');
+
+            Route::resource('sales-modes', SalesModeController::class)->except(['show']);
+            Route::post('/sales-modes/{salesMode}/toggle-active', [SalesModeController::class, 'toggleActive'])->name('sales-modes.toggle-active');
+
+            Route::resource('listing-types', ListingTypeController::class)->except(['show']);
+            Route::post('/listing-types/{listingType}/toggle-active', [ListingTypeController::class, 'toggleActive'])->name('listing-types.toggle-active');
+
+            Route::resource('visibility-types', VisibilityTypeController::class)->except(['show']);
+            Route::post('/visibility-types/{visibilityType}/toggle-active', [VisibilityTypeController::class, 'toggleActive'])->name('visibility-types.toggle-active');
+
             Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
             Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
+            Route::get('/listings/{listing}/panel', [ListingController::class, 'panel'])->name('listings.panel');
             Route::post('/listings/{listing}/approve', [ListingController::class, 'approve'])->name('listings.approve');
             Route::post('/listings/{listing}/undo-approve', [ListingController::class, 'undoApprove'])->name('listings.undo-approve');
             Route::post('/listings/{listing}/reject', [ListingController::class, 'reject'])->name('listings.reject');
@@ -255,11 +306,28 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         /* Access Control */
         Route::prefix('access-control')->name('access-control.')->group(function () {
             Route::resource('roles', AdminRoleController::class)->except(['show']);
+            Route::post('/roles/{role}/duplicate', [AdminRoleController::class, 'duplicate'])->name('roles.duplicate');
             Route::post('/roles/{role}/assign', [AdminRoleController::class, 'assign'])->name('roles.assign');
             Route::post('/roles/{role}/unassign', [AdminRoleController::class, 'unassign'])->name('roles.unassign');
 
             Route::get('/permissions', [AdminPermissionController::class, 'index'])->name('permissions.index');
             Route::put('/permissions/{permission}', [AdminPermissionController::class, 'update'])->name('permissions.update');
+
+            Route::get('/roles-in-permission', [\App\Http\Controllers\Backend\Admin\AccessControl\RoleInPermissionController::class, 'index'])->name('roles-in-permission.index');
+            Route::get('/roles-in-permission/create', [\App\Http\Controllers\Backend\Admin\AccessControl\RoleInPermissionController::class, 'create'])->name('roles-in-permission.create');
+            Route::post('/roles-in-permission', [\App\Http\Controllers\Backend\Admin\AccessControl\RoleInPermissionController::class, 'store'])->name('roles-in-permission.store');
+            Route::get('/roles-in-permission/{role}/edit', [\App\Http\Controllers\Backend\Admin\AccessControl\RoleInPermissionController::class, 'edit'])->name('roles-in-permission.edit');
+            Route::put('/roles-in-permission/{role}', [\App\Http\Controllers\Backend\Admin\AccessControl\RoleInPermissionController::class, 'update'])->name('roles-in-permission.update');
+            Route::get('/roles-in-permission/{role}/json', [\App\Http\Controllers\Backend\Admin\AccessControl\RoleInPermissionController::class, 'getRolePermissions'])->name('roles-in-permission.json');
+
+            Route::get('/user-roles', [\App\Http\Controllers\Backend\Admin\AccessControl\UserRoleAssignmentController::class, 'index'])->name('user-roles.index');
+            Route::put('/user-roles/{user}', [\App\Http\Controllers\Backend\Admin\AccessControl\UserRoleAssignmentController::class, 'update'])->name('user-roles.update');
+
+            Route::get('/audit-logs', [\App\Http\Controllers\Backend\Admin\AccessControl\RbacAuditLogController::class, 'index'])->name('audit-logs.index');
+
+            Route::get('/route-permissions', [\App\Http\Controllers\Backend\Admin\AccessControl\RoutePermissionSyncController::class, 'index'])->name('route-permissions.index');
+            Route::post('/route-permissions/create-permissions', [\App\Http\Controllers\Backend\Admin\AccessControl\RoutePermissionSyncController::class, 'createPermissions'])->name('route-permissions.create-permissions');
+            Route::post('/route-permissions/assign-to-role', [\App\Http\Controllers\Backend\Admin\AccessControl\RoutePermissionSyncController::class, 'assignToRole'])->name('route-permissions.assign-to-role');
 
             Route::get('/role-requests', [AdminRoleRequestController::class, 'index'])->name('role-requests.index');
             Route::get('/role-requests/{roleRequest}', [AdminRoleRequestController::class, 'show'])->name('role-requests.show');
@@ -283,8 +351,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::get('/geography/states/{state}/cities', [GeographyController::class, 'cities'])->name('geography.cities');
             Route::post('/geography/cities/{city}/toggle', [GeographyController::class, 'toggleCity'])->name('geography.cities.toggle');
 
-            Route::resource('currencies', CurrencyController::class)->except(['show']);
-            Route::post('/currencies/{currency}/default', [CurrencyController::class, 'makeDefault'])->name('currencies.default');
+            Route::get('/currencies', fn () => redirect()->route('admin.catalog.currencies.index'))->name('currencies.index');
 
             Route::resource('languages', LanguageController::class)->except(['show']);
 

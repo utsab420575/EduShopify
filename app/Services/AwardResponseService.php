@@ -5,7 +5,10 @@ namespace App\Services;
 use App\Models\Award;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\User;
+use App\Notifications\DashboardNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -39,6 +42,8 @@ class AwardResponseService
 
             $this->createPurchaseOrder($award);
 
+            $this->notifyBuyer($award, "The supplier accepted the award for \"{$award->rfq->title}\" — a purchase order has been created.");
+
             return $award->fresh();
         });
     }
@@ -61,6 +66,8 @@ class AwardResponseService
 
             $rfq = $award->rfq;
             $rfq->update(['status' => $rfq->deadlinePassed() ? 'closed' : 'open']);
+
+            $this->notifyBuyer($award, "The supplier declined the award for \"{$rfq->title}\" ({$reason}).");
 
             return $award->fresh();
         });
@@ -113,5 +120,14 @@ class AwardResponseService
         $seq    = str_pad($latest + 1, 6, '0', STR_PAD_LEFT);
 
         return "PO-{$year}-{$seq}";
+    }
+
+    private function notifyBuyer(Award $award, string $message): void
+    {
+        $users = User::whereHas('accountMember', fn ($q) => $q->where('account_id', $award->buyer_account_id)->where('status', 'active'))->get();
+
+        if ($users->isNotEmpty()) {
+            Notification::send($users, new DashboardNotification($message, route('buyer.rfqs.show', $award->rfq_id)));
+        }
     }
 }

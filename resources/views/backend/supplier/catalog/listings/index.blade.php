@@ -84,7 +84,7 @@
                                     @if($item->base_price)
                                         {{ $item->currency_code }} {{ number_format($item->base_price, 2) }}
                                     @else
-                                        <span class="text-gray-400 uppercase text-[10px]">{{ str_replace('_', ' ', $item->pricing_type) }}</span>
+                                        <span class="text-gray-400 uppercase text-[10px]">{{ $item->pricingType?->name ?? str_replace('_', ' ', $item->pricing_type ?? '') }}</span>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3.5">

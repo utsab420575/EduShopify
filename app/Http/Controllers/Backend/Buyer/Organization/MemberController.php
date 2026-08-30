@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Backend\Buyer\Organization;
 use App\Http\Controllers\Backend\Buyer\Concerns\InteractsWithBuyerAccount;
 use App\Http\Controllers\Controller;
 use App\Models\AccountMember;
+use App\Models\Permission;
+use App\Services\RbacAuditLogger;
+use Illuminate\Http\Request;
 
 class MemberController extends Controller
 {
@@ -12,15 +15,74 @@ class MemberController extends Controller
 
     public function index()
     {
-        $this->authorizeOrganization();
+        $account = $this->currentAccount();
+        abort_unless($account->isOrganization(), 403);
 
-        $members = $this->currentAccount()->members()
-            ->with(['user.roles'])
+        $members = $account->members()
+            ->with(['user.roles', 'user.permissions'])
             ->orderByDesc('is_primary_owner')
             ->orderBy('created_at')
             ->get();
 
-        return view('backend.buyer.organization.members.index', ['members' => $members]);
+        return view('backend.buyer.organization.members.index', [
+            'account' => $account,
+            'user'    => $this->currentUser(),
+            'members' => $members,
+        ]);
+    }
+
+    public function editPermissions(AccountMember $member)
+    {
+        $this->authorizeMember($member);
+        $account = $this->currentAccount();
+
+        $member->user->activateTeamContext();
+        $directPermissions = $member->user->permissions()->wherePivot('account_id', $account->id)->pluck('name')->toArray();
+        $inheritedPermissions = $member->user->getPermissionsViaRoles()->pluck('name')->toArray();
+
+        $permissionGroups = Permission::active()
+            ->whereIn('capability_scope', ['buyer', 'common', 'both', 'all'])
+            ->orderBy('group_name')
+            ->orderBy('name')
+            ->get()
+            ->groupBy('group_name');
+
+        return view('backend.buyer.organization.members.permissions', [
+            'account'              => $account,
+            'user'                 => $this->currentUser(),
+            'member'               => $member,
+            'directPermissions'    => $directPermissions,
+            'inheritedPermissions' => $inheritedPermissions,
+            'permissionGroups'     => $permissionGroups,
+        ]);
+    }
+
+    public function updatePermissions(Request $request, AccountMember $member)
+    {
+        $this->authorizeMember($member);
+        $account = $this->currentAccount();
+
+        $validated = $request->validate([
+            'direct_permissions'   => ['nullable', 'array'],
+            'direct_permissions.*' => ['string', 'exists:permissions,name'],
+        ]);
+
+        $member->user->activateTeamContext();
+
+        $oldDirect = $member->user->permissions()->wherePivot('account_id', $account->id)->pluck('name')->toArray();
+        $newDirect = $validated['direct_permissions'] ?? [];
+
+        $member->user->syncPermissions($newDirect);
+
+        $added = array_values(array_diff($newDirect, $oldDirect));
+        $removed = array_values(array_diff($oldDirect, $newDirect));
+
+        if (!empty($added) || !empty($removed)) {
+            RbacAuditLogger::logUserPermissionOverride($member->user, $added, $removed, $account->id);
+        }
+
+        return redirect()->route('buyer.members.index')
+            ->with('success', "Direct permissions updated for {$member->user->name}.");
     }
 
     public function suspend(AccountMember $member)
@@ -48,23 +110,19 @@ class MemberController extends Controller
         $this->guardLastOwner($member, 'remove');
 
         $member->update([
-            'status' => 'removed',
-            'removed_at' => now(),
+            'status'             => 'removed',
+            'removed_at'         => now(),
             'removed_by_user_id' => $this->currentUser()->id,
         ]);
 
         return back()->with('success', 'Member removed.');
     }
 
-    private function authorizeOrganization(): void
-    {
-        abort_unless($this->currentAccount()->isOrganization(), 403);
-    }
-
     private function authorizeMember(AccountMember $member): void
     {
-        $this->authorizeOrganization();
-        abort_unless($member->account_id === $this->currentAccount()->id, 403);
+        $account = $this->currentAccount();
+        abort_unless($account->isOrganization(), 403);
+        abort_unless($member->account_id === $account->id, 403);
     }
 
     private function guardLastOwner(AccountMember $member, string $action): void
@@ -73,8 +131,7 @@ class MemberController extends Controller
             return;
         }
 
-        $activeOwners = $this->currentAccount()->members()->active()->owners()->count();
-
+        $activeOwners = $this->currentAccount()->members()->where('status', 'active')->where('is_primary_owner', true)->count();
         abort_if($activeOwners <= 1, 422, "Cannot {$action} the account's last active owner.");
     }
 }

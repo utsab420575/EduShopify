@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Listing;
+use App\Models\SupplierCategory;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -36,6 +37,20 @@ class ListingModerationService
             ]);
 
             activity('moderation')->causedBy($admin)->performedOn($listing)->log('Listing approved');
+
+            // supplier_categories represents "what a supplier is capable of
+            // supplying," used by open_matching RFQ eligibility — an
+            // approved listing confirms the supplier serves that category,
+            // but the row must stay even if the listing is later removed.
+            if ($listing->main_category_id) {
+                SupplierCategory::firstOrCreate(
+                    [
+                        'supplier_account_id' => $listing->supplier_account_id,
+                        'category_id'         => $listing->main_category_id,
+                    ],
+                    ['is_active' => true]
+                );
+            }
 
             return $listing->fresh();
         });

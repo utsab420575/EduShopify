@@ -23,11 +23,50 @@ class Rfq extends Model
 
     protected $table = 'rfqs';
 
+    protected static function booted(): void
+    {
+        static::saving(function (Rfq $rfq) {
+            if (! $rfq->visibility_type_id) {
+                $rfq->visibility_type_id = VisibilityType::firstOrCreate(
+                    ['code' => 'open_matching'],
+                    ['name' => 'Open RFQ', 'engine_type' => 'open', 'is_active' => true]
+                )->id;
+            }
+        });
+    }
+
+    public function fill(array $attributes)
+    {
+        if (isset($attributes['visibility_type']) && ! isset($attributes['visibility_type_id'])) {
+            $val = $attributes['visibility_type'];
+            if (is_numeric($val)) {
+                $attributes['visibility_type_id'] = (int)$val;
+            } else {
+                $code = match ($val) {
+                    'global'             => 'open_matching',
+                    'selected_suppliers' => 'invited',
+                    default              => $val,
+                };
+                $attributes['visibility_type_id'] = VisibilityType::firstOrCreate(
+                    ['code' => $code],
+                    [
+                        'name'        => ucfirst(str_replace('_', ' ', $code)),
+                        'engine_type' => in_array($code, ['direct', 'invited'], true) ? 'invited' : 'open',
+                        'is_active'   => true,
+                    ]
+                )->id;
+            }
+            unset($attributes['visibility_type']);
+        }
+
+        return parent::fill($attributes);
+    }
+
     protected $fillable = [
         'rfq_number',
         'buyer_account_id',
         'created_by_user_id',
-        'visibility_type',
+        'visibility_type_id',
         'source_listing_id',
         'title',
         'description',
@@ -86,6 +125,11 @@ class Rfq extends Model
     public function buyerAccount(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'buyer_account_id');
+    }
+
+    public function visibilityType(): BelongsTo
+    {
+        return $this->belongsTo(VisibilityType::class, 'visibility_type_id');
     }
 
     public function createdBy(): BelongsTo
@@ -217,7 +261,7 @@ class Rfq extends Model
 
     public function scopeGlobalVisibility(Builder $query): Builder
     {
-        return $query->where('visibility_type', 'global');
+        return $query->whereHas('visibilityType', fn ($q) => $q->where('engine_type', 'open'));
     }
 
     public function scopeAcceptingQuotations(Builder $query): Builder
@@ -230,6 +274,40 @@ class Rfq extends Model
     public function isOpen(): bool
     {
         return $this->status === 'open';
+    }
+
+    public function isInvited(): bool
+    {
+        return $this->getRelationValue('visibilityType')?->engine_type === 'invited';
+    }
+
+    public function isDirect(): bool
+    {
+        $vt = $this->getRelationValue('visibilityType');
+        return $vt?->code === 'direct' || $vt?->max_suppliers === 1;
+    }
+
+    public function isOpenMarketplace(): bool
+    {
+        return $this->getRelationValue('visibilityType')?->engine_type === 'open';
+    }
+
+    /**
+     * Backward-compatible code accessor so legacy calls like `$rfq->visibility_type`
+     * return standard code ('global' / 'selected_suppliers' / custom code).
+     */
+    public function getVisibilityTypeAttribute(): ?string
+    {
+        $vt = $this->getRelationValue('visibilityType');
+        if (is_object($vt)) {
+            return match ($vt->code) {
+                'open_matching', 'broadcast_all' => 'global',
+                'invited', 'direct'              => 'selected_suppliers',
+                default                          => $vt->code,
+            };
+        }
+
+        return is_string($vt) ? $vt : null;
     }
 
     public function deadlinePassed(): bool

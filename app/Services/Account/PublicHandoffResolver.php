@@ -54,7 +54,7 @@ class PublicHandoffResolver
         $listing = PublicListingQuery::base()->where('slug', $params['slug'] ?? null)->first();
 
         return $listing
-            ? route('buyer.rfqs.create', ['listing_id' => $listing->id])
+            ? route('buyer.rfqs.create', ['listing' => $listing->id])
             : route('buyer.rfqs.create');
     }
 
@@ -63,7 +63,7 @@ class PublicHandoffResolver
         $profile = SupplierProfile::where('slug', $params['slug'] ?? null)->first();
 
         return $profile
-            ? route('buyer.rfqs.create', ['supplier_account_id' => $profile->account_id])
+            ? route('buyer.rfqs.create', ['supplier' => $profile->account_id])
             : route('buyer.rfqs.create');
     }
 

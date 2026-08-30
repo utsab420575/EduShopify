@@ -1,6 +1,8 @@
 @php
     $isActive = fn (string $pattern) => request()->routeIs($pattern);
     $groupActive = fn (array $patterns) => collect($patterns)->contains(fn ($p) => request()->routeIs($p));
+    $account = $account ?? auth()->user()?->accountMember?->account;
+    $user = $user ?? auth()->user();
 @endphp
 
 <aside class="w-64 flex flex-col border-r fixed lg:static inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:translate-x-0 bg-white"
@@ -19,11 +21,13 @@
 
     <nav class="sidebar-scroll flex-1 overflow-y-auto py-4 px-3 space-y-1">
 
+        {{-- Dashboard --}}
         <a href="{{ route('buyer.dashboard') }}" class="sidebar-menu-item {{ $isActive('buyer.dashboard') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('buyer.dashboard') ? '' : 'border-transparent' }}">
             <i class="fa-solid fa-gauge sidebar-menu-icon w-5 text-center"></i>
             <span class="ml-3 flex-1 text-sm font-medium">Dashboard</span>
         </a>
 
+        {{-- Marketplace (Public B2B Catalog for Buyers) --}}
         <div x-data="{ open: {{ $groupActive(['buyer.marketplace.*', 'buyer.suppliers.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['buyer.marketplace.*', 'buyer.suppliers.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['buyer.marketplace.*', 'buyer.suppliers.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-store sidebar-menu-icon w-5 text-center"></i>
@@ -37,6 +41,8 @@
             </div>
         </div>
 
+        {{-- Procurement --}}
+        @canany(['rfq.view', 'rfq.create', 'quotation.view_received', 'purchase_order.view_buyer', 'buyer.rfqs.index', 'buyer.quotations.index', 'buyer.purchase-orders.index'])
         <div x-data="{ open: {{ $groupActive(['buyer.rfqs.*', 'buyer.quotations.*', 'buyer.awards.*', 'buyer.purchase-orders.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['buyer.rfqs.*', 'buyer.quotations.*', 'buyer.awards.*', 'buyer.purchase-orders.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['buyer.rfqs.*', 'buyer.quotations.*', 'buyer.awards.*', 'buyer.purchase-orders.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-file-signature sidebar-menu-icon w-5 text-center"></i>
@@ -44,18 +50,30 @@
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
             </button>
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                <a href="{{ route('buyer.rfqs.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.rfqs.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">RFQs</a>
-                <a href="{{ route('buyer.quotations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.quotations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Quotations</a>
-                <a href="{{ route('buyer.awards.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.awards.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Awards</a>
-                <a href="{{ route('buyer.purchase-orders.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.purchase-orders.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Purchase Orders</a>
+                @canany(['rfq.view', 'rfq.create', 'buyer.rfqs.index'])
+                    <a href="{{ route('buyer.rfqs.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.rfqs.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">RFQs</a>
+                @endcanany
+                @canany(['quotation.view_received', 'buyer.quotations.index'])
+                    <a href="{{ route('buyer.quotations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.quotations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Quotations</a>
+                @endcanany
+                @canany(['quotation.award', 'buyer.awards.index'])
+                    <a href="{{ route('buyer.awards.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.awards.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Awards</a>
+                @endcanany
+                @canany(['purchase_order.view_buyer', 'purchase_order.update_buyer', 'buyer.purchase-orders.index'])
+                    <a href="{{ route('buyer.purchase-orders.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.purchase-orders.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Purchase Orders</a>
+                @endcanany
             </div>
         </div>
+        @endcanany
 
+        {{-- Saved Items --}}
         <a href="{{ route('buyer.saved-items.index') }}" class="sidebar-menu-item {{ $isActive('buyer.saved-items.*') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('buyer.saved-items.*') ? '' : 'border-transparent' }}">
             <i class="fa-solid fa-bookmark sidebar-menu-icon w-5 text-center"></i>
             <span class="ml-3 flex-1 text-sm font-medium">Saved Items</span>
         </a>
 
+        {{-- Communication --}}
+        @canany(['messages.view', 'messages.send', 'tickets.view', 'tickets.create', 'tickets.reply', 'buyer.messages.index'])
         <div x-data="{ open: {{ $groupActive(['buyer.messages.*', 'buyer.notifications.*', 'buyer.tickets.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['buyer.messages.*', 'buyer.notifications.*', 'buyer.tickets.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['buyer.messages.*', 'buyer.notifications.*', 'buyer.tickets.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-comments sidebar-menu-icon w-5 text-center"></i>
@@ -68,12 +86,18 @@
                 <a href="{{ route('buyer.tickets.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.tickets.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Support Tickets</a>
             </div>
         </div>
+        @endcanany
 
+        {{-- Reviews --}}
+        @canany(['supplier.review', 'buyer.reviews.index'])
         <a href="{{ route('buyer.reviews.index') }}" class="sidebar-menu-item {{ $isActive('buyer.reviews.*') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('buyer.reviews.*') ? '' : 'border-transparent' }}">
             <i class="fa-solid fa-star sidebar-menu-icon w-5 text-center"></i>
             <span class="ml-3 flex-1 text-sm font-medium">Reviews</span>
         </a>
+        @endcanany
 
+        {{-- Buyer Profile --}}
+        @canany(['buyer.profile.view', 'buyer.profile.update', 'locations.view', 'locations.manage', 'buyer.profile.edit', 'account.view', 'account.update'])
         <div x-data="{ open: {{ $groupActive(['buyer.profile.*', 'buyer.locations.*']) ? 'true' : 'false' }} }">
             <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['buyer.profile.*', 'buyer.locations.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['buyer.profile.*', 'buyer.locations.*']) ? '' : 'border-transparent' }}">
                 <i class="fa-solid fa-building sidebar-menu-icon w-5 text-center"></i>
@@ -81,12 +105,19 @@
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
             </button>
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                <a href="{{ route('buyer.profile.edit') }}" class="sidebar-submenu-item {{ $isActive('buyer.profile.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Profile Information</a>
-                <a href="{{ route('buyer.locations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.locations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Locations</a>
+                @canany(['buyer.profile.view', 'buyer.profile.update', 'buyer.profile.edit', 'account.view'])
+                    <a href="{{ route('buyer.profile.edit') }}" class="sidebar-submenu-item {{ $isActive('buyer.profile.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Profile Information</a>
+                @endcanany
+                @canany(['locations.view', 'locations.manage', 'buyer.locations.index'])
+                    <a href="{{ route('buyer.locations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.locations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Locations</a>
+                @endcanany
             </div>
         </div>
+        @endcanany
 
-        @if($account->isOrganization())
+        {{-- Organization (only for organization accounts) --}}
+        @if($account && $account->isOrganization())
+            @canany(['members.view', 'members.invite', 'members.update', 'members.remove', 'roles.view', 'roles.create', 'roles.update', 'roles.delete', 'roles.assign', 'ownership.transfer', 'buyer.members.index'])
             <div x-data="{ open: {{ $groupActive(['buyer.members.*', 'buyer.invitations.*', 'buyer.roles.*', 'buyer.role-requests.*', 'buyer.ownership.*']) ? 'true' : 'false' }} }">
                 <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['buyer.members.*', 'buyer.invitations.*', 'buyer.roles.*', 'buyer.role-requests.*', 'buyer.ownership.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['buyer.members.*', 'buyer.invitations.*', 'buyer.roles.*', 'buyer.role-requests.*', 'buyer.ownership.*']) ? '' : 'border-transparent' }}">
                     <i class="fa-solid fa-users sidebar-menu-icon w-5 text-center"></i>
@@ -94,15 +125,27 @@
                     <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
                 </button>
                 <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                    <a href="{{ route('buyer.members.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.members.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Members</a>
-                    <a href="{{ route('buyer.invitations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.invitations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Invitations</a>
-                    <a href="{{ route('buyer.roles.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.roles.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Roles &amp; Permissions</a>
-                    <a href="{{ route('buyer.role-requests.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.role-requests.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Role Requests</a>
-                    <a href="{{ route('buyer.ownership.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.ownership.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Ownership</a>
+                    @canany(['members.view', 'buyer.members.index'])
+                        <a href="{{ route('buyer.members.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.members.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Members</a>
+                    @endcanany
+                    @canany(['members.invite', 'buyer.invitations.index'])
+                        <a href="{{ route('buyer.invitations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.invitations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Invitations</a>
+                    @endcanany
+                    @canany(['roles.view', 'roles.create', 'roles.update', 'roles.assign', 'buyer.roles.index'])
+                        <a href="{{ route('buyer.roles.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.roles.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Roles &amp; Permissions</a>
+                    @endcanany
+                    @canany(['roles.view', 'roles.assign', 'buyer.role-requests.index'])
+                        <a href="{{ route('buyer.role-requests.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.role-requests.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Role Requests</a>
+                    @endcanany
+                    @canany(['ownership.transfer', 'buyer.ownership.index'])
+                        <a href="{{ route('buyer.ownership.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.ownership.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Ownership</a>
+                    @endcanany
                 </div>
             </div>
+            @endcanany
         @endif
 
+        {{-- Settings & Account --}}
         <div class="pt-3 mt-3 border-t" style="border-color:var(--sidebar-border)">
             <div x-data="{ open: {{ $isActive('buyer.settings.*') ? 'true' : 'false' }} }">
                 <button @click="open = !open" class="sidebar-menu-item {{ $isActive('buyer.settings.*') ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('buyer.settings.*') ? '' : 'border-transparent' }}">
@@ -113,8 +156,12 @@
                 <div class="sidebar-submenu ml-8" :class="open && 'open'">
                     <a href="{{ route('buyer.settings.security') }}" class="sidebar-submenu-item {{ $isActive('buyer.settings.security') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Personal &amp; Security</a>
                     <a href="{{ route('buyer.settings.dashboard-mode') }}" class="sidebar-submenu-item {{ $isActive('buyer.settings.dashboard-mode') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Dashboard Mode</a>
-                    <a href="{{ route('buyer.settings.conversion') }}" class="sidebar-submenu-item {{ $isActive('buyer.settings.conversion') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Convert to Organization</a>
-                    <a href="{{ route('buyer.settings.close-account') }}" class="sidebar-submenu-item {{ $isActive('buyer.settings.close-account') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Close Account</a>
+                    @if($account && !$account->isOrganization())
+                        <a href="{{ route('buyer.settings.conversion') }}" class="sidebar-submenu-item {{ $isActive('buyer.settings.conversion') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Convert to Organization</a>
+                    @endif
+                    @canany(['account.close', 'buyer.settings.close-account'])
+                        <a href="{{ route('buyer.settings.close-account') }}" class="sidebar-submenu-item {{ $isActive('buyer.settings.close-account') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Close Account</a>
+                    @endcanany
                 </div>
             </div>
         </div>
@@ -123,10 +170,10 @@
 
     <div class="p-3 border-t shrink-0" style="border-color:var(--sidebar-border)">
         <div class="flex items-center px-2 py-2 rounded-lg" style="background:var(--theme-primary-soft)">
-            <img src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=4f46e5&color=fff" class="w-8 h-8 rounded-full" alt="">
+            <img src="https://ui-avatars.com/api/?name={{ urlencode($user?->name ?? 'User') }}&background=4f46e5&color=fff" class="w-8 h-8 rounded-full" alt="">
             <div class="ml-2 leading-tight min-w-0">
-                <p class="text-xs font-semibold text-gray-900 truncate">{{ $user->name }}</p>
-                <p class="text-[10px] text-gray-500 truncate">{{ $account->display_name }}</p>
+                <p class="text-xs font-semibold text-gray-900 truncate">{{ $user?->name }}</p>
+                <p class="text-[10px] text-gray-500 truncate">{{ $account?->display_name }}</p>
             </div>
         </div>
     </div>

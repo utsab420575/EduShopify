@@ -112,10 +112,24 @@
                                             </form>
                                             <button type="button" title="Reject" @click="$dispatch('open-modal-reject-doc-{{ $document->id }}')" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-red-600 hover:bg-red-50"><i class="fa-solid fa-xmark"></i></button>
                                         @else
-                                            <form method="POST" action="{{ route('admin.suppliers.documents.reset', [$account, $document]) }}" onsubmit="return confirmSwal(this, 'Undo Document Decision?', 'Revert document status back to Pending?', 'question', 'Yes, Undo')">
-                                                @csrf
-                                                <button type="submit" title="Undo Decision (Revert to Pending)" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-amber-600 hover:bg-amber-50"><i class="fa-solid fa-rotate-left"></i></button>
-                                            </form>
+                                            @if($capability && $capability->status === 'active')
+                                                <button type="button"
+                                                        @click="Swal.fire({
+                                                            icon: 'warning',
+                                                            title: 'Cannot Undo Document Decision',
+                                                            text: 'Supplier capability is currently Approved/Active. Please undo capability approval first before modifying document status.',
+                                                            confirmButtonColor: '#4f46e5'
+                                                        })"
+                                                        title="Undo Decision (Revert to Pending)"
+                                                        class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-amber-600 hover:bg-amber-50">
+                                                    <i class="fa-solid fa-rotate-left"></i>
+                                                </button>
+                                            @else
+                                                <form method="POST" action="{{ route('admin.suppliers.documents.reset', [$account, $document]) }}" onsubmit="return confirmSwal(this, 'Undo Document Decision?', 'Revert document status back to Pending?', 'question', 'Yes, Undo')">
+                                                    @csrf
+                                                    <button type="submit" title="Undo Decision (Revert to Pending)" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-amber-600 hover:bg-amber-50"><i class="fa-solid fa-rotate-left"></i></button>
+                                                </form>
+                                            @endif
                                         @endif
                                     @endcan
                                 </div>

@@ -1,5 +1,8 @@
 @php
+    $inputTypes = $inputTypes ?? \App\Models\InputType::active()->ordered()->get();
     $selectedInputType = old('input_type', $attribute->input_type ?: 'text');
+    $selectedInputTypeId = old('input_type_id', $attribute->input_type_id ?: ($inputTypes->where('code', $selectedInputType)->first()?->id ?? 1));
+
     $existingValues = old('values');
     if ($existingValues === null && $attribute->exists) {
         $existingValues = $attribute->values->map(fn($v) => [
@@ -16,7 +19,17 @@
 @endphp
 
 <div x-data="{
-    inputType: '{{ $selectedInputType }}',
+    inputTypes: {{ Js::from($inputTypes->map(fn($t) => ['id' => $t->id, 'code' => $t->code, 'name' => $t->name, 'has_options' => (bool)$t->has_options, 'is_multiple' => (bool)$t->is_multiple])) }},
+    inputTypeId: {{ $selectedInputTypeId }},
+    get currentInputType() {
+        return this.inputTypes.find(t => t.id == this.inputTypeId) || this.inputTypes[0] || {};
+    },
+    get inputType() {
+        return this.currentInputType.code || 'text';
+    },
+    get hasOptions() {
+        return !!this.currentInputType.has_options;
+    },
     values: {{ Js::from($existingValues) }},
     addValue() {
         this.values.push({
@@ -58,17 +71,16 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Input Type <span class="text-red-500">*</span></label>
-                <select name="input_type" x-model="inputType" required class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="text">Text (Single-line)</option>
-                    <option value="textarea">Textarea (Multi-line)</option>
-                    <option value="number">Number</option>
-                    <option value="select">Single Select (Dropdown)</option>
-                    <option value="multi_select">Multiple Select (Checkboxes)</option>
-                    <option value="boolean">Yes / No (Toggle / Radio)</option>
-                    <option value="date">Date</option>
-                    <option value="color">Color (Swatch / Hex)</option>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Input Format / Type <span class="text-red-500">*</span></label>
+                <select name="input_type_id" x-model="inputTypeId" required class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                    @foreach($inputTypes as $t)
+                        <option value="{{ $t->id }}" @selected($selectedInputTypeId == $t->id)>
+                            {{ $t->name }} {{ $t->has_options ? '(Predefined options)' : '' }}
+                        </option>
+                    @endforeach
                 </select>
+                <input type="hidden" name="input_type" :value="inputType">
+                <p class="text-xs text-gray-400 mt-1" x-text="currentInputType.description || ''"></p>
             </div>
 
             <x-backend.select name="unit_id" label="Measurement Unit (optional)" placeholder="— No Unit —" :selected="old('unit_id', $attribute->unit_id)">
@@ -90,26 +102,33 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
             <label class="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-50">
                 <input type="checkbox" name="is_filterable" value="1" @checked(old('is_filterable', $attribute->is_filterable)) style="accent-color:var(--theme-primary)">
                 <div>
                     <span class="font-semibold block text-xs text-gray-900">Filterable by Default</span>
-                    <span class="text-[11px] text-gray-400">Can be used as a catalog sidebar filter</span>
+                    <span class="text-[11px] text-gray-400">Sidebar search filter</span>
                 </div>
             </label>
             <label class="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-50">
                 <input type="checkbox" name="is_variant" value="1" @checked(old('is_variant', $attribute->is_variant)) style="accent-color:var(--theme-primary)">
                 <div>
                     <span class="font-semibold block text-xs text-gray-900">Variant Attribute</span>
-                    <span class="text-[11px] text-gray-400">Can create product variants (e.g. Color, Size)</span>
+                    <span class="text-[11px] text-gray-400">Creates product variants</span>
                 </div>
             </label>
             <label class="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-50">
                 <input type="checkbox" name="is_required" value="1" @checked(old('is_required', $attribute->is_required)) style="accent-color:var(--theme-primary)">
                 <div>
                     <span class="font-semibold block text-xs text-gray-900">Required by Default</span>
-                    <span class="text-[11px] text-gray-400">Supplier must fill this specification</span>
+                    <span class="text-[11px] text-gray-400">Mandatory for suppliers</span>
+                </div>
+            </label>
+            <label x-show="hasOptions" class="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-50">
+                <input type="checkbox" name="allow_custom_value" value="1" @checked(old('allow_custom_value', $attribute->allow_custom_value)) style="accent-color:var(--theme-primary)">
+                <div>
+                    <span class="font-semibold block text-xs text-gray-900">Allow "Other"</span>
+                    <span class="text-[11px] text-gray-400">Supplier can type custom value</span>
                 </div>
             </label>
         </div>
@@ -133,13 +152,17 @@
             <x-backend.input type="number" name="max_length" label="Maximum Length (characters)" :value="old('max_length', $validationRules['max_length'] ?? '')" placeholder="e.g. 255" />
         </div>
 
-        <div x-show="inputType !== 'number' && inputType !== 'text' && inputType !== 'textarea'" class="text-xs text-gray-400 py-2">
-            No extra validation constraints required for this input type. Values are validated against the predefined options below.
+        <div x-show="!hasOptions && inputType !== 'number' && inputType !== 'text' && inputType !== 'textarea'" class="text-xs text-gray-400 py-2">
+            Standard format validation will be applied.
+        </div>
+
+        <div x-show="hasOptions" class="text-xs text-gray-400 py-2">
+            Values are validated against the predefined choices below (or the custom value if allowed).
         </div>
     </x-backend.form-card>
 
-    {{-- Predefined Attribute Values Card (For Select, Multi-select, Color) --}}
-    <div x-show="inputType === 'select' || inputType === 'multi_select' || inputType === 'color'" class="space-y-4">
+    {{-- Predefined Attribute Values Card (For Input Types that have options) --}}
+    <div x-show="hasOptions" class="space-y-4">
         <x-backend.form-card title="Predefined Attribute Values" description="Add selectable options for this attribute. Suppliers will choose from these values.">
             <div class="space-y-3">
                 <template x-for="(val, index) in values" :key="index">

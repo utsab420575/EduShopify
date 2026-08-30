@@ -31,12 +31,12 @@ class CatalogController extends Controller
 
     private function render(Request $request, ?string $type, string $title, string $subtitle)
     {
-        $query = PublicListingQuery::base()->with(['mainCategory', 'brand', 'supplierAccount.supplierProfile']);
+        $query = PublicListingQuery::base()->with(['mainCategory', 'brand', 'unit', 'primaryImage', 'media', 'productDetail', 'serviceDetail', 'supplierAccount.supplierProfile']);
 
         if ($type) {
-            $query->where('listing_type', $type);
+            $query->whereHas('listingType', fn ($q) => $q->where('code', $type));
         } elseif ($request->filled('listing_type') && in_array($request->string('listing_type')->toString(), ['product', 'service'], true)) {
-            $query->where('listing_type', $request->string('listing_type'));
+            $query->whereHas('listingType', fn ($q) => $q->where('code', $request->string('listing_type')));
         }
 
         if ($request->filled('q')) {

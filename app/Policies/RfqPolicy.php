@@ -172,4 +172,14 @@ class RfqPolicy
 
         return $this->viewAsOpportunity($user, $rfq);
     }
+
+    /**
+     * Declining an opportunity reuses rfq_opportunity.view rather than a new
+     * permission — a supplier who can see the opportunity can decide not to
+     * respond to it.
+     */
+    public function decline(User $user, Rfq $rfq): bool
+    {
+        return $rfq->acceptsQuotations() && $this->viewAsOpportunity($user, $rfq);
+    }
 }

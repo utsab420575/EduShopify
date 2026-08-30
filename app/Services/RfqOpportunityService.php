@@ -29,4 +29,16 @@ class RfqOpportunityService
             'status'              => 'pending',
         ]);
     }
+
+    /**
+     * Supplier chooses not to participate (spec §33). The queue row is kept
+     * (never deleted) so eligibility/history stays intact — only its status
+     * and an optional reason change.
+     */
+    public function decline(Rfq $rfq, Account $supplierAccount, ?string $reason = null): void
+    {
+        RfqSupplierQueue::where('rfq_id', $rfq->id)
+            ->where('supplier_account_id', $supplierAccount->id)
+            ->update(['status' => 'ignored', 'decline_reason' => $reason]);
+    }
 }

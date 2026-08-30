@@ -99,10 +99,13 @@ class RfqPublicSummary extends Model
 
     /**
      * The view alone does not guarantee selected-Supplier privacy — callers
-     * must still explicitly scope to global-visibility RFQs (spec Part 13).
+     * must still explicitly scope to open/global-visibility RFQs (spec Part 13).
      */
     public function scopeGlobalVisibility(Builder $query): Builder
     {
-        return $query->where('visibility_type', 'global');
+        return $query->where(function ($q) {
+            $q->where('visibility_engine_type', 'open')
+                ->orWhereIn('visibility_type', ['global', 'open_matching', 'broadcast_all', 'all']);
+        });
     }
 }

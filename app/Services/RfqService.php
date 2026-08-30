@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\Rfq;
 use App\Models\RfqChangeLog;
 use App\Models\RfqDeadlineExtension;
 use App\Models\RfqItem;
+use App\Models\RfqItemAttributeValue;
 use App\Models\RfqSelectedSupplier;
+use App\Models\RfqTargetFilter;
 use App\Models\User;
 use App\Notifications\DashboardNotification;
 use Illuminate\Support\Facades\DB;
@@ -32,10 +35,32 @@ class RfqService
         }
 
         return DB::transaction(function () use ($buyerAccount, $user, $data, $rfq) {
+            $visibilityTypeId = $data['visibility_type_id'] ?? null;
+            if (! $visibilityTypeId && isset($data['visibility_type'])) {
+                $val = $data['visibility_type'];
+                if (is_numeric($val)) {
+                    $visibilityTypeId = (int)$val;
+                } else {
+                    $code = match ($val) {
+                        'global'             => 'open_matching',
+                        'selected_suppliers' => 'invited',
+                        default              => $val,
+                    };
+                    $visibilityTypeId = \App\Models\VisibilityType::firstOrCreate(
+                        ['code' => $code],
+                        [
+                            'name'        => ucfirst(str_replace('_', ' ', $code)),
+                            'engine_type' => in_array($code, ['direct', 'invited'], true) ? 'invited' : 'open',
+                            'is_active'   => true,
+                        ]
+                    )->id;
+                }
+            }
+
             $attributes = [
                 'buyer_account_id'           => $buyerAccount->id,
                 'created_by_user_id'         => $rfq?->created_by_user_id ?? $user->id,
-                'visibility_type'            => $data['visibility_type'],
+                'visibility_type_id'         => $visibilityTypeId,
                 'title'                      => $data['title'],
                 'description'                => $data['description'] ?? null,
                 'currency_code'              => $data['currency_code'] ?? null,
@@ -64,8 +89,9 @@ class RfqService
             $this->syncSelectedSuppliers(
                 $rfq,
                 $user,
-                $data['visibility_type'] === 'selected_suppliers' ? ($data['selected_supplier_ids'] ?? []) : []
+                $rfq->isInvited() ? ($data['selected_supplier_ids'] ?? []) : []
             );
+            $this->syncTargetFilters($rfq, $data);
 
             $rfq->update(['items_count' => count($data['items'])]);
 
@@ -83,7 +109,7 @@ class RfqService
             throw ValidationException::withMessages(['items' => 'Add at least one item before publishing.']);
         }
 
-        if ($rfq->visibility_type === 'selected_suppliers' && $rfq->selectedSuppliers()->count() === 0) {
+        if ($rfq->isInvited() && $rfq->selectedSuppliers()->count() === 0) {
             throw ValidationException::withMessages(['selected_supplier_ids' => 'Select at least one supplier to invite.']);
         }
 
@@ -157,13 +183,36 @@ class RfqService
                 'expected_delivery_date' => $data['expected_delivery_date'] ?? null,
             ];
 
+            $visibilityTypeId = $data['visibility_type_id'] ?? null;
+            if (! $visibilityTypeId && isset($data['visibility_type'])) {
+                $val = $data['visibility_type'];
+                $code = match ($val) {
+                    'global'             => 'open_matching',
+                    'selected_suppliers' => 'invited',
+                    default              => $val,
+                };
+                $visibilityTypeId = is_numeric($val)
+                    ? (int)$val
+                    : \App\Models\VisibilityType::firstOrCreate(
+                        ['code' => $code],
+                        ['name' => ucfirst(str_replace('_', ' ', $code)), 'engine_type' => in_array($code, ['direct', 'invited'], true) ? 'invited' : 'open', 'is_active' => true]
+                    )->id;
+            }
+
+            if ($visibilityTypeId) {
+                $fields['visibility_type_id'] = $visibilityTypeId;
+            }
+
             $changedFields = $this->diffFields($rfq, $fields);
 
-            $newSupplierIds = $data['visibility_type'] === 'selected_suppliers' ? ($data['selected_supplier_ids'] ?? []) : [];
+            $newSupplierIds = ($data['visibility_type_id'] ?? null)
+                ? (\App\Models\VisibilityType::find($data['visibility_type_id'])?->isInvited() ? ($data['selected_supplier_ids'] ?? []) : [])
+                : (in_array($data['visibility_type'] ?? '', ['selected_suppliers', 'direct', 'invited'], true) ? ($data['selected_supplier_ids'] ?? []) : []);
+
             $oldSupplierIds = $rfq->selectedSuppliers()->pluck('supplier_account_id')->sort()->values()->all();
             sort($newSupplierIds);
 
-            if ($rfq->visibility_type !== $data['visibility_type']) {
+            if (($fields['visibility_type_id'] ?? null) && $rfq->visibility_type_id !== $fields['visibility_type_id']) {
                 $changedFields[] = 'visibility_type';
             }
             if ($newSupplierIds !== $oldSupplierIds) {
@@ -180,9 +229,10 @@ class RfqService
             $majorTriggers = ['quotation_deadline', 'budget_max', 'visibility_type', 'selected_suppliers', 'items'];
             $changeLevel = array_intersect($changedFields, $majorTriggers) ? 'major' : 'minor';
 
-            $rfq->update($fields + ['visibility_type' => $data['visibility_type']]);
+            $rfq->update($fields);
             $this->syncItems($rfq, $data['items']);
             $this->syncSelectedSuppliers($rfq, $user, $newSupplierIds);
+            $this->syncTargetFilters($rfq, $data);
             $rfq->update([
                 'items_count' => count($data['items']),
                 'current_version_no' => $rfq->current_version_no + 1,
@@ -329,7 +379,7 @@ class RfqService
             ->whereNotIn('status', ['withdrawn', 'rejected', 'expired'])
             ->pluck('supplier_account_id');
 
-        if ($rfq->visibility_type === 'selected_suppliers') {
+        if ($rfq->isInvited()) {
             $supplierAccountIds = $supplierAccountIds->merge($rfq->selectedSuppliers()->pluck('supplier_account_id'));
         }
 
@@ -400,9 +450,198 @@ class RfqService
             }
 
             $keepIds[] = $row->id;
+
+            $this->syncItemAttributeValues($row, $item['attribute_values'] ?? []);
         }
 
         RfqItem::where('rfq_id', $rfq->id)->whereNotIn('id', $keepIds)->delete();
+    }
+
+    /**
+     * Structured, category-defined specification values for one RFQ item —
+     * direct adaptation of Supplier\Catalog\ListingController::syncAttributeValues()'s
+     * per-input-type switch, minus the admin custom-value-review linkage
+     * (RFQ items don't feed that queue). rfq_items.specs stays untouched —
+     * it's the free-form sibling, not replaced by this.
+     */
+    private function syncItemAttributeValues(RfqItem $item, array $attributeValues): void
+    {
+        if (empty($attributeValues) || ! $item->category_id) {
+            RfqItemAttributeValue::where('rfq_item_id', $item->id)->delete();
+            return;
+        }
+
+        $category = Category::find($item->category_id);
+        if (! $category) {
+            RfqItemAttributeValue::where('rfq_item_id', $item->id)->delete();
+            return;
+        }
+
+        $categoryAttributes = $category->attributes()->with('values')->get();
+        if ($categoryAttributes->isEmpty() && $category->parent_id) {
+            $curr = $category;
+            while ($categoryAttributes->isEmpty() && $curr->parent_id) {
+                $curr = $curr->parent;
+                if ($curr) {
+                    $categoryAttributes = $curr->attributes()->with('values')->get();
+                }
+            }
+        }
+        $validAttrMap = $categoryAttributes->keyBy('id');
+
+        $processedAttrIds = [];
+
+        foreach ($attributeValues as $attrId => $rawVal) {
+            $attrId = (int) $attrId;
+            if (! isset($validAttrMap[$attrId])) {
+                continue;
+            }
+
+            $attr = $validAttrMap[$attrId];
+            $processedAttrIds[] = $attrId;
+
+            $saveData = [
+                'attribute_value_id' => null,
+                'value_text'         => null,
+                'value_number'       => null,
+                'value_boolean'      => null,
+                'value_date'         => null,
+                'value_json'         => null,
+                'custom_value'       => null,
+            ];
+
+            if (is_array($rawVal)) {
+                $valueText = isset($rawVal['value_text']) ? trim($rawVal['value_text']) : null;
+                $valueNumber = isset($rawVal['value_number']) && $rawVal['value_number'] !== '' ? $rawVal['value_number'] : null;
+                $valueBoolean = isset($rawVal['value_boolean']) && $rawVal['value_boolean'] !== '' ? (bool) $rawVal['value_boolean'] : null;
+                $valueDate = ! empty($rawVal['value_date']) ? $rawVal['value_date'] : null;
+                $valueJson = isset($rawVal['value_json']) ? (is_array($rawVal['value_json']) ? $rawVal['value_json'] : json_decode($rawVal['value_json'], true)) : null;
+                $customValue = isset($rawVal['custom_value']) ? trim($rawVal['custom_value']) : null;
+                $customValue = ($customValue !== null && $customValue !== '') ? $customValue : null;
+                // "__other__" is the form's sentinel for "buyer picked Other" —
+                // it must never be cast/stored as a real attribute_value_id.
+                $isOtherSelected = ($rawVal['attribute_value_id'] ?? null) === '__other__';
+                $attributeValueId = (! $isOtherSelected && ! empty($rawVal['attribute_value_id']))
+                    ? (int) $rawVal['attribute_value_id']
+                    : null;
+            } else {
+                $valueText = is_string($rawVal) ? trim($rawVal) : null;
+                $valueNumber = null;
+                $valueBoolean = null;
+                $valueDate = null;
+                $valueJson = null;
+                $customValue = null;
+                $isOtherSelected = false;
+                $attributeValueId = null;
+            }
+
+            switch ($attr->input_type) {
+                case 'select':
+                    if ($isOtherSelected && $customValue !== null) {
+                        $saveData['custom_value'] = $customValue;
+                    } else {
+                        $saveData['attribute_value_id'] = $attributeValueId;
+                        if ($attributeValueId) {
+                            $valObj = $attr->values->firstWhere('id', $attributeValueId);
+                            $saveData['value_text'] = $valObj?->value;
+                        }
+                    }
+                    break;
+
+                case 'multi_select':
+                    if (is_array($valueJson) && ! empty($valueJson)) {
+                        $cleanJson = array_values(array_filter($valueJson));
+                        $saveData['value_json'] = $cleanJson;
+                        $saveData['value_text'] = implode(', ', $cleanJson);
+                    } elseif ($valueText !== null && $valueText !== '') {
+                        $parts = array_values(array_filter(array_map('trim', explode(',', $valueText))));
+                        $saveData['value_json'] = $parts;
+                        $saveData['value_text'] = implode(', ', $parts);
+                    }
+                    $saveData['custom_value'] = $customValue;
+                    break;
+
+                case 'number':
+                    $saveData['value_number'] = is_numeric($valueNumber) ? (float) $valueNumber : (is_numeric($valueText) ? (float) $valueText : null);
+                    break;
+
+                case 'boolean':
+                    $saveData['value_boolean'] = $valueBoolean;
+                    break;
+
+                case 'date':
+                    $saveData['value_date'] = $valueDate ?: $valueText;
+                    break;
+
+                case 'color':
+                    if ($isOtherSelected && $customValue !== null) {
+                        $saveData['custom_value'] = $customValue;
+                    } else {
+                        $saveData['attribute_value_id'] = $attributeValueId;
+                        $saveData['value_text'] = $attributeValueId ? $attr->values->firstWhere('id', $attributeValueId)?->value : null;
+                    }
+                    break;
+
+                case 'textarea':
+                case 'text':
+                default:
+                    $saveData['value_text'] = $valueText;
+                    break;
+            }
+
+            $hasAnyValue = $saveData['attribute_value_id'] !== null
+                || ($saveData['value_text'] !== null && $saveData['value_text'] !== '')
+                || $saveData['value_number'] !== null
+                || $saveData['value_boolean'] !== null
+                || $saveData['value_date'] !== null
+                || (! empty($saveData['value_json']))
+                || ($saveData['custom_value'] !== null && $saveData['custom_value'] !== '');
+
+            if ($hasAnyValue) {
+                RfqItemAttributeValue::updateOrCreate(
+                    ['rfq_item_id' => $item->id, 'attribute_id' => $attrId],
+                    $saveData
+                );
+            } else {
+                RfqItemAttributeValue::where('rfq_item_id', $item->id)->where('attribute_id', $attrId)->delete();
+            }
+        }
+
+        RfqItemAttributeValue::where('rfq_item_id', $item->id)->whereNotIn('attribute_id', $processedAttrIds)->delete();
+    }
+
+    /**
+     * A single target-filter row per RFQ, only meaningful for open_matching
+     * visibility — direct/invited RFQs don't use automated matching, and
+     * broadcast_all deliberately skips category/location narrowing.
+     */
+    private function syncTargetFilters(Rfq $rfq, array $data): void
+    {
+        $vt = $rfq->getRelationValue('visibilityType') ?? \App\Models\VisibilityType::find($rfq->visibility_type_id);
+
+        if (! $vt || $vt->code !== 'open_matching') {
+            RfqTargetFilter::where('rfq_id', $rfq->id)->delete();
+            return;
+        }
+
+        $tf = $data['target_filter'] ?? [];
+        $hasAny = ! empty($tf['category_id']) || ! empty($tf['country_id']) || ! empty($tf['state_id']) || ! empty($tf['city_id']);
+
+        if (! $hasAny) {
+            RfqTargetFilter::where('rfq_id', $rfq->id)->delete();
+            return;
+        }
+
+        RfqTargetFilter::updateOrCreate(
+            ['rfq_id' => $rfq->id],
+            [
+                'category_id'           => $tf['category_id'] ?? null,
+                'location_match_level'  => $tf['location_match_level'] ?? 'none',
+                'country_id'            => $tf['country_id'] ?? null,
+                'state_id'              => $tf['state_id'] ?? null,
+                'city_id'               => $tf['city_id'] ?? null,
+            ]
+        );
     }
 
     private function syncSelectedSuppliers(Rfq $rfq, User $user, array $supplierAccountIds): void

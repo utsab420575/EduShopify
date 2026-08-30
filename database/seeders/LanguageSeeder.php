@@ -9,7 +9,7 @@ class LanguageSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('languages')->insert([
+        $languages = [
             [
                 'code'        => 'en',
                 'name'        => 'English',
@@ -19,8 +19,6 @@ class LanguageSeeder extends Seeder
                 'is_active'   => true,
                 'is_default'  => true,
                 'sort_order'  => 1,
-                'created_at'  => now(),
-                'updated_at'  => now(),
             ],
             [
                 'code'        => 'ar',
@@ -31,8 +29,6 @@ class LanguageSeeder extends Seeder
                 'is_active'   => true,
                 'is_default'  => false,
                 'sort_order'  => 2,
-                'created_at'  => now(),
-                'updated_at'  => now(),
             ],
             [
                 'code'        => 'uz',
@@ -43,9 +39,17 @@ class LanguageSeeder extends Seeder
                 'is_active'   => true,
                 'is_default'  => false,
                 'sort_order'  => 3,
-                'created_at'  => now(),
-                'updated_at'  => now(),
             ],
-        ]);
+        ];
+
+        foreach ($languages as $lang) {
+            DB::table('languages')->updateOrInsert(
+                ['code' => $lang['code']],
+                array_merge($lang, [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])
+            );
+        }
     }
 }

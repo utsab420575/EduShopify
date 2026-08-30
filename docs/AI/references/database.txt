@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 22, 2026 at 03:21 PM
+-- Generation Time: Aug 28, 2026 at 05:25 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.30
 
@@ -262,14 +262,39 @@ CREATE TABLE `attributes` (
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `input_type` enum('text','textarea','number','select','multi_select','boolean','date','color') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `input_type_id` bigint UNSIGNED DEFAULT NULL,
   `unit_id` bigint UNSIGNED DEFAULT NULL,
   `placeholder` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `validation_rules` json DEFAULT NULL,
   `is_filterable` tinyint(1) NOT NULL DEFAULT '0',
   `is_variant` tinyint(1) NOT NULL DEFAULT '0',
   `is_required` tinyint(1) NOT NULL DEFAULT '0',
+  `allow_custom_value` tinyint(1) NOT NULL DEFAULT '0',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `attribute_custom_value_reviews`
+--
+
+CREATE TABLE `attribute_custom_value_reviews` (
+  `id` bigint UNSIGNED NOT NULL,
+  `attribute_id` bigint UNSIGNED NOT NULL,
+  `custom_value` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `supplier_account_id` bigint UNSIGNED DEFAULT NULL,
+  `first_listing_id` bigint UNSIGNED DEFAULT NULL,
+  `submitted_by_user_id` bigint UNSIGNED DEFAULT NULL,
+  `usage_count` int UNSIGNED NOT NULL DEFAULT '1',
+  `status` enum('pending','approved','ignored') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `resulting_attribute_value_id` bigint UNSIGNED DEFAULT NULL,
+  `reviewed_by_user_id` bigint UNSIGNED DEFAULT NULL,
+  `review_comment` text COLLATE utf8mb4_unicode_ci,
+  `reviewed_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -848,6 +873,25 @@ CREATE TABLE `failed_jobs` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `input_types`
+--
+
+CREATE TABLE `input_types` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `has_options` tinyint(1) NOT NULL DEFAULT '0',
+  `is_multiple` tinyint(1) NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `jobs`
 --
 
@@ -910,17 +954,18 @@ CREATE TABLE `listings` (
   `id` bigint UNSIGNED NOT NULL,
   `supplier_account_id` bigint UNSIGNED NOT NULL,
   `created_by_user_id` bigint UNSIGNED NOT NULL,
-  `listing_type` enum('product','service') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `listing_type_id` bigint UNSIGNED DEFAULT NULL,
   `listing_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `main_category_id` bigint UNSIGNED DEFAULT NULL,
   `brand_id` bigint UNSIGNED DEFAULT NULL,
+  `primary_image_media_id` bigint UNSIGNED DEFAULT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `sku` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `short_description` text COLLATE utf8mb4_unicode_ci,
   `description` longtext COLLATE utf8mb4_unicode_ci,
-  `pricing_type` enum('fixed','quote_only','rfq_enabled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'quote_only',
-  `sales_mode` enum('rfq_only','direct_purchase','both') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'rfq_only',
+  `pricing_type_id` bigint UNSIGNED DEFAULT NULL,
+  `sales_mode_id` bigint UNSIGNED DEFAULT NULL,
   `base_price` decimal(15,2) DEFAULT NULL,
   `compare_at_price` decimal(15,2) DEFAULT NULL,
   `currency_code` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -928,6 +973,9 @@ CREATE TABLE `listings` (
   `unit_id` bigint UNSIGNED DEFAULT NULL,
   `extra_specs` json DEFAULT NULL,
   `approval_status` enum('draft','pending','approved','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
+  `setup_step` tinyint UNSIGNED NOT NULL DEFAULT '1',
+  `setup_completed_at` timestamp NULL DEFAULT NULL,
+  `last_autosaved_at` timestamp NULL DEFAULT NULL,
   `rejection_reason` text COLLATE utf8mb4_unicode_ci,
   `approved_by_user_id` bigint UNSIGNED DEFAULT NULL,
   `approved_at` timestamp NULL DEFAULT NULL,
@@ -950,6 +998,7 @@ CREATE TABLE `listing_attribute_values` (
   `listing_id` bigint UNSIGNED NOT NULL,
   `attribute_id` bigint UNSIGNED NOT NULL,
   `attribute_value_id` bigint UNSIGNED DEFAULT NULL,
+  `custom_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `value_text` text COLLATE utf8mb4_unicode_ci,
   `value_number` decimal(15,4) DEFAULT NULL,
   `value_boolean` tinyint(1) DEFAULT NULL,
@@ -1011,6 +1060,23 @@ CREATE TABLE `listing_tier_prices` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `listing_types`
+--
+
+CREATE TABLE `listing_types` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `listing_variants`
 --
 
@@ -1019,6 +1085,7 @@ CREATE TABLE `listing_variants` (
   `listing_id` bigint UNSIGNED NOT NULL,
   `sku` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `combination_key` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `price` decimal(15,2) DEFAULT NULL,
   `compare_at_price` decimal(15,2) DEFAULT NULL,
   `currency_code` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1029,7 +1096,6 @@ CREATE TABLE `listing_variants` (
   `min_order_quantity` decimal(15,3) DEFAULT NULL,
   `unit_id` bigint UNSIGNED DEFAULT NULL,
   `lead_time_days` int UNSIGNED DEFAULT NULL,
-  `primary_image_media_id` bigint UNSIGNED DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1051,6 +1117,23 @@ CREATE TABLE `listing_variant_attributes` (
   `custom_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `listing_variant_media`
+--
+
+CREATE TABLE `listing_variant_media` (
+  `id` bigint UNSIGNED NOT NULL,
+  `listing_variant_id` bigint UNSIGNED NOT NULL,
+  `media_id` bigint UNSIGNED NOT NULL,
+  `is_primary` tinyint(1) NOT NULL DEFAULT '0',
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `primary_variant_guard` bigint UNSIGNED GENERATED ALWAYS AS (if((`is_primary` = 1),`listing_variant_id`,NULL)) VIRTUAL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1202,6 +1285,23 @@ CREATE TABLE `permissions` (
   `is_sensitive` tinyint(1) NOT NULL DEFAULT '0',
   `is_owner_only` tinyint(1) NOT NULL DEFAULT '0',
   `is_assignable` tinyint(1) NOT NULL DEFAULT '1',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pricing_types`
+--
+
+CREATE TABLE `pricing_types` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1817,6 +1917,23 @@ CREATE TABLE `role_requests` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `sales_modes`
+--
+
+CREATE TABLE `sales_modes` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `saved_items`
 --
 
@@ -2375,7 +2492,21 @@ ALTER TABLE `attributes`
   ADD KEY `attributes_is_variant_index` (`is_variant`),
   ADD KEY `attributes_is_active_sort_order_index` (`is_active`,`sort_order`),
   ADD KEY `attributes_unit_id_foreign` (`unit_id`),
-  ADD KEY `attributes_attribute_group_id_index` (`attribute_group_id`);
+  ADD KEY `attributes_attribute_group_id_index` (`attribute_group_id`),
+  ADD KEY `attributes_input_type_id_index` (`input_type_id`);
+
+--
+-- Indexes for table `attribute_custom_value_reviews`
+--
+ALTER TABLE `attribute_custom_value_reviews`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `attribute_custom_value_reviews_attribute_id_custom_value_unique` (`attribute_id`,`custom_value`),
+  ADD KEY `attribute_custom_value_reviews_status_index` (`status`),
+  ADD KEY `acvr_resulting_attribute_value_id_fk` (`resulting_attribute_value_id`),
+  ADD KEY `acvr_reviewed_by_user_id_fk` (`reviewed_by_user_id`),
+  ADD KEY `attribute_custom_value_reviews_supplier_account_id_foreign` (`supplier_account_id`),
+  ADD KEY `attribute_custom_value_reviews_first_listing_id_foreign` (`first_listing_id`),
+  ADD KEY `attribute_custom_value_reviews_submitted_by_user_id_foreign` (`submitted_by_user_id`);
 
 --
 -- Indexes for table `attribute_groups`
@@ -2643,6 +2774,14 @@ ALTER TABLE `failed_jobs`
   ADD KEY `failed_jobs_failed_at_index` (`failed_at`);
 
 --
+-- Indexes for table `input_types`
+--
+ALTER TABLE `input_types`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `input_types_code_unique` (`code`),
+  ADD KEY `input_types_is_active_sort_order_index` (`is_active`,`sort_order`);
+
+--
 -- Indexes for table `jobs`
 --
 ALTER TABLE `jobs`
@@ -2671,20 +2810,25 @@ ALTER TABLE `listings`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `listings_supplier_account_id_slug_unique` (`supplier_account_id`,`slug`),
   ADD UNIQUE KEY `listings_listing_number_unique` (`listing_number`),
-  ADD KEY `listings_created_by_user_id_foreign` (`created_by_user_id`),
-  ADD KEY `listings_main_category_id_foreign` (`main_category_id`),
-  ADD KEY `listings_brand_id_foreign` (`brand_id`),
-  ADD KEY `listings_unit_id_foreign` (`unit_id`),
-  ADD KEY `listings_approved_by_user_id_foreign` (`approved_by_user_id`);
+  ADD UNIQUE KEY `listings_supplier_sku_unique` (`supplier_account_id`,`sku`),
+  ADD KEY `listings_primary_image_media_id_index` (`primary_image_media_id`),
+  ADD KEY `listings_created_by_user_id_fk` (`created_by_user_id`),
+  ADD KEY `listings_main_category_id_fk` (`main_category_id`),
+  ADD KEY `listings_brand_id_fk` (`brand_id`),
+  ADD KEY `listings_unit_id_fk` (`unit_id`),
+  ADD KEY `listings_approved_by_user_id_fk` (`approved_by_user_id`),
+  ADD KEY `listings_pricing_type_id_foreign` (`pricing_type_id`),
+  ADD KEY `listings_sales_mode_id_foreign` (`sales_mode_id`),
+  ADD KEY `listings_listing_type_id_foreign` (`listing_type_id`);
 
 --
 -- Indexes for table `listing_attribute_values`
 --
 ALTER TABLE `listing_attribute_values`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `listing_attribute_values_listing_id_foreign` (`listing_id`),
-  ADD KEY `listing_attribute_values_attribute_id_foreign` (`attribute_id`),
-  ADD KEY `listing_attribute_values_attribute_value_id_foreign` (`attribute_value_id`);
+  ADD KEY `listing_attribute_values_listing_id_fk` (`listing_id`),
+  ADD KEY `listing_attribute_values_attribute_id_fk` (`attribute_id`),
+  ADD KEY `listing_attribute_values_attribute_value_id_fk` (`attribute_value_id`);
 
 --
 -- Indexes for table `listing_categories`
@@ -2692,31 +2836,38 @@ ALTER TABLE `listing_attribute_values`
 ALTER TABLE `listing_categories`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `listing_categories_listing_id_category_id_unique` (`listing_id`,`category_id`),
-  ADD KEY `listing_categories_category_id_foreign` (`category_id`);
+  ADD KEY `listing_categories_category_id_fk` (`category_id`);
 
 --
 -- Indexes for table `listing_change_logs`
 --
 ALTER TABLE `listing_change_logs`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `listing_change_logs_listing_id_foreign` (`listing_id`),
-  ADD KEY `listing_change_logs_changed_by_user_id_foreign` (`changed_by_user_id`);
+  ADD KEY `listing_change_logs_listing_id_fk` (`listing_id`),
+  ADD KEY `listing_change_logs_user_id_fk` (`changed_by_user_id`);
 
 --
 -- Indexes for table `listing_tier_prices`
 --
 ALTER TABLE `listing_tier_prices`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `listing_tier_prices_listing_id_foreign` (`listing_id`),
-  ADD KEY `listing_tier_prices_listing_variant_id_foreign` (`listing_variant_id`);
+  ADD KEY `listing_tier_prices_listing_id_fk` (`listing_id`),
+  ADD KEY `listing_tier_prices_listing_variant_id_fk` (`listing_variant_id`);
+
+--
+-- Indexes for table `listing_types`
+--
+ALTER TABLE `listing_types`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `listing_types_code_unique` (`code`);
 
 --
 -- Indexes for table `listing_variants`
 --
 ALTER TABLE `listing_variants`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `listing_variants_listing_id_foreign` (`listing_id`),
-  ADD KEY `listing_variants_unit_id_foreign` (`unit_id`);
+  ADD UNIQUE KEY `listing_variants_listing_comb_unique` (`listing_id`,`combination_key`),
+  ADD KEY `listing_variants_unit_id_fk` (`unit_id`);
 
 --
 -- Indexes for table `listing_variant_attributes`
@@ -2726,6 +2877,16 @@ ALTER TABLE `listing_variant_attributes`
   ADD UNIQUE KEY `listing_var_attr_var_attr_unique` (`listing_variant_id`,`attribute_id`),
   ADD KEY `listing_variant_attributes_attribute_id_index` (`attribute_id`),
   ADD KEY `listing_variant_attributes_attribute_value_id_index` (`attribute_value_id`);
+
+--
+-- Indexes for table `listing_variant_media`
+--
+ALTER TABLE `listing_variant_media`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `listing_variant_media_unique` (`listing_variant_id`,`media_id`),
+  ADD UNIQUE KEY `listing_variant_one_primary_unique` (`primary_variant_guard`),
+  ADD KEY `listing_variant_media_sort_index` (`listing_variant_id`,`sort_order`),
+  ADD KEY `listing_variant_media_media_fk` (`media_id`);
 
 --
 -- Indexes for table `media`
@@ -2802,6 +2963,13 @@ ALTER TABLE `permissions`
   ADD KEY `permissions_capability_scope_index` (`capability_scope`),
   ADD KEY `permissions_is_active_sort_order_index` (`is_active`,`sort_order`),
   ADD KEY `permissions_is_owner_only_index` (`is_owner_only`);
+
+--
+-- Indexes for table `pricing_types`
+--
+ALTER TABLE `pricing_types`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `pricing_types_code_unique` (`code`);
 
 --
 -- Indexes for table `product_details`
@@ -3052,6 +3220,13 @@ ALTER TABLE `role_requests`
   ADD KEY `role_requests_account_id_status_index` (`account_id`,`status`),
   ADD KEY `role_requests_requested_by_user_id_foreign` (`requested_by_user_id`),
   ADD KEY `role_requests_reviewed_by_user_id_foreign` (`reviewed_by_user_id`);
+
+--
+-- Indexes for table `sales_modes`
+--
+ALTER TABLE `sales_modes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `sales_modes_code_unique` (`code`);
 
 --
 -- Indexes for table `saved_items`
@@ -3309,6 +3484,12 @@ ALTER TABLE `attributes`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `attribute_custom_value_reviews`
+--
+ALTER TABLE `attribute_custom_value_reviews`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `attribute_groups`
 --
 ALTER TABLE `attribute_groups`
@@ -3459,6 +3640,12 @@ ALTER TABLE `failed_jobs`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `input_types`
+--
+ALTER TABLE `input_types`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `jobs`
 --
 ALTER TABLE `jobs`
@@ -3501,6 +3688,12 @@ ALTER TABLE `listing_tier_prices`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `listing_types`
+--
+ALTER TABLE `listing_types`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `listing_variants`
 --
 ALTER TABLE `listing_variants`
@@ -3510,6 +3703,12 @@ ALTER TABLE `listing_variants`
 -- AUTO_INCREMENT for table `listing_variant_attributes`
 --
 ALTER TABLE `listing_variant_attributes`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `listing_variant_media`
+--
+ALTER TABLE `listing_variant_media`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3540,6 +3739,12 @@ ALTER TABLE `otp_codes`
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `pricing_types`
+--
+ALTER TABLE `pricing_types`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3678,6 +3883,12 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `role_requests`
 --
 ALTER TABLE `role_requests`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `sales_modes`
+--
+ALTER TABLE `sales_modes`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3881,7 +4092,19 @@ ALTER TABLE `account_type_changes`
 --
 ALTER TABLE `attributes`
   ADD CONSTRAINT `attributes_attribute_group_id_foreign` FOREIGN KEY (`attribute_group_id`) REFERENCES `attribute_groups` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `attributes_input_type_id_foreign` FOREIGN KEY (`input_type_id`) REFERENCES `input_types` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `attributes_unit_id_foreign` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `attribute_custom_value_reviews`
+--
+ALTER TABLE `attribute_custom_value_reviews`
+  ADD CONSTRAINT `acvr_attribute_id_fk` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `acvr_resulting_attribute_value_id_fk` FOREIGN KEY (`resulting_attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `acvr_reviewed_by_user_id_fk` FOREIGN KEY (`reviewed_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `attribute_custom_value_reviews_first_listing_id_foreign` FOREIGN KEY (`first_listing_id`) REFERENCES `listings` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `attribute_custom_value_reviews_submitted_by_user_id_foreign` FOREIGN KEY (`submitted_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `attribute_custom_value_reviews_supplier_account_id_foreign` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `attribute_suggestions`
@@ -4034,26 +4257,41 @@ ALTER TABLE `exhibition_supplier`
 -- Constraints for table `listings`
 --
 ALTER TABLE `listings`
+  ADD CONSTRAINT `listings_approved_by_user_id_fk` FOREIGN KEY (`approved_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `listings_approved_by_user_id_foreign` FOREIGN KEY (`approved_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listings_brand_id_fk` FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `listings_brand_id_foreign` FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listings_created_by_user_id_fk` FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
   ADD CONSTRAINT `listings_created_by_user_id_foreign` FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+  ADD CONSTRAINT `listings_listing_type_id_foreign` FOREIGN KEY (`listing_type_id`) REFERENCES `listing_types` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listings_main_category_id_fk` FOREIGN KEY (`main_category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `listings_main_category_id_foreign` FOREIGN KEY (`main_category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listings_pricing_type_id_foreign` FOREIGN KEY (`pricing_type_id`) REFERENCES `pricing_types` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listings_primary_image_media_id_fk` FOREIGN KEY (`primary_image_media_id`) REFERENCES `media` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listings_sales_mode_id_foreign` FOREIGN KEY (`sales_mode_id`) REFERENCES `sales_modes` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listings_supplier_account_id_fk` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listings_supplier_account_id_foreign` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listings_unit_id_fk` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `listings_unit_id_foreign` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `listing_attribute_values`
 --
 ALTER TABLE `listing_attribute_values`
+  ADD CONSTRAINT `listing_attribute_values_attribute_id_fk` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_attribute_values_attribute_id_foreign` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_attribute_values_attribute_value_id_fk` FOREIGN KEY (`attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `listing_attribute_values_attribute_value_id_foreign` FOREIGN KEY (`attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listing_attribute_values_listing_id_fk` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_attribute_values_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `listing_categories`
 --
 ALTER TABLE `listing_categories`
+  ADD CONSTRAINT `listing_categories_category_id_fk` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_categories_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_categories_listing_id_fk` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_categories_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE;
 
 --
@@ -4061,29 +4299,45 @@ ALTER TABLE `listing_categories`
 --
 ALTER TABLE `listing_change_logs`
   ADD CONSTRAINT `listing_change_logs_changed_by_user_id_foreign` FOREIGN KEY (`changed_by_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `listing_change_logs_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `listing_change_logs_listing_id_fk` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_change_logs_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_change_logs_user_id_fk` FOREIGN KEY (`changed_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT;
 
 --
 -- Constraints for table `listing_tier_prices`
 --
 ALTER TABLE `listing_tier_prices`
+  ADD CONSTRAINT `listing_tier_prices_listing_id_fk` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_tier_prices_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_tier_prices_listing_variant_id_fk` FOREIGN KEY (`listing_variant_id`) REFERENCES `listing_variants` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_tier_prices_listing_variant_id_foreign` FOREIGN KEY (`listing_variant_id`) REFERENCES `listing_variants` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `listing_variants`
 --
 ALTER TABLE `listing_variants`
+  ADD CONSTRAINT `listing_variants_listing_id_fk` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_variants_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_variants_unit_id_fk` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `listing_variants_unit_id_foreign` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `listing_variant_attributes`
 --
 ALTER TABLE `listing_variant_attributes`
+  ADD CONSTRAINT `listing_variant_attributes_attribute_id_fk` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_variant_attributes_attribute_id_foreign` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `listing_variant_attributes_attribute_value_id_foreign` FOREIGN KEY (`attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `listing_variant_attributes_listing_variant_id_foreign` FOREIGN KEY (`listing_variant_id`) REFERENCES `listing_variants` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `listing_variant_attributes_listing_variant_id_foreign` FOREIGN KEY (`listing_variant_id`) REFERENCES `listing_variants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_variant_attributes_value_id_fk` FOREIGN KEY (`attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `listing_variant_attributes_variant_id_fk` FOREIGN KEY (`listing_variant_id`) REFERENCES `listing_variants` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `listing_variant_media`
+--
+ALTER TABLE `listing_variant_media`
+  ADD CONSTRAINT `listing_variant_media_media_fk` FOREIGN KEY (`media_id`) REFERENCES `media` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `listing_variant_media_variant_fk` FOREIGN KEY (`listing_variant_id`) REFERENCES `listing_variants` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `messages`
@@ -4117,6 +4371,7 @@ ALTER TABLE `otp_codes`
 -- Constraints for table `product_details`
 --
 ALTER TABLE `product_details`
+  ADD CONSTRAINT `product_details_listing_id_fk` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `product_details_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE;
 
 --
@@ -4336,6 +4591,7 @@ ALTER TABLE `saved_items`
 -- Constraints for table `service_details`
 --
 ALTER TABLE `service_details`
+  ADD CONSTRAINT `service_details_listing_id_fk` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `service_details_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE;
 
 --

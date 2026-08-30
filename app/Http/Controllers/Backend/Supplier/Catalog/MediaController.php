@@ -22,9 +22,22 @@ class MediaController extends Controller
             'image' => ['required', 'image', 'max:5120'],
         ]);
 
-        $listing->addMediaFromRequest('image')
+        $media = $listing->addMediaFromRequest('image')
             ->usingFileName(ProductImagePathGenerator::supplierFileName($account->id, $request->file('image')->getClientOriginalName()))
             ->toMediaCollection('gallery');
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'media'   => [
+                    'id'         => $media->id,
+                    'url'        => $media->getUrl(),
+                    'file_name'  => $media->file_name,
+                    'size'       => $media->human_readable_size,
+                    'is_primary' => false,
+                ],
+            ]);
+        }
 
         return redirect()->route('supplier.catalog.listings.show', $listing)->with('success', 'Image uploaded.');
     }

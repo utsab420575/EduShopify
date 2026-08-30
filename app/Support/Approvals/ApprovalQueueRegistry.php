@@ -70,6 +70,13 @@ class ApprovalQueueRegistry
                                     ->with('supplierAccount.supplierProfile')
                                     ->latest(),
             ],
+            'custom_attribute_values' => [
+                'label'      => 'Custom Attribute Values',
+                'icon'       => 'fa-tag',
+                'permission' => 'platform.attributes.manage',
+                'count'      => fn () => CustomAttributeValueQueue::pendingCount(),
+                'query'      => fn () => CustomAttributeValueQueue::query(),
+            ],
             'brands' => [
                 'label'      => 'Brand & Unit Requests',
                 'icon'       => 'fa-tags',

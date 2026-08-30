@@ -40,6 +40,14 @@
                                     <th class="px-4 py-3 font-semibold">Submitted</th>
                                     <th class="px-5 py-3 font-semibold text-right">Moderation Actions</th>
                                 </tr>
+                            @elseif($tab === 'custom_attribute_values')
+                                <tr>
+                                    <th class="px-5 py-3 font-semibold">Attribute</th>
+                                    <th class="px-4 py-3 font-semibold">Custom Value</th>
+                                    <th class="px-4 py-3 font-semibold">Used By</th>
+                                    <th class="px-4 py-3 font-semibold">Status</th>
+                                    <th class="px-5 py-3 font-semibold text-right">Actions</th>
+                                </tr>
                             @else
                                 <tr>
                                     <th class="px-5 py-3 font-semibold">Item &amp; Details</th>
@@ -51,7 +59,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100" id="approval-tbody">
                             @foreach($items as $item)
-                                <tr class="hover:bg-gray-50/60 transition-colors" @if($tab === 'capabilities') data-approval-row="capabilities-{{ $item->id }}" @endif>
+                                <tr class="hover:bg-gray-50/60 transition-colors"
+                                    @if($tab === 'capabilities') data-approval-row="capabilities-{{ $item->id }}" @endif
+                                    @if($tab === 'listings') data-approval-row="listings-{{ $item->id }}" @endif>
                                     @switch($tab)
                                         @case('listings')
                                             @php($firstImg = $item->getMedia('gallery')->first())
@@ -104,9 +114,11 @@
                                             </td>
                                             <td class="px-5 py-3.5 text-right">
                                                 <div class="flex items-center justify-end gap-2">
-                                                    <a href="{{ route('admin.catalog.listings.show', $item) }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold flex items-center gap-1 transition-colors">
+                                                    <button type="button"
+                                                            @click="window.dispatchEvent(new CustomEvent('open-ajax-modal-approval-review', { detail: { url: '{{ route('admin.catalog.listings.panel', $item) }}', rowId: 'listings-{{ $item->id }}', queueKey: 'listings', showUrl: '{{ route('admin.catalog.listings.show', $item) }}' } }))"
+                                                            class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold flex items-center gap-1 transition-colors">
                                                         <i class="fa-solid fa-magnifying-glass"></i> Review Listing
-                                                    </a>
+                                                    </button>
                                                     <form method="POST" action="{{ route('admin.catalog.listings.approve', $item) }}" onsubmit="return confirmSwal(this, 'Approve & Publish Listing?', 'Approve and publish this listing to the marketplace?', 'question', 'Yes, Approve')">
                                                         @csrf
                                                         <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1 transition-colors" title="Quick Approve">
@@ -244,6 +256,44 @@
                                                         @csrf
                                                         <button type="submit" class="px-3 py-1 rounded bg-rose-600 text-white font-semibold text-xs">Reject</button>
                                                     </form>
+                                                </div>
+                                            </td>
+                                            @break
+
+                                        @case('custom_attribute_values')
+                                            <td class="px-5 py-3.5 font-bold text-gray-900">{{ $item->attribute_name }}</td>
+                                            <td class="px-4 py-3.5">
+                                                <span class="font-medium text-gray-800">{{ $item->custom_value }}</span>
+                                            </td>
+                                            <td class="px-4 py-3.5 text-gray-600">
+                                                {{ $item->usage_count }} {{ Str::plural('listing', $item->usage_count) }}
+                                            </td>
+                                            <td class="px-4 py-3.5">
+                                                @if($item->status === 'ignored')
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">Ignored</span>
+                                                @else
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Pending</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-5 py-3.5 text-right">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <form method="POST" action="{{ route('admin.catalog.custom-attribute-values.approve') }}"
+                                                          onsubmit="return confirmSwal(this, 'Promote to Official Value?', 'Make &quot;{{ addslashes($item->custom_value) }}&quot; a standard selectable option for {{ addslashes($item->attribute_name) }}? This updates all {{ $item->usage_count }} listing(s) currently using it.', 'question', 'Yes, Promote')">
+                                                        @csrf
+                                                        <input type="hidden" name="attribute_id" value="{{ $item->attribute_id }}">
+                                                        <input type="hidden" name="custom_value" value="{{ $item->custom_value }}">
+                                                        <button type="submit" class="px-3 py-1 rounded bg-emerald-600 text-white font-semibold text-xs">
+                                                            {{ $item->status === 'ignored' ? 'Promote' : 'Approve' }}
+                                                        </button>
+                                                    </form>
+                                                    @if($item->status !== 'ignored')
+                                                        <form method="POST" action="{{ route('admin.catalog.custom-attribute-values.ignore') }}">
+                                                            @csrf
+                                                            <input type="hidden" name="attribute_id" value="{{ $item->attribute_id }}">
+                                                            <input type="hidden" name="custom_value" value="{{ $item->custom_value }}">
+                                                            <button type="submit" class="px-3 py-1 rounded bg-gray-200 text-gray-700 font-semibold text-xs">Ignore</button>
+                                                        </form>
+                                                    @endif
                                                 </div>
                                             </td>
                                             @break

@@ -32,6 +32,7 @@
     </main>
 
     @include('frontend.layouts.partials._footer')
+    <x-frontend::common.toast />
     @include('frontend.layouts.partials._scripts')
 </body>
 </html>

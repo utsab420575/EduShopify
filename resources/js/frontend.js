@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { registerComparisonAlpine } from './frontend/comparison.js';
 
 Alpine.data('mobileMenu', () => ({
     open: false,
@@ -106,6 +107,8 @@ Alpine.data('quantityEstimator', (tiers, basePrice) => ({
         this.quantity = Math.max(1, Number(this.quantity) - 1);
     },
 }));
+
+registerComparisonAlpine(Alpine);
 
 window.Alpine = Alpine;
 Alpine.start();

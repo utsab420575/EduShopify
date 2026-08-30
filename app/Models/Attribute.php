@@ -22,6 +22,8 @@ class Attribute extends Model
         'name',
         'slug',
         'input_type',
+        'input_type_id',
+        'allow_custom_value',
         'unit_id',
         'placeholder',
         'validation_rules',
@@ -36,6 +38,8 @@ class Attribute extends Model
     {
         return [
             'attribute_group_id' => 'integer',
+            'input_type_id'      => 'integer',
+            'allow_custom_value' => 'boolean',
             'validation_rules'   => 'array',
             'is_filterable'      => 'boolean',
             'is_variant'         => 'boolean',
@@ -43,6 +47,29 @@ class Attribute extends Model
             'is_active'          => 'boolean',
             'sort_order'         => 'integer',
         ];
+    }
+
+    public function inputType(): BelongsTo
+    {
+        return $this->belongsTo(InputType::class, 'input_type_id');
+    }
+
+    public function hasOptions(): bool
+    {
+        if ($this->relationLoaded('inputType') && $this->inputType) {
+            return (bool) $this->inputType->has_options;
+        }
+
+        return in_array($this->input_type, ['select', 'multi_select', 'color']);
+    }
+
+    public function isMultiSelect(): bool
+    {
+        if ($this->relationLoaded('inputType') && $this->inputType) {
+            return (bool) $this->inputType->is_multiple;
+        }
+
+        return $this->input_type === 'multi_select';
     }
 
     public function attributeGroup(): BelongsTo
