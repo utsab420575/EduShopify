@@ -193,6 +193,16 @@ class Account extends Model
         return $this->hasMany(BusinessHour::class, 'supplier_account_id');
     }
 
+    public function buyerGalleryImages(): HasMany
+    {
+        return $this->hasMany(BuyerGallery::class, 'buyer_account_id');
+    }
+
+    public function buyerDocuments(): MorphMany
+    {
+        return $this->morphMany(BuyerDocument::class, 'documentable');
+    }
+
     public function socialLinks(): MorphMany
     {
         return $this->morphMany(SocialLink::class, 'socialable');

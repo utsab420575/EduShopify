@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 class CapabilityApplicationService
 {
     /**
-     * Initial submission (draft → pending).
+     * Initial submission (draft → pending, or draft → active for Buyer).
      * Called from the review screen after profile is complete.
      */
     public function submit(Account $account, string $capability, User $actor): void
@@ -24,7 +24,7 @@ class CapabilityApplicationService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // Guard: only allow draft → pending
+            // Guard: only allow draft → pending/active
             if ($cap->status !== 'draft') {
                 throw new \RuntimeException("Capability [{$capability}] is not in draft status (current: {$cap->status}).");
             }
@@ -34,24 +34,35 @@ class CapabilityApplicationService
 
             $attemptNo = $this->nextAttemptNumber($cap);
 
+            // Buyer needs no manual admin review (unlike Supplier, which
+            // still requires document verification) — it goes straight from
+            // draft to active so the buyer lands on their dashboard with
+            // full access immediately after finishing onboarding.
+            $autoApprove = $capability === 'buyer';
+
             $cap->update([
-                'status'               => 'pending',
+                'status'               => $autoApprove ? 'active' : 'pending',
                 'application_attempts' => $attemptNo,
                 'applied_by_user_id'   => $actor->id,
                 'applied_at'           => now(),
                 'rejection_reason'     => null,
                 'revision_reason'      => null,
+                'activated_at'         => $autoApprove ? now() : null,
             ]);
 
             CapabilityApplicationHistory::create([
                 'account_capability_id' => $cap->id,
                 'attempt_no'            => $attemptNo,
                 'submitted_snapshot'    => $this->buildSnapshot($account, $capability, $actor),
-                'status'                => 'submitted',
+                'status'                => $autoApprove ? 'approved' : 'submitted',
                 'reviewed_by_user_id'   => null,
-                'review_comment'        => null,
-                'reviewed_at'           => null,
+                'review_comment'        => $autoApprove ? 'Auto-approved — buyer capability does not require manual review.' : null,
+                'reviewed_at'           => $autoApprove ? now() : null,
             ]);
+
+            if ($capability === 'supplier') {
+                $this->syncSupplierProfileIntoBuyerIfDraft($account);
+            }
         });
     }
 
@@ -99,6 +110,10 @@ class CapabilityApplicationService
                 'review_comment'        => null,
                 'reviewed_at'           => null,
             ]);
+
+            if ($capability === 'supplier') {
+                $this->syncSupplierProfileIntoBuyerIfDraft($account);
+            }
         });
     }
 
@@ -218,5 +233,48 @@ class CapabilityApplicationService
                 throw new \RuntimeException('Supplier profile must be completed before submitting an application.');
             }
         }
+    }
+
+    /**
+     * For a dual buyer+supplier registration, Supplier onboarding always
+     * runs first (see BuyerOnboardingStateService / EnsureOnboardingComplete
+     * ordering). The moment Supplier submits, copy the shared identity/
+     * contact fields straight into the still-draft BuyerProfile so the
+     * Buyer wizard opens pre-filled instead of asking for the same company
+     * details twice. Locations and social links need no copying here — both
+     * are already stored per-Account (not per-capability), so they show up
+     * in the Buyer wizard automatically.
+     *
+     * Unconditional overwrite is safe: this only ever fires before the user
+     * has had a chance to touch the Buyer wizard, since Supplier is always
+     * routed to first while both capabilities are draft.
+     */
+    private function syncSupplierProfileIntoBuyerIfDraft(Account $account): void
+    {
+        $buyerCap = $account->buyerCapability;
+        if (! $buyerCap || $buyerCap->status !== 'draft') {
+            return;
+        }
+
+        $supplierProfile = $account->supplierProfile;
+        $buyerProfile = $account->buyerProfile;
+        if (! $supplierProfile || ! $buyerProfile) {
+            return;
+        }
+
+        $buyerProfile->update(array_filter([
+            'display_name'      => $supplierProfile->display_name,
+            'organization_name' => $buyerProfile->organization_name ?: $supplierProfile->legal_name,
+            'contact_person'    => $supplierProfile->contact_person,
+            'email'             => $supplierProfile->contact_email,
+            'phone'             => $supplierProfile->contact_phone,
+            'website'           => $supplierProfile->website,
+            'country_id'        => $supplierProfile->country_id,
+            'state_id'          => $supplierProfile->state_id,
+            'city_id'           => $supplierProfile->city_id,
+            'address'           => $supplierProfile->address,
+            'logo'              => $supplierProfile->logo,
+            'profile_photo'     => $supplierProfile->profile_photo,
+        ], fn ($value) => $value !== null));
     }
 }

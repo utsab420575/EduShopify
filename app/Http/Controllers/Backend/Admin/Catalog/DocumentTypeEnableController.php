@@ -61,60 +61,162 @@ class DocumentTypeEnableController extends Controller
     {
         $this->authorize('platform.categories.manage');
 
+        $capInput = $request->input('capability_type_id');
+
         $validated = $request->validate([
             'document_type_id'   => ['required', 'exists:document_types,id'],
             'capability_type_id' => [
                 'required',
-                'exists:capability_types,id',
-                Rule::unique('document_type_enables')->where(function ($query) use ($request) {
-                    return $query->where('document_type_id', $request->input('document_type_id'))
-                                 ->where('capability_type_id', $request->input('capability_type_id'));
-                }),
+                function ($attribute, $value, $fail) {
+                    if ($value !== 'both' && ! CapabilityType::where('id', $value)->exists()) {
+                        $fail('The selected capability is invalid.');
+                    }
+                },
             ],
             'is_required'        => ['required', 'in:0,1'],
-        ], [
-            'capability_type_id.unique' => 'This document type is already enabled for the selected capability.',
         ]);
 
+        $documentType = DocumentType::findOrFail($validated['document_type_id']);
+        $isRequired = (bool) $validated['is_required'];
+
+        if ($capInput === 'both') {
+            $targetCaps = CapabilityType::whereIn('code', [CapabilityType::BUYER, CapabilityType::SUPPLIER])->get();
+            if ($targetCaps->isEmpty()) {
+                $targetCaps = CapabilityType::all();
+            }
+
+            $created = [];
+            $alreadyExisting = [];
+
+            foreach ($targetCaps as $cap) {
+                $exists = DocumentTypeEnable::where('document_type_id', $documentType->id)
+                    ->where('capability_type_id', $cap->id)
+                    ->exists();
+
+                if ($exists) {
+                    $alreadyExisting[] = $cap->name;
+                } else {
+                    DocumentTypeEnable::create([
+                        'document_type_id'   => $documentType->id,
+                        'capability_type_id' => $cap->id,
+                        'is_required'        => $isRequired,
+                    ]);
+                    $created[] = $cap->name;
+                }
+            }
+
+            if (count($created) === 0) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', "Document '{$documentType->name}' is already enabled for both Buyer and Supplier.");
+            }
+
+            if (count($alreadyExisting) > 0) {
+                return redirect()->route('admin.catalog.document-type-enables.index')
+                    ->with('success', "Document '{$documentType->name}' enabled for " . implode(' and ', $created) . ". (Already enabled for " . implode(' and ', $alreadyExisting) . ").");
+            }
+
+            return redirect()->route('admin.catalog.document-type-enables.index')
+                ->with('success', "Document '{$documentType->name}' enabled for both Buyer and Supplier successfully.");
+        }
+
+        // Single capability selected
+        $capability = CapabilityType::findOrFail($capInput);
+        $exists = DocumentTypeEnable::where('document_type_id', $documentType->id)
+            ->where('capability_type_id', $capability->id)
+            ->exists();
+
+        if ($exists) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', "Document '{$documentType->name}' is already enabled for {$capability->name}.");
+        }
+
         DocumentTypeEnable::create([
-            'document_type_id'   => $validated['document_type_id'],
-            'capability_type_id' => $validated['capability_type_id'],
-            'is_required'        => (bool) $validated['is_required'],
+            'document_type_id'   => $documentType->id,
+            'capability_type_id' => $capability->id,
+            'is_required'        => $isRequired,
         ]);
 
         return redirect()->route('admin.catalog.document-type-enables.index')
-            ->with('success', 'Document type enabled for capability successfully.');
+            ->with('success', "Document '{$documentType->name}' enabled for {$capability->name} successfully.");
     }
 
     public function update(Request $request, DocumentTypeEnable $documentTypeEnable)
     {
         $this->authorize('platform.categories.manage');
 
+        $capInput = $request->input('capability_type_id');
+
         $validated = $request->validate([
             'document_type_id'   => ['required', 'exists:document_types,id'],
             'capability_type_id' => [
                 'required',
-                'exists:capability_types,id',
-                Rule::unique('document_type_enables')
-                    ->ignore($documentTypeEnable->id)
-                    ->where(function ($query) use ($request) {
-                        return $query->where('document_type_id', $request->input('document_type_id'))
-                                     ->where('capability_type_id', $request->input('capability_type_id'));
-                    }),
+                function ($attribute, $value, $fail) {
+                    if ($value !== 'both' && ! CapabilityType::where('id', $value)->exists()) {
+                        $fail('The selected capability is invalid.');
+                    }
+                },
             ],
             'is_required'        => ['required', 'in:0,1'],
-        ], [
-            'capability_type_id.unique' => 'This document type is already enabled for the selected capability.',
         ]);
 
+        $documentType = DocumentType::findOrFail($validated['document_type_id']);
+        $isRequired = (bool) $validated['is_required'];
+
+        if ($capInput === 'both') {
+            $targetCaps = CapabilityType::whereIn('code', [CapabilityType::BUYER, CapabilityType::SUPPLIER])->get();
+            if ($targetCaps->isEmpty()) {
+                $targetCaps = CapabilityType::all();
+            }
+
+            // 1. Update current record
+            $currentCapId = $documentTypeEnable->capability_type_id;
+            $documentTypeEnable->update([
+                'document_type_id' => $documentType->id,
+                'is_required'      => $isRequired,
+            ]);
+
+            // 2. Ensure all target capabilities (Buyer & Supplier) have a record
+            foreach ($targetCaps as $cap) {
+                if ($cap->id !== $currentCapId) {
+                    DocumentTypeEnable::updateOrCreate(
+                        [
+                            'document_type_id'   => $documentType->id,
+                            'capability_type_id' => $cap->id,
+                        ],
+                        [
+                            'is_required' => $isRequired,
+                        ]
+                    );
+                }
+            }
+
+            return redirect()->route('admin.catalog.document-type-enables.index')
+                ->with('success', "Document '{$documentType->name}' enabled for both Buyer and Supplier successfully.");
+        }
+
+        // Single capability selected
+        $capability = CapabilityType::findOrFail($capInput);
+        $exists = DocumentTypeEnable::where('document_type_id', $documentType->id)
+            ->where('capability_type_id', $capability->id)
+            ->where('id', '!=', $documentTypeEnable->id)
+            ->exists();
+
+        if ($exists) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', "Document '{$documentType->name}' is already enabled for {$capability->name}.");
+        }
+
         $documentTypeEnable->update([
-            'document_type_id'   => $validated['document_type_id'],
-            'capability_type_id' => $validated['capability_type_id'],
-            'is_required'        => (bool) $validated['is_required'],
+            'document_type_id'   => $documentType->id,
+            'capability_type_id' => $capability->id,
+            'is_required'        => $isRequired,
         ]);
 
         return redirect()->route('admin.catalog.document-type-enables.index')
-            ->with('success', 'Document enable configuration updated successfully.');
+            ->with('success', "Document enable configuration updated for {$capability->name} successfully.");
     }
 
     public function toggleRequirement(DocumentTypeEnable $documentTypeEnable)

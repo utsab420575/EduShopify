@@ -20,7 +20,8 @@ class BuyerProfileService
         /** @var BuyerProfile $profile */
         $profile = $account->buyerProfile ?? BuyerProfile::create(['account_id' => $account->id]);
 
-        $logoPath = $this->handleLogoUpload($data, $profile);
+        $logoPath = $this->handleImageUpload($data, 'logo', 'buyer-logos', $profile->logo);
+        $profilePhotoPath = $this->handleImageUpload($data, 'profile_photo', 'buyer-photos', $profile->profile_photo);
 
         $buyerTypeIds = array_filter(array_map('intval', (array) ($data['buyer_type_ids'] ?? [])));
         if (! empty($buyerTypeIds)) {
@@ -49,6 +50,7 @@ class BuyerProfileService
             'bio'               => $data['bio']               ?? $profile->bio,
             'procurement_info'  => $data['procurement_info']  ?? $profile->procurement_info,
             'logo'              => $logoPath                  ?? $profile->logo,
+            'profile_photo'     => $profilePhotoPath           ?? $profile->profile_photo,
         ], fn ($v) => $v !== null));
 
         // Do NOT set profile_completed_at on draft
@@ -100,14 +102,16 @@ class BuyerProfileService
     }
 
     /**
-     * Handle logo upload via Livewire TemporaryUploadedFile or keep existing.
+     * Handle an image upload (logo or profile_photo) via Livewire
+     * TemporaryUploadedFile, or keep the existing path if nothing new was
+     * uploaded. Mirrors SupplierProfileService::handleFileUpload().
      */
-    private function handleLogoUpload(array $data, BuyerProfile $profile): ?string
+    private function handleImageUpload(array $data, string $key, string $directory, ?string $existing): ?string
     {
-        $file = $data['logo'] ?? null;
+        $file = $data[$key] ?? null;
 
         if (! $file || ! is_object($file)) {
-            return null; // keep existing
+            return $existing;
         }
 
         try {
@@ -119,7 +123,7 @@ class BuyerProfileService
 
             $ext  = strtolower($file->getClientOriginalExtension());
             $ext  = in_array($ext, ['png', 'webp']) ? $ext : 'jpg';
-            $path = 'buyer-logos/' . Str::random(40) . '.' . $ext;
+            $path = $directory . '/' . Str::random(40) . '.' . $ext;
 
             $encoded = match ($ext) {
                 'png'  => $img->toPng(),
@@ -131,7 +135,7 @@ class BuyerProfileService
 
             return $path;
         } catch (\Throwable) {
-            return null;
+            return $existing;
         }
     }
 }

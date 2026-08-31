@@ -163,7 +163,7 @@ class SupplierApplicationWizardTest extends TestCase
             ->call('addDocument')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('supplier_documents', [
+        $this->assertDatabaseHas('account_documents', [
             'supplier_account_id' => $account->id,
             'document_type_id' => $docType->id,
             'is_current' => true,

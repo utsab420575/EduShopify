@@ -28,11 +28,14 @@ class BuyerProfile extends Model
         'city_id',
         'address',
         'logo',
+        'profile_photo',
         'tax_id',
         'bio',
         'procurement_info',
         'additional_data',
         'profile_completed_at',
+        'current_step',
+        'max_step_reached',
     ];
 
     protected function casts(): array
@@ -40,6 +43,8 @@ class BuyerProfile extends Model
         return [
             'additional_data'      => 'array',
             'profile_completed_at' => 'datetime',
+            'current_step'         => 'integer',
+            'max_step_reached'     => 'integer',
         ];
     }
 

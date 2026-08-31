@@ -757,6 +757,17 @@ class SupplierApplication extends Component
             return;
         }
 
+        // A dual buyer+supplier registration finishes Supplier onboarding
+        // first — its shared fields were just copied into the still-draft
+        // BuyerProfile (CapabilityApplicationService::submit()), so send
+        // the user straight into the (now pre-filled) Buyer wizard instead
+        // of the supplier "pending review" holding page.
+        if ($account->buyerCapability?->status === 'draft') {
+            session()->flash('success', "Supplier application submitted! Let's finish setting up your buyer account too.");
+            $this->redirect(route('buyer.onboarding.profile'), navigate: false);
+            return;
+        }
+
         session()->flash('success', 'Application submitted! We\'ll review it and get back to you soon.');
         $this->redirect(route('supplier.pending'), navigate: false);
     }

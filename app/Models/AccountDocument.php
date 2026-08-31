@@ -6,36 +6,25 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
- * Table: account_documents (filtered to capability 'supplier') — owned by
- * the supplier ACCOUNT, not a user. Backed by the same shared table Buyer
- * verification documents (see BuyerDocument) live in, via
- * documentable_type/documentable_id + capability_type_id — but every
- * column, relation, and query pattern below is unchanged from when this
- * model had its own dedicated supplier_documents table, so nothing
- * elsewhere in the app needed to change for this migration.
+ * Table: account_documents — shared verification-document storage for any
+ * capability (currently Buyer and Supplier, both of which are just Account
+ * rows under different capabilities). SupplierDocument and BuyerDocument
+ * are thin, capability-scoped models over this same table; use this class
+ * directly only when you genuinely need a capability-agnostic query.
  */
-class SupplierDocument extends Model
+class AccountDocument extends Model
 {
     use HasFactory;
 
     protected $table = 'account_documents';
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('supplierCapability', function (Builder $query) {
-            $query->where('capability_type_id', CapabilityType::where('code', 'supplier')->value('id'));
-        });
-
-        static::creating(function (self $document) {
-            $document->documentable_type ??= 'account';
-            $document->documentable_id ??= $document->supplier_account_id;
-            $document->capability_type_id ??= CapabilityType::where('code', 'supplier')->value('id');
-        });
-    }
-
     protected $fillable = [
+        'documentable_type',
+        'documentable_id',
+        'capability_type_id',
         'supplier_account_id',
         'document_type_id',
         'custom_name',
@@ -56,20 +45,25 @@ class SupplierDocument extends Model
     {
         return [
             'file_size_kb' => 'integer',
-            'verified_at'  => 'datetime',
-            'expires_at'   => 'date',
-            'is_current'   => 'boolean',
+            'verified_at' => 'datetime',
+            'expires_at' => 'date',
+            'is_current' => 'boolean',
         ];
     }
 
-    public function supplierAccount(): BelongsTo
+    public function documentable(): MorphTo
     {
-        return $this->belongsTo(Account::class, 'supplier_account_id');
+        return $this->morphTo();
+    }
+
+    public function capabilityType(): BelongsTo
+    {
+        return $this->belongsTo(CapabilityType::class);
     }
 
     public function documentType(): BelongsTo
     {
-        return $this->belongsTo(DocumentType::class, 'document_type_id');
+        return $this->belongsTo(DocumentType::class);
     }
 
     public function uploadedBy(): BelongsTo

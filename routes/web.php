@@ -3,7 +3,6 @@
 use App\Http\Controllers\Frontend\HomeController;
 use App\Livewire\Auth\AccountRegister;
 use App\Livewire\Auth\SupplierApplication;
-use App\Livewire\Buyer\BuyerApplicationReview;
 use App\Livewire\Buyer\BuyerProfileOnboarding;
 use App\Http\Controllers\Subscription\CheckoutController;
 use App\Http\Controllers\Subscription\PricingController;
@@ -221,11 +220,10 @@ Route::middleware('auth')->group(function () {
 /* ── Buyer Onboarding (Authenticated + Verified) ── */
 Route::middleware(['auth', 'verified'])->prefix('buyer/onboarding')->name('buyer.onboarding.')->group(function () {
 
-    // Profile completion (draft + save draft + complete)
+    // 3-step wizard (2 if no buyer document types are configured) — review
+    // and submission happen inside the wizard's own last step now.
+    // BuyerProfileOnboarding::mount() figures out where to resume from.
     Route::get('/profile', BuyerProfileOnboarding::class)->name('profile');
-
-    // Review & submit
-    Route::get('/review', BuyerApplicationReview::class)->name('review');
 });
 
 /* ── Buyer Dashboard (Authenticated + Verified) ──

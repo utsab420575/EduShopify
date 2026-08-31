@@ -14,7 +14,7 @@ class BuyerOnboardingStateService
     public function resolve(User $user): string
     {
         // Ensure account context is loaded
-        $user->load('accountMember.account.buyerCapability', 'accountMember.account.buyerProfile');
+        $user->load('accountMember.account.buyerCapability', 'accountMember.account.supplierCapability', 'accountMember.account.buyerProfile');
 
         $account = $user->accountMember?->account;
 
@@ -30,7 +30,7 @@ class BuyerOnboardingStateService
         }
 
         return match ($cap->status) {
-            'draft'             => $this->draftRoute($account),
+            'draft'             => $this->draftRoute($user, $account),
             'pending',
             'revision_required',
             'rejected',
@@ -39,14 +39,25 @@ class BuyerOnboardingStateService
         };
     }
 
-    private function draftRoute(\App\Models\Account $account): string
+    /**
+     * Review and submission now happen inside the last step of the profile
+     * wizard itself (mount() resumes at the right step), so a draft buyer
+     * normally lands on the same one route regardless of progress.
+     *
+     * Exception: a dual buyer+supplier registration always finishes Supplier
+     * onboarding first (the longer, document + plan driven wizard) — once
+     * Supplier submits, its shared fields get copied into the still-draft
+     * BuyerProfile (see CapabilityApplicationService::submit()), so Buyer's
+     * wizard opens pre-filled instead of asking for the same details twice.
+     */
+    private function draftRoute(User $user, \App\Models\Account $account): string
     {
-        $profile = $account->buyerProfile;
+        $supplierCap = $account->supplierCapability;
 
-        if (! $profile || ! $profile->isComplete()) {
-            return route('buyer.onboarding.profile');
+        if ($supplierCap && $supplierCap->status === 'draft') {
+            return app(SupplierOnboardingStateService::class)->resolveRoute($user);
         }
 
-        return route('buyer.onboarding.review');
+        return route('buyer.onboarding.profile');
     }
 }

@@ -8,15 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Table: account_documents (filtered to capability 'supplier') — owned by
- * the supplier ACCOUNT, not a user. Backed by the same shared table Buyer
- * verification documents (see BuyerDocument) live in, via
- * documentable_type/documentable_id + capability_type_id — but every
- * column, relation, and query pattern below is unchanged from when this
- * model had its own dedicated supplier_documents table, so nothing
- * elsewhere in the app needed to change for this migration.
+ * Table: account_documents (filtered to capability 'buyer') — owned by the
+ * buyer ACCOUNT, not a user. Shares the same physical table as
+ * SupplierDocument via documentable_type/documentable_id + capability_type_id;
+ * see AccountDocument's docblock for why. Unlike SupplierDocument this has
+ * no legacy call sites to stay compatible with, so it addresses the account
+ * directly through documentable_id rather than a redundant column.
  */
-class SupplierDocument extends Model
+class BuyerDocument extends Model
 {
     use HasFactory;
 
@@ -24,19 +23,18 @@ class SupplierDocument extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('supplierCapability', function (Builder $query) {
-            $query->where('capability_type_id', CapabilityType::where('code', 'supplier')->value('id'));
+        static::addGlobalScope('buyerCapability', function (Builder $query) {
+            $query->where('capability_type_id', CapabilityType::where('code', 'buyer')->value('id'));
         });
 
         static::creating(function (self $document) {
             $document->documentable_type ??= 'account';
-            $document->documentable_id ??= $document->supplier_account_id;
-            $document->capability_type_id ??= CapabilityType::where('code', 'supplier')->value('id');
+            $document->capability_type_id ??= CapabilityType::where('code', 'buyer')->value('id');
         });
     }
 
     protected $fillable = [
-        'supplier_account_id',
+        'documentable_id',
         'document_type_id',
         'custom_name',
         'file_path',
@@ -56,20 +54,20 @@ class SupplierDocument extends Model
     {
         return [
             'file_size_kb' => 'integer',
-            'verified_at'  => 'datetime',
-            'expires_at'   => 'date',
-            'is_current'   => 'boolean',
+            'verified_at' => 'datetime',
+            'expires_at' => 'date',
+            'is_current' => 'boolean',
         ];
     }
 
-    public function supplierAccount(): BelongsTo
+    public function buyerAccount(): BelongsTo
     {
-        return $this->belongsTo(Account::class, 'supplier_account_id');
+        return $this->belongsTo(Account::class, 'documentable_id');
     }
 
     public function documentType(): BelongsTo
     {
-        return $this->belongsTo(DocumentType::class, 'document_type_id');
+        return $this->belongsTo(DocumentType::class);
     }
 
     public function uploadedBy(): BelongsTo
@@ -100,11 +98,6 @@ class SupplierDocument extends Model
     public function isRejected(): bool
     {
         return $this->status === 'rejected';
-    }
-
-    public function isExpired(): bool
-    {
-        return $this->expires_at !== null && $this->expires_at->isPast();
     }
 
     public function getDocumentNameAttribute(): string

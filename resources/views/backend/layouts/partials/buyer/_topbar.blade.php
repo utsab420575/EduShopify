@@ -1,7 +1,14 @@
 @php
     $unreadNotifications = $unreadNotifications ?? 0;
     $unreadMessages = $unreadMessages ?? 0;
-    $bothCapabilities = $account->hasActiveCapability('buyer') && $account->hasActiveCapability('supplier');
+    // Offer the switch as soon as both capabilities are more than a bare,
+    // never-submitted draft — while Supplier is pending admin review,
+    // switching there still shows a real (pending) profile, not an
+    // unfinished wizard, so it doesn't need to be fully active yet either.
+    $bothCapabilities = $account->hasCapability('buyer')
+        && $account->capabilityStatus('buyer') !== 'draft'
+        && $account->hasCapability('supplier')
+        && $account->capabilityStatus('supplier') !== 'draft';
 @endphp
 
 <header class="h-20 shrink-0 bg-white border-b flex items-center justify-between px-4 lg:px-6" style="border-color:var(--topbar-border)">

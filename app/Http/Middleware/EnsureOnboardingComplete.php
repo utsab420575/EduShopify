@@ -30,7 +30,6 @@ class EnsureOnboardingComplete
         // Skip onboarding middleware for onboarding routes, auth routes, and static assets
         $allowedRouteNames = [
             'buyer.onboarding.profile',
-            'buyer.onboarding.review',
             'supplier.onboarding.profile',
             'verification.notice',
             'verification.verify',
@@ -54,25 +53,12 @@ class EnsureOnboardingComplete
             return redirect()->route('verification.notice');
         }
 
-        // Check Buyer onboarding status
         $account = $user->activateTeamContext();
 
-        if ($account && $account->capabilities()->whereHas('capabilityType', fn($q) => $q->where('code', 'buyer'))->exists()) {
-            $cap = $account->buyerCapability;
-
-            if ($cap && $cap->status === 'draft') {
-                $profile = $account->buyerProfile;
-
-                // Profile not complete — force redirect to onboarding profile or review
-                if (! $profile || ! $profile->isComplete()) {
-                    return redirect()->route('buyer.onboarding.profile');
-                }
-
-                return redirect()->route('buyer.onboarding.review');
-            }
-        }
-
-        // Check Supplier onboarding status (draft capability/profile)
+        // Check Supplier onboarding status first (draft capability/profile)
+        // — a dual buyer+supplier registration always finishes Supplier
+        // onboarding before Buyer's (see BuyerOnboardingStateService), so
+        // while both are still draft, Supplier wins here too.
         if ($account && $account->capabilities()->whereHas('capabilityType', fn($q) => $q->where('code', 'supplier'))->exists()) {
             $cap = $account->supplierCapability;
 
@@ -84,6 +70,18 @@ class EnsureOnboardingComplete
                 }
 
                 return redirect()->route('supplier.onboarding.documents');
+            }
+        }
+
+        // Check Buyer onboarding status
+        if ($account && $account->capabilities()->whereHas('capabilityType', fn($q) => $q->where('code', 'buyer'))->exists()) {
+            $cap = $account->buyerCapability;
+
+            if ($cap && $cap->status === 'draft') {
+                // Review and submission now happen inside the wizard's last
+                // step — mount() resumes at the right step, so there's only
+                // ever one route to send a draft buyer to.
+                return redirect()->route('buyer.onboarding.profile');
             }
         }
 

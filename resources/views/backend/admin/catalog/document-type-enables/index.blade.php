@@ -237,10 +237,12 @@
                 </label>
                 <select name="capability_type_id" id="create_capability_type_id" required class="focus-accent w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
                     <option value="">Select Capability...</option>
+                    <option value="both" class="font-bold text-indigo-700">★ Both (Buyer &amp; Supplier)</option>
                     @foreach($capabilityTypes as $cap)
                         <option value="{{ $cap->id }}">{{ $cap->name }} ({{ strtoupper($cap->code) }})</option>
                     @endforeach
                 </select>
+                <p class="text-[11px] text-gray-500 mt-1">Select <strong>"Both (Buyer &amp; Supplier)"</strong> to enable this document type for both Buyer and Supplier capabilities simultaneously.</p>
             </div>
 
             <div>
@@ -301,12 +303,14 @@
                         Capability / Account Role <span class="text-rose-500">*</span>
                     </label>
                     <select name="capability_type_id" id="edit_cap_{{ $item->id }}" required class="focus-accent w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                        <option value="both" class="font-bold text-indigo-700">★ Both (Buyer &amp; Supplier)</option>
                         @foreach($capabilityTypes as $cap)
                             <option value="{{ $cap->id }}" @selected($item->capability_type_id === $cap->id)>
                                 {{ $cap->name }} ({{ strtoupper($cap->code) }})
                             </option>
                         @endforeach
                     </select>
+                    <p class="text-[11px] text-gray-500 mt-1">Select <strong>"Both (Buyer &amp; Supplier)"</strong> to ensure this document is enabled across both capabilities.</p>
                 </div>
 
                 <div>

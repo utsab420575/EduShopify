@@ -145,8 +145,20 @@ class CheckoutController extends Controller
         // (capability still draft at this point) is now submitted for
         // Admin review. Already-approved accounts resubscribing here have a
         // non-draft capability, so this is a no-op for them.
-        if ($account && $account->capabilityStatus('supplier') === 'draft') {
+        $justSubmitted = $account && $account->capabilityStatus('supplier') === 'draft';
+
+        if ($justSubmitted) {
             $capabilityService->submit($account, 'supplier', $request->user());
+        }
+
+        // A dual buyer+supplier registration finishes Supplier onboarding
+        // first — its shared fields were just copied into the still-draft
+        // BuyerProfile (CapabilityApplicationService::submit()), so send the
+        // user straight into the (now pre-filled) Buyer wizard instead of
+        // this "payment successful" page.
+        if ($justSubmitted && $account->buyerCapability?->status === 'draft') {
+            return redirect()->route('buyer.onboarding.profile')
+                ->with('success', "Supplier application submitted! Let's finish setting up your buyer account too.");
         }
 
         return view('supplier.checkout.success', compact('subscription'));
