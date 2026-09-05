@@ -47,7 +47,12 @@
   100% { background-position: 0 50%; }
 }
 
-.cards-hidden { display: none; }
+/* !important: this must win over any per-section ID rule that also sets
+   display on the same element (e.g. Featured Suppliers' own
+   #featured-suppliers-grid { display: flex } for its slider) — an ID
+   selector otherwise beats this class regardless of source order, and
+   the "hidden" grid would render at the same time as its skeleton. */
+.cards-hidden { display: none !important; }
 
 /* Generic per-card reveal for sections with no fade-up of their own
    (Why Choose, Events) — Featured/All Suppliers already have their own
@@ -160,6 +165,9 @@
 .stat-col:not(:last-child) { border-right: 1px solid #f3f4f6; }
 .stat-col .val { font-size: 20px; font-weight: 800; color: #111827; line-height: 1; }
 .stat-col .lbl { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 .supplier-profile-page .tab-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; display: flex; overflow-x: auto; scrollbar-width: none; }
 .supplier-profile-page .tab-bar::-webkit-scrollbar { display: none; }
