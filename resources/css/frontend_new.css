@@ -30,3 +30,45 @@
 .event-card         { border-radius: 10px; overflow: hidden; position: relative; }
 .event-badge        { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
 .filter-btn         { border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 12px; font-size: 13px; color: #374151; display: flex; align-items: center; gap: 6px; }
+
+/* Product detail — docs/AI/Frontend/edushopify-product-detail.html */
+.star-filled  { color: #f59e0b; }
+.star-empty   { color: #e5e7eb; }
+
+.spec-table { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.spec-row { display: grid; grid-template-columns: 160px 1fr; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+.spec-row:last-child { border-bottom: none; }
+.spec-row:nth-child(odd)  .spec-cell-label { background: #f9fafb; }
+.spec-row:nth-child(odd)  .spec-cell-value { background: #f9fafb; }
+.spec-row:nth-child(even) .spec-cell-label { background: #fff; }
+.spec-row:nth-child(even) .spec-cell-value { background: #fff; }
+.spec-cell-label { padding: 11px 14px; color: #374151; font-weight: 500; border-right: 1px solid #e5e7eb; }
+.spec-cell-value { padding: 11px 14px; color: #374151; }
+.spec-row.highlight .spec-cell-label { color: #10b981; }
+.spec-row.highlight .spec-cell-value { color: #3b82f6; }
+
+.rating-bar-bg   { background: #e5e7eb; border-radius: 99px; height: 6px; flex: 1; overflow: hidden; }
+.rating-bar-fill { background: #f59e0b; height: 100%; border-radius: 99px; }
+
+.reviewer-avatar { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+
+.product-card { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; overflow: hidden; transition: box-shadow .2s; }
+.product-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+
+.sidebar-card { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; padding: 18px; }
+
+.thumb { border: 2px solid transparent; border-radius: 6px; overflow: hidden; cursor: pointer; opacity: .7; transition: opacity .15s, border-color .15s; }
+.thumb.active, .thumb:hover { border-color: #10b981; opacity: 1; }
+
+.protect-icon { width: 36px; height: 36px; border-radius: 50%; background: #f0fdf4; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; }
+
+.fast-response { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; }
+
+.stat-box { text-align: center; }
+.stat-box .val { font-size: 16px; font-weight: 700; color: #111827; }
+.stat-box .lbl { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+
+.why-row { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #374151; margin-bottom: 6px; }
+.why-row svg { color: #10b981; flex-shrink: 0; }
+
+.in-stock { background: #ecfdf5; color: #059669; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }

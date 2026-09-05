@@ -20,6 +20,14 @@ document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') fnCloseMobileMenu();
 });
 
+/* Product detail — gallery thumbnail switcher */
+function switchImg(thumb, src) {
+    const mainImg = document.getElementById('main-img');
+    if (mainImg) mainImg.src = src;
+    document.querySelectorAll('.thumb').forEach(function (t) { t.classList.remove('active'); });
+    thumb.classList.add('active');
+}
+
 /* Homepage — All Suppliers category tabs (spec §23.4 pattern) */
 document.querySelectorAll('.tab-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {

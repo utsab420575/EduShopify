@@ -10,7 +10,7 @@
     @vite(['resources/css/frontend_new.css', 'resources/js/frontend_new.js'])
     @stack('head')
 </head>
-<body class="bg-white text-gray-800 antialiased">
+<body class="@yield('body_class', 'bg-white') text-gray-800 antialiased">
 
     @include('frontend_new.partials.mobile-menu')
     @include('frontend_new.partials.navbar')
