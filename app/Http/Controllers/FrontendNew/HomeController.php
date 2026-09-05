@@ -34,7 +34,22 @@ class HomeController extends Controller
             $this->allSuppliersByCategory($topCategories)
         );
 
-        $allSuppliersTabs = $allSuppliers->pluck('home_category')->filter()->unique('slug')->values();
+        // Computed independently of $allSuppliers' per-supplier category
+        // assignment above: that assignment dedupes each supplier into
+        // exactly one category (first match wins), so with few real
+        // suppliers, one supplier matching multiple categories would
+        // otherwise "use up" every category but the first — starving every
+        // other real tab even though it does have a match. A tab should
+        // show whenever a category has *any* matching supplier, regardless
+        // of which specific supplier the grid below happened to assign it.
+        $allSuppliersTabs = $topCategories->filter(function (Category $category) {
+            $ids = array_merge([$category->id], $category->descendantIds());
+
+            return PublicSupplierQuery::base()->whereHas('account.listings', function (Builder $q) use ($ids) {
+                $q->whereIn('main_category_id', $ids)
+                    ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
+            })->exists();
+        })->values();
 
         $events = collect(config('frontend_new_demo.events', []));
 
@@ -55,11 +70,16 @@ class HomeController extends Controller
         $suppliers = collect();
 
         foreach ($categories as $category) {
+            // Real listings are tagged at child/leaf categories (e.g.
+            // "Laptop" under root "Laptop & Netbook"), not the root itself
+            // — match the whole subtree, or every root's count is always 0.
+            $ids = array_merge([$category->id], $category->descendantIds());
+
             PublicSupplierQuery::base()
                 ->with(['country', 'account.supplierTypes'])
-                ->whereHas('account.listings', function (Builder $q) use ($category) {
-                    $q->where('main_category_id', $category->id)
-                        ->orWhereHas('categories', fn (Builder $c) => $c->where('categories.id', $category->id));
+                ->whereHas('account.listings', function (Builder $q) use ($ids) {
+                    $q->whereIn('main_category_id', $ids)
+                        ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
                 })
                 ->orderByDesc('rating')
                 ->limit(2)

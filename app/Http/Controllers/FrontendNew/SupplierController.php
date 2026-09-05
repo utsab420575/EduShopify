@@ -44,7 +44,7 @@ class SupplierController extends Controller
         if ($categorySlug && $categorySlug !== 'all') {
             $activeCategory = Category::where('slug', $categorySlug)->first();
             if ($activeCategory) {
-                $ids = $this->categoryTreeIds($activeCategory);
+                $ids = array_merge([$activeCategory->id], $activeCategory->descendantIds());
                 $query->whereHas('account.listings', function (Builder $q) use ($ids) {
                     $q->whereIn('main_category_id', $ids)
                         ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
@@ -91,28 +91,12 @@ class SupplierController extends Controller
      * tagged anywhere in that category's subtree, not only the root
      * itself — real listings here are tagged at child level (e.g. "Laptop"
      * under root "Laptop & Netbook"), so a root-only match always finds 0.
+     * Uses Category::descendantIds() (also relied on by CategoryController
+     * and HomeController) rather than a private tree-walk here.
      */
-    private function categoryTreeIds(Category $category): array
-    {
-        $category->loadMissing('childrenRecursive');
-
-        $ids = [$category->id];
-        $walk = function ($children) use (&$ids, &$walk) {
-            foreach ($children as $child) {
-                $ids[] = $child->id;
-                if ($child->childrenRecursive->isNotEmpty()) {
-                    $walk($child->childrenRecursive);
-                }
-            }
-        };
-        $walk($category->childrenRecursive);
-
-        return $ids;
-    }
-
     private function suppliersInCategoryTree(Category $category): Builder
     {
-        $ids = $this->categoryTreeIds($category);
+        $ids = array_merge([$category->id], $category->descendantIds());
 
         return PublicSupplierQuery::base()->whereHas('account.listings', function (Builder $q) use ($ids) {
             $q->whereIn('main_category_id', $ids)
