@@ -3,53 +3,62 @@
 namespace App\Http\Controllers\FrontendNew;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Quotation;
 use App\Models\Review;
 use App\Models\SupplierProfile;
-use App\Models\SupplierType;
 use App\Services\Account\PublicSupplierQuery;
 use App\Services\Catalog\PublicListingQuery;
 use App\Support\FrontendNewDemo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SupplierController extends Controller
 {
     /**
-     * Mirrors the real filter/sort logic already proven in the legacy
-     * App\Http\Controllers\Frontend\SupplierDirectoryController — same
-     * PublicSupplierQuery eligibility, same filter params — reimplemented
-     * here (not called directly) to keep this controller independent of
-     * the legacy Frontend\* namespace.
+     * Same PublicSupplierQuery eligibility already proven in the legacy
+     * App\Http\Controllers\Frontend\SupplierDirectoryController, restyled
+     * to the category-tabs + live-search pattern established by the
+     * Marketplace/Categories page — kept independent of the legacy
+     * Frontend\* namespace.
      */
     public function index(Request $request)
     {
-        $query = PublicSupplierQuery::base()->with(['country', 'state', 'city', 'account.supplierTypes']);
+        $search = $request->input('search', '');
+        $categorySlug = $request->input('category', 'all');
 
-        if ($request->filled('q')) {
-            $query->where('display_name', 'like', '%'.$request->string('q').'%');
-        }
+        $categories = Category::query()
+            ->active()
+            ->approved()
+            ->roots()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function (Category $category) {
+                $category->supplier_count = PublicSupplierQuery::base()
+                    ->whereHas('account.listings', function (Builder $q) use ($category) {
+                        $q->where('main_category_id', $category->id)
+                            ->orWhereHas('categories', fn (Builder $c) => $c->where('categories.id', $category->id));
+                    })
+                    ->count();
 
-        if ($request->filled('type')) {
-            $query->whereHas('account.supplierTypes', fn (Builder $q) => $q->where('slug', $request->string('type')));
-        }
+                return $category;
+            });
 
-        if ($request->filled('country')) {
-            $query->where('country_id', $request->integer('country'));
-        }
+        $query = PublicSupplierQuery::base()->with(['country', 'account.supplierTypes']);
 
-        if ($request->filled('category')) {
-            $query->whereHas('account.listings', function (Builder $q) use ($request) {
-                $q->whereHas('categories', fn (Builder $c) => $c->where('categories.slug', $request->string('category')))
-                    ->orWhereHas('mainCategory', fn (Builder $c) => $c->where('slug', $request->string('category')));
+        if ($categorySlug && $categorySlug !== 'all') {
+            $query->whereHas('account.listings', function (Builder $q) use ($categorySlug) {
+                $q->whereHas('mainCategory', fn (Builder $c) => $c->where('slug', $categorySlug))
+                    ->orWhereHas('categories', fn (Builder $c) => $c->where('categories.slug', $categorySlug));
             });
         }
 
-        $sort = $request->string('sort')->toString();
-        match ($sort) {
-            'newest' => $query->latest('profile_completed_at'),
-            default => $query->orderByDesc('rating'),
-        };
+        if ($search) {
+            $query->where('display_name', 'like', "%{$search}%");
+        }
+
+        $query->orderByDesc('rating');
 
         $suppliers = $query->paginate(24)->withQueryString()->through(function ($supplier) {
             $flags = FrontendNewDemo::supplierBadges($supplier->id);
@@ -60,14 +69,24 @@ class SupplierController extends Controller
             return $supplier;
         });
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'total' => $suppliers->total(),
+                'suppliers' => $suppliers->map(fn ($s) => [
+                    'name' => $s->display_name,
+                    'type' => $s->account?->supplierTypes?->pluck('name')->implode(' · '),
+                    'image' => $s->banner ? Storage::url($s->banner) : null,
+                    'url' => route('v2.suppliers.show', $s->slug),
+                ]),
+            ]);
+        }
+
         return view('frontend_new.suppliers.index', [
+            'categories' => $categories,
             'suppliers' => $suppliers,
-            'supplierTypes' => SupplierType::where('is_active', true)->orderBy('name')->get(),
-            'sort' => $sort ?: 'rating',
-            'filters' => array_merge(
-                ['q' => null, 'type' => null, 'country' => null, 'category' => null],
-                $request->only(['q', 'type', 'country', 'category'])
-            ),
+            'totalSuppliers' => $suppliers->total(),
+            'activeCategory' => $categorySlug,
+            'search' => $search,
         ]);
     }
 
