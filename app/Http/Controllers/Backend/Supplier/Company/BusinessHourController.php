@@ -4,49 +4,33 @@ namespace App\Http\Controllers\Backend\Supplier\Company;
 
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Backend\Supplier\Company\UpdateBusinessHoursRequest;
 use App\Models\BusinessHour;
-use Illuminate\Http\Request;
 
 class BusinessHourController extends Controller
 {
     use InteractsWithSupplierAccount;
 
-    public function edit()
+    public function update(UpdateBusinessHoursRequest $request)
     {
         $account = $this->currentAccount();
-        $businessHours = $account->businessHours()->orderBy('day_of_week')->get()->keyBy('day_of_week');
+        $days = $request->validated()['days'];
 
-        return view('backend.supplier.company.business-hours', [
-            'account' => $account,
-            'user' => $this->currentUser(),
-            'businessHours' => $businessHours,
-            'dayNames' => BusinessHour::dayNames(),
-        ]);
-    }
-
-    public function update(Request $request)
-    {
-        $account = $this->currentAccount();
-        $days = $request->input('days', []);
-
-        foreach (BusinessHour::dayNames() as $dayIndex => $dayName) {
-            $isOpen = isset($days[$dayIndex]['is_open']);
-            $openTime = $isOpen ? ($days[$dayIndex]['open_time'] ?? '09:00') : null;
-            $closeTime = $isOpen ? ($days[$dayIndex]['close_time'] ?? '17:00') : null;
+        foreach (range(0, 6) as $day) {
+            $row = $days[$day] ?? [];
+            $isOpen = (bool) ($row['is_open'] ?? false);
 
             BusinessHour::updateOrCreate(
-                [
-                    'supplier_account_id' => $account->id,
-                    'day_of_week' => $dayIndex,
-                ],
+                ['supplier_account_id' => $account->id, 'account_location_id' => null, 'day_of_week' => $day],
                 [
                     'is_open' => $isOpen,
-                    'open_time' => $openTime,
-                    'close_time' => $closeTime,
+                    'open_time' => $isOpen ? ($row['open_time'] ?? '09:00') : null,
+                    'close_time' => $isOpen ? ($row['close_time'] ?? '17:00') : null,
                 ]
             );
         }
 
-        return redirect()->route('supplier.company.business-hours')->with('success', 'Business hours updated.');
+        return redirect()->route('supplier.company.profile', ['section' => 'hours'])
+            ->with('success', 'Business hours saved.');
     }
 }

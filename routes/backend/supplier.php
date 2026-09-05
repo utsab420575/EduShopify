@@ -34,36 +34,47 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
     Route::middleware([RequireSupplierCapability::class, EnsureSupplierHasPlan::class])->group(function () {
 
         // ── Business Profile ──────────────────────────────────────────────
+        // Consolidated into one expandable accordion page (docs/AI/design.md
+        // §43) — plain Controller + Form Request + Service + Blade + Alpine
+        // per ARCHITECTURE.md Rule 1 (no backend Livewire). Every sub-section
+        // is its own resource with its own controller/routes, each posting
+        // back to the same "profile" page independently.
         Route::prefix('company')->name('company.')->group(function () {
             Route::get('/profile', [\App\Http\Controllers\Backend\Supplier\Company\ProfileController::class, 'edit'])->name('profile');
-            Route::put('/profile', [\App\Http\Controllers\Backend\Supplier\Company\ProfileController::class, 'update'])->name('profile.update');
 
-            // Documents
-            Route::get('/documents', [\App\Http\Controllers\Backend\Supplier\Company\DocumentController::class, 'index'])->name('documents');
-            Route::post('/documents', [\App\Http\Controllers\Backend\Supplier\Company\DocumentController::class, 'store'])->name('documents.store');
-            Route::delete('/documents/{document}', [\App\Http\Controllers\Backend\Supplier\Company\DocumentController::class, 'destroy'])->name('documents.destroy');
+            Route::put('/profile/company', [\App\Http\Controllers\Backend\Supplier\Company\CompanyController::class, 'update'])->name('profile.company.update');
+            Route::put('/profile/contact', [\App\Http\Controllers\Backend\Supplier\Company\ContactController::class, 'update'])->name('profile.contact.update');
+            Route::put('/profile/media', [\App\Http\Controllers\Backend\Supplier\Company\MediaController::class, 'update'])->name('profile.media.update');
 
-            // Service Areas
-            Route::get('/service-areas', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'index'])->name('service-areas');
-            Route::post('/service-areas', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'store'])->name('service-areas.store');
-            Route::put('/service-areas/{serviceArea}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'update'])->name('service-areas.update');
-            Route::delete('/service-areas/{serviceArea}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'destroy'])->name('service-areas.destroy');
+            Route::post('/profile/gallery', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'store'])->name('profile.gallery.store');
+            Route::delete('/profile/gallery/{image}', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'destroy'])->name('profile.gallery.destroy');
 
-            // Business Hours
-            Route::get('/business-hours', [\App\Http\Controllers\Backend\Supplier\Company\BusinessHourController::class, 'edit'])->name('business-hours');
-            Route::put('/business-hours', [\App\Http\Controllers\Backend\Supplier\Company\BusinessHourController::class, 'update'])->name('business-hours.update');
+            Route::post('/profile/videos', [\App\Http\Controllers\Backend\Supplier\Company\VideoController::class, 'store'])->name('profile.videos.store');
+            Route::delete('/profile/videos/{video}', [\App\Http\Controllers\Backend\Supplier\Company\VideoController::class, 'destroy'])->name('profile.videos.destroy');
 
-            // Gallery
-            Route::get('/gallery', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'index'])->name('gallery');
-            Route::post('/gallery', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'store'])->name('gallery.store');
-            Route::put('/gallery/{gallery}', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'update'])->name('gallery.update');
-            Route::delete('/gallery/{gallery}', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'destroy'])->name('gallery.destroy');
-            Route::post('/gallery/reorder', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'reorder'])->name('gallery.reorder');
+            Route::post('/profile/service-areas', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'store'])->name('profile.service-areas.store');
+            Route::put('/profile/service-areas/{serviceArea}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'update'])->name('profile.service-areas.update');
+            Route::delete('/profile/service-areas/{serviceArea}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'destroy'])->name('profile.service-areas.destroy');
+            Route::post('/profile/service-areas/{serviceArea}/primary', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'makePrimary'])->name('profile.service-areas.primary');
 
-            // Exhibitions
-            Route::get('/exhibitions', [\App\Http\Controllers\Backend\Supplier\Company\ExhibitionController::class, 'index'])->name('exhibitions');
-            Route::post('/exhibitions/{exhibition}/join', [\App\Http\Controllers\Backend\Supplier\Company\ExhibitionController::class, 'join'])->name('exhibitions.join');
-            Route::delete('/exhibitions/{exhibition}/leave', [\App\Http\Controllers\Backend\Supplier\Company\ExhibitionController::class, 'leave'])->name('exhibitions.leave');
+            Route::put('/profile/business-hours', [\App\Http\Controllers\Backend\Supplier\Company\BusinessHourController::class, 'update'])->name('profile.business-hours.update');
+
+            Route::post('/profile/exhibitions/{exhibition}/join', [\App\Http\Controllers\Backend\Supplier\Company\ExhibitionParticipationController::class, 'join'])->name('profile.exhibitions.join');
+            Route::delete('/profile/exhibitions/{exhibition}', [\App\Http\Controllers\Backend\Supplier\Company\ExhibitionParticipationController::class, 'leave'])->name('profile.exhibitions.leave');
+
+            Route::post('/profile/documents', [\App\Http\Controllers\Backend\Supplier\Company\DocumentController::class, 'store'])->name('profile.documents.store');
+            Route::delete('/profile/documents/{document}', [\App\Http\Controllers\Backend\Supplier\Company\DocumentController::class, 'destroy'])->name('profile.documents.destroy');
+
+            Route::post('/profile/services', [\App\Http\Controllers\Backend\Supplier\Company\ServiceController::class, 'store'])->name('profile.services.store');
+            Route::put('/profile/services/{service}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceController::class, 'update'])->name('profile.services.update');
+            Route::delete('/profile/services/{service}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceController::class, 'destroy'])->name('profile.services.destroy');
+
+            Route::post('/profile/achievements/{achievement}/request', [\App\Http\Controllers\Backend\Supplier\Company\AchievementController::class, 'request'])->name('profile.achievements.request');
+            Route::delete('/profile/achievements/{accountAchievement}', [\App\Http\Controllers\Backend\Supplier\Company\AchievementController::class, 'undo'])->name('profile.achievements.undo');
+
+            Route::post('/profile/certifications', [\App\Http\Controllers\Backend\Supplier\Company\CertificationController::class, 'store'])->name('profile.certifications.store');
+            Route::put('/profile/certifications/{certification}', [\App\Http\Controllers\Backend\Supplier\Company\CertificationController::class, 'update'])->name('profile.certifications.update');
+            Route::delete('/profile/certifications/{certification}', [\App\Http\Controllers\Backend\Supplier\Company\CertificationController::class, 'destroy'])->name('profile.certifications.destroy');
         });
 
         // ── Catalog ───────────────────────────────────────────────────────

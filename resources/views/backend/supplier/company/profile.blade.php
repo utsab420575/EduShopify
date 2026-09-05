@@ -1,175 +1,109 @@
 @extends('backend.layouts.supplier')
 
-@section('title', 'Company Information')
-@section('breadcrumb', 'Business Profile / Company Information')
+@section('title', 'Business Profile')
+@section('breadcrumb', 'Business Profile')
 
 @section('body')
 
-    <x-backend.page-header title="Company Information" subtitle="Manage your public supplier profile, branding, and contact details." />
+@php
+    // Every accordion section below computes its initial open/closed state
+    // through this one helper: a validation failure or a just-completed
+    // save always force-opens its own section (via the `section` query
+    // param every Company\* controller/Form Request redirects with), and
+    // otherwise the section falls back to whatever the visitor last left it
+    // as (persisted client-side — design.md §43.3 requires accordion state
+    // to be instant/zero-server-latency, so this never touches the server).
+    $spAccOpen = function (string $key, bool $defaultOpen) use ($openSection) {
+        if ($openSection === $key) {
+            return 'true';
+        }
 
-    <form method="POST" action="{{ route('supplier.company.profile.update') }}" enctype="multipart/form-data"
-          x-data="{
-              country: {{ (int) old('country_id', $profile?->country_id ?? 0) }},
-              state: {{ (int) old('state_id', $profile?->state_id ?? 0) }},
-              city: {{ (int) old('city_id', $profile?->city_id ?? 0) }},
-              states: [], cities: [],
-              init() {
-                  if (this.country) this.loadStates();
-                  if (this.state) this.loadCities();
-              },
-              loadStates() {
-                  fetch('{{ url('/lookup/countries') }}/' + this.country + '/states').then(r => r.json()).then(d => this.states = d);
-              },
-              loadCities() {
-                  fetch('{{ url('/lookup/states') }}/' + this.state + '/cities').then(r => r.json()).then(d => this.cities = d);
-              },
-          }" x-init="init()">
-        @csrf @method('PUT')
+        return $defaultOpen ? "localStorage.getItem('sp-acc-{$key}') !== '0'" : "localStorage.getItem('sp-acc-{$key}') === '1'";
+    };
+@endphp
 
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
-            <div class="xl:col-span-8 space-y-6">
+{{-- Flash notification --}}
+@if(session('success'))
+    <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
+         class="fixed top-5 right-5 z-[200] flex items-center gap-3 bg-white border border-green-200 text-green-800 text-sm font-medium rounded-xl shadow-lg px-5 py-3">
+        <i class="fa-solid fa-circle-check text-green-500"></i>
+        {{ session('success') }}
+    </div>
+@endif
 
-                <x-backend.form-card title="Company Details">
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <x-backend.input name="display_name" label="Display / Trading Name" required :value="old('display_name', $profile?->display_name ?? $account->display_name)" />
-                            <x-backend.input name="legal_name" label="Legal Business Name" :value="old('legal_name', $profile?->legal_name)" />
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <x-backend.input name="company_type" label="Company Type (e.g. LLC, Pvt Ltd)" :value="old('company_type', $profile?->company_type)" />
-                            <x-backend.input type="number" name="founded_year" label="Founded Year" :value="old('founded_year', $profile?->founded_year)" />
-                            <x-backend.input type="number" name="employees" label="Number of Employees" :value="old('employees', $profile?->employees)" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Supplier Business Type(s)</label>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($supplierTypes as $type)
-                                    <label class="inline-flex items-center gap-1.5 text-xs font-medium border border-gray-200 rounded-full px-3 py-1.5 cursor-pointer hover:bg-gray-50">
-                                        <input type="checkbox" name="supplier_type_ids[]" value="{{ $type->id }}" @checked($selectedTypeIds->contains($type->id)) style="accent-color:var(--theme-primary)">
-                                        {{ $type->name }}
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        <x-backend.textarea name="description" label="Company Overview / Description" :value="old('description', $profile?->description)" hint="Introduce your business to educational buyers." />
-                    </div>
-                </x-backend.form-card>
+{{-- Page Header --}}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Business Profile</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Manage your company profile, branding, locations, and documents.</p>
+    </div>
+    @if($profile?->isComplete())
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+            <i class="fa-solid fa-circle-check"></i> Profile Complete
+        </span>
+    @else
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+            <i class="fa-solid fa-clock"></i> Draft
+        </span>
+    @endif
+</div>
 
-                <x-backend.form-card title="Categories You Supply" description="Used to match you against Buyer RFQs that are open to eligible suppliers — separate from your published listings, so you can be matched for a category even before you have a live listing in it.">
-                    <div class="max-h-64 overflow-y-auto pr-1 space-y-1 border border-gray-200 rounded-lg p-3">
-                        @forelse($categoryOptions as $node)
-                            <label class="flex items-center gap-2 text-xs py-1 px-1.5 rounded-lg hover:bg-gray-50 cursor-pointer" style="padding-left: {{ 6 + $node['depth'] * 16 }}px">
-                                <input type="checkbox" name="category_ids[]" value="{{ $node['id'] }}" @checked($selectedCategoryIds->contains($node['id'])) style="accent-color:var(--theme-primary)">
-                                <span class="text-gray-800">{{ $node['name'] }}</span>
-                            </label>
-                        @empty
-                            <p class="text-xs text-gray-400 py-2">No categories available yet.</p>
-                        @endforelse
-                    </div>
-                </x-backend.form-card>
+{{-- Profile Summary Card --}}
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+    <div class="flex items-center gap-4">
+        <div class="relative flex-shrink-0">
+            <img src="{{ $profile?->logo ? asset('storage/'.$profile->logo) : 'https://ui-avatars.com/api/?name='.urlencode($profile?->display_name ?? 'S').'&background=e0e7ff&color=4f46e5&size=80' }}"
+                 class="w-16 h-16 rounded-2xl object-cover border border-gray-200 shadow-sm" alt="Logo">
+            @if($profile?->profile_photo)
+                <img src="{{ asset('storage/'.$profile->profile_photo) }}"
+                     class="w-7 h-7 rounded-full border-2 border-white absolute -bottom-1 -right-1 object-cover shadow" alt="">
+            @endif
+        </div>
 
-                <x-backend.form-card title="Contact Information">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <x-backend.input name="contact_person" label="Primary Contact Person" required :value="old('contact_person', $profile?->contact_person)" />
-                        <x-backend.input type="email" name="contact_email" label="Contact Email" required :value="old('contact_email', $profile?->contact_email)" />
-                        <x-backend.input name="contact_phone" label="Contact Phone" :value="old('contact_phone', $profile?->contact_phone)" />
-                        <x-backend.input name="whatsapp" label="WhatsApp Number" :value="old('whatsapp', $profile?->whatsapp)" />
-                        <x-backend.input type="email" name="support_email" label="Support Email" :value="old('support_email', $profile?->support_email)" />
-                        <x-backend.input name="website" label="Website URL" :value="old('website', $profile?->website)" placeholder="https://" />
-                    </div>
-                </x-backend.form-card>
+        <div class="flex-1 min-w-0">
+            <p class="text-lg font-bold text-gray-900 truncate">{{ $profile?->display_name ?? 'Your Business Name' }}</p>
+            <p class="text-sm text-gray-500 truncate">{{ $profile?->contact_email ?: $profile?->support_email }}</p>
+            @if($profile?->country_id)
+                <p class="text-xs text-gray-400 mt-0.5">
+                    <i class="fa-solid fa-location-dot mr-1 text-indigo-400"></i>
+                    {{ collect([$profile->city?->name, $profile->country?->name])->filter()->implode(', ') }}
+                </p>
+            @endif
+        </div>
 
-                <x-backend.form-card title="Registered Address">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Country <span class="text-red-500">*</span></label>
-                            <select name="country_id" x-model.number="country" @change="state=0; city=0; loadStates()" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="0">Select country</option>
-                                @foreach(\App\Models\Country::where('is_active', true)->get(['id','name']) as $c)
-                                    <option value="{{ $c->id }}">{{ $c->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">State / Province</label>
-                            <select name="state_id" x-model.number="state" @change="city=0; loadCities()" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="0">Select state</option>
-                                <template x-for="s in states" :key="s.id"><option :value="s.id" x-text="s.name" :selected="s.id===state"></option></template>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">City</label>
-                            <select name="city_id" x-model.number="city" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="0">Select city</option>
-                                <template x-for="c in cities" :key="c.id"><option :value="c.id" x-text="c.name" :selected="c.id===city"></option></template>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <x-backend.textarea name="address" label="Street Address" required :value="old('address', $profile?->address)" />
-                    </div>
-                </x-backend.form-card>
-
+        <div class="hidden lg:flex items-center gap-5 flex-shrink-0 border-l border-gray-100 pl-5">
+            <div class="text-center">
+                <p class="text-xl font-bold text-amber-500"><i class="fa-solid fa-star text-sm"></i> {{ number_format($profile?->rating ?? 0, 1) }}</p>
+                <p class="text-xs text-gray-400">Rating</p>
             </div>
-
-            <div class="xl:col-span-4 space-y-6">
-
-                <x-backend.form-card title="Company Logo">
-                    <div class="flex items-center gap-4 mb-3">
-                        <img src="{{ $profile?->logo ? asset('storage/'.$profile->logo) : 'https://ui-avatars.com/api/?name='.urlencode($profile?->display_name ?? 'S').'&background=0D9488&color=fff' }}" class="w-16 h-16 rounded-xl object-contain bg-white border border-gray-200" alt="">
-                        <div class="min-w-0">
-                            <p class="text-xs font-semibold text-gray-700 truncate">Logo</p>
-                            <p class="text-[11px] text-gray-400">Square format recommended</p>
-                        </div>
-                    </div>
-                    <input type="file" name="logo" accept="image/*" class="text-xs text-gray-500">
-                </x-backend.form-card>
-
-                <x-backend.form-card title="Banner Image">
-                    @if($profile?->banner)
-                        <img src="{{ asset('storage/'.$profile->banner) }}" class="w-full h-24 rounded-lg object-cover bg-gray-100 mb-3" alt="">
-                    @endif
-                    <input type="file" name="banner" accept="image/*" class="text-xs text-gray-500">
-                    <p class="mt-1 text-[11px] text-gray-400">1200x300 recommended, up to 4MB.</p>
-                </x-backend.form-card>
-
-                <x-backend.form-card title="Profile Photo / Representative">
-                    <div class="flex items-center gap-4 mb-3">
-                        <img src="{{ $profile?->profile_photo ? asset('storage/'.$profile->profile_photo) : 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&background=0D9488&color=fff' }}" class="w-12 h-12 rounded-full object-cover bg-gray-100" alt="">
-                        <div class="min-w-0">
-                            <p class="text-xs font-semibold text-gray-700 truncate">Contact Person Photo</p>
-                            <p class="text-[11px] text-gray-400">Up to 2MB</p>
-                        </div>
-                    </div>
-                    <input type="file" name="profile_photo" accept="image/*" class="text-xs text-gray-500">
-                </x-backend.form-card>
-
-                {{-- Performance Metrics (Read Only) --}}
-                <x-backend.form-card title="Performance Metrics">
-                    <div class="space-y-3 text-xs">
-                        <div class="flex justify-between py-1 border-b border-gray-100">
-                            <span class="text-gray-500">Rating</span>
-                            <span class="font-semibold text-gray-800"><i class="fa-solid fa-star text-amber-400 mr-1"></i>{{ number_format($profile?->rating ?? 0, 1) }} ({{ $profile?->reviews_count ?? 0 }} reviews)</span>
-                        </div>
-                        <div class="flex justify-between py-1 border-b border-gray-100">
-                            <span class="text-gray-500">Response Rate</span>
-                            <span class="font-semibold text-gray-800">{{ number_format($profile?->quotation_response_rate ?? 0, 0) }}%</span>
-                        </div>
-                        <div class="flex justify-between py-1">
-                            <span class="text-gray-500">Avg. Response Time</span>
-                            <span class="font-semibold text-gray-800">{{ $profile?->average_response_minutes ? round($profile->average_response_minutes / 60, 1) . ' hrs' : 'N/A' }}</span>
-                        </div>
-                    </div>
-                </x-backend.form-card>
-
+            <div class="text-center">
+                <p class="text-xl font-bold text-pink-600">{{ $existingGallery->count() }}</p>
+                <p class="text-xs text-gray-400">Gallery</p>
             </div>
-
-            <div class="xl:col-span-12 flex items-center justify-end gap-2 bg-white rounded-xl border border-gray-200 p-4">
-                <button type="submit" class="btn-primary text-sm font-medium px-5 py-2.5 rounded-lg flex items-center gap-2">
-                    <i class="fa-solid fa-check"></i> Save Changes
-                </button>
+            <div class="text-center">
+                <p class="text-xl font-bold text-emerald-600">{{ $serviceAreas->count() }}</p>
+                <p class="text-xs text-gray-400">Locations</p>
+            </div>
+            <div class="text-center">
+                <p class="text-xl font-bold text-rose-600">{{ $documents->where('is_current', true)->count() }}</p>
+                <p class="text-xs text-gray-400">Documents</p>
             </div>
         </div>
-    </form>
+    </div>
+</div>
+
+{{-- ═══════════════════════════════════ ACCORDION ═══════════════════════════════════ --}}
+<div class="space-y-3">
+    @include('backend.supplier.company.partials._company')
+    @include('backend.supplier.company.partials._contact')
+    @include('backend.supplier.company.partials._media')
+    @include('backend.supplier.company.partials._gallery')
+    @include('backend.supplier.company.partials._locations')
+    @include('backend.supplier.company.partials._hours')
+    @include('backend.supplier.company.partials._exhibitions')
+    @include('backend.supplier.company.partials._documents')
+    @include('backend.supplier.company.partials._services')
+    @include('backend.supplier.company.partials._achievements')
+</div>
 
 @endsection

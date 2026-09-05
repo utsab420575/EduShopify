@@ -4,128 +4,105 @@ namespace App\Http\Controllers\Backend\Supplier\Company;
 
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
+use App\Models\Achievement;
+use App\Models\BusinessHour;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Country;
+use App\Models\DocumentType;
+use App\Models\Exhibition;
+use App\Models\Icon;
+use App\Models\Service;
 use App\Models\State;
-use App\Models\SupplierCategory;
-use App\Models\SupplierProfile;
 use App\Models\SupplierType;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
     use InteractsWithSupplierAccount;
 
-    public function edit()
+    /**
+     * The consolidated "Business Profile" page — every sub-section (Company
+     * Info, Contact, Media, Gallery & Videos, Locations & Service Areas,
+     * Business Hours, Exhibitions, Documents, Services, Achievements &
+     * Certifications) is an independent, expandable accordion section
+     * (docs/AI/design.md §43), each saving through its own Controller/route
+     * per ARCHITECTURE.md Rule 1 (no backend Livewire).
+     */
+    public function edit(Request $request)
     {
         $account = $this->currentAccount();
-        $profile = $account->supplierProfile ?? new SupplierProfile(['account_id' => $account->id]);
-        $supplierTypes = SupplierType::where('is_active', true)->get();
-        $selectedTypeIds = $account->supplierTypes()->pluck('supplier_types.id');
-        $primaryTypeId = $account->supplierTypes()->wherePivot('is_primary', true)->value('supplier_types.id');
+        $account->load(['supplierProfile.country', 'supplierProfile.state', 'supplierProfile.city']);
+        $profile = $account->supplierProfile;
+
+        $states = $profile?->country_id
+            ? State::where('country_id', $profile->country_id)->orderBy('name')->get(['id', 'name'])
+            : collect();
+        $cities = $profile?->state_id
+            ? City::where('state_id', $profile->state_id)->orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        $serviceAreas = $account->serviceAreas()->with(['country', 'state', 'city'])->latest()->get()
+            ->map(function ($area) {
+                $area->area_states = $area->country_id
+                    ? State::where('country_id', $area->country_id)->orderBy('name')->get(['id', 'name'])
+                    : collect();
+                $area->area_cities = $area->state_id
+                    ? City::where('state_id', $area->state_id)->orderBy('name')->get(['id', 'name'])
+                    : collect();
+
+                return $area;
+            });
+
+        $documents = $account->supplierDocuments()->with('documentType')->latest()->get();
+        $requiredDocumentTypes = DocumentType::where('is_active', true)
+            ->whereHas('capabilityEnables', fn ($q) => $q->whereHas('capabilityType', fn ($c) => $c->where('code', 'supplier')))
+            ->get();
+
+        $participating = Exhibition::whereHas('supplierAccounts', fn ($q) => $q->where('supplier_account_id', $account->id))
+            ->with('supplierAccounts')->active()->get();
+        $available = Exhibition::active()
+            ->whereDoesntHave('supplierAccounts', fn ($q) => $q->where('supplier_account_id', $account->id))
+            ->get();
+
+        $businessHours = collect(range(0, 6))->map(function ($d) use ($account) {
+            $existing = $account->businessHours()->whereNull('account_location_id')->where('day_of_week', $d)->first();
+
+            return [
+                'day' => $d,
+                'day_name' => BusinessHour::dayName($d),
+                'is_open' => $existing ? (bool) $existing->is_open : ($d >= 1 && $d <= 5),
+                'open_time' => $existing?->open_time ? substr($existing->open_time, 0, 5) : '09:00',
+                'close_time' => $existing?->close_time ? substr($existing->close_time, 0, 5) : '17:00',
+            ];
+        });
 
         return view('backend.supplier.company.profile', [
             'account' => $account,
-            'user' => $this->currentUser(),
             'profile' => $profile,
-            'supplierTypes' => $supplierTypes,
-            'selectedTypeIds' => $selectedTypeIds,
-            'primaryTypeId' => $primaryTypeId,
+            'openSection' => $request->query('section'),
+            'countries' => Country::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'states' => $states,
+            'cities' => $cities,
+            'supplierTypes' => SupplierType::where('is_active', true)->orderBy('sort_order')->get(),
+            'selectedSupplierTypeIds' => $account->supplierTypes()->pluck('supplier_types.id'),
             'categoryOptions' => Category::getTreeSelectOptions(['product', 'service', 'both']),
             'selectedCategoryIds' => $account->supplierCategories()->active()->pluck('category_id'),
+            'existingGallery' => $account->galleryImages()->orderBy('sort_order')->get(),
+            'videos' => $account->videos()->orderBy('sort_order')->get(),
+            'serviceAreas' => $serviceAreas,
+            'businessHours' => $businessHours,
+            'requiredDocumentTypes' => $requiredDocumentTypes,
+            'documents' => $documents,
+            'participating' => $participating,
+            'available' => $available,
+            'services' => $account->services()->with('icon.library')->orderBy('sort_order')->orderBy('id')->get(),
+            'availableIcons' => Icon::active()->with('library')->orderBy('name')->get(),
+            'availableAchievements' => Achievement::active()
+                ->whereDoesntHave('accountAchievements', fn ($q) => $q->where('account_id', $account->id))
+                ->orderBy('name')->get(),
+            'myAchievementClaims' => $account->accountAchievements()->with('achievement')->latest()->get(),
+            'myCertifications' => $account->certifications()->latest()->get(),
         ]);
-    }
-
-    public function update(Request $request)
-    {
-        $account = $this->currentAccount();
-        $profile = $account->supplierProfile ?? new SupplierProfile(['account_id' => $account->id]);
-
-        $validated = $request->validate([
-            'display_name' => ['required', 'string', 'max:255'],
-            'legal_name' => ['nullable', 'string', 'max:255'],
-            'company_type' => ['nullable', 'string', 'max:100'],
-            'contact_person' => ['required', 'string', 'max:255'],
-            'contact_email' => ['required', 'email', 'max:255'],
-            'contact_phone' => ['nullable', 'string', 'max:50'],
-            'whatsapp' => ['nullable', 'string', 'max:50'],
-            'support_email' => ['nullable', 'email', 'max:255'],
-            'country_id' => ['required', 'exists:countries,id'],
-            'state_id' => ['nullable', 'exists:states,id'],
-            'city_id' => ['nullable', 'exists:cities,id'],
-            'address' => ['required', 'string', 'max:500'],
-            'website' => ['nullable', 'url', 'max:255'],
-            'founded_year' => ['nullable', 'integer', 'min:1800', 'max:' . (date('Y') + 1)],
-            'employees' => ['nullable', 'integer', 'min:1'],
-            'description' => ['nullable', 'string', 'max:5000'],
-            'supplier_type_ids' => ['nullable', 'array'],
-            'supplier_type_ids.*' => ['exists:supplier_types,id'],
-            'primary_supplier_type_id' => ['nullable', 'exists:supplier_types,id'],
-            'category_ids' => ['nullable', 'array'],
-            'category_ids.*' => ['integer', 'exists:categories,id'],
-            'logo' => ['nullable', 'image', 'max:2048'],
-            'banner' => ['nullable', 'image', 'max:4096'],
-            'profile_photo' => ['nullable', 'image', 'max:2048'],
-        ]);
-
-        if ($request->hasFile('logo')) {
-            if ($profile->logo && Storage::disk('public')->exists($profile->logo)) {
-                Storage::disk('public')->delete($profile->logo);
-            }
-            $validated['logo'] = $request->file('logo')->store('supplier/logos', 'public');
-        }
-
-        if ($request->hasFile('banner')) {
-            if ($profile->banner && Storage::disk('public')->exists($profile->banner)) {
-                Storage::disk('public')->delete($profile->banner);
-            }
-            $validated['banner'] = $request->file('banner')->store('supplier/banners', 'public');
-        }
-
-        if ($request->hasFile('profile_photo')) {
-            if ($profile->profile_photo && Storage::disk('public')->exists($profile->profile_photo)) {
-                Storage::disk('public')->delete($profile->profile_photo);
-            }
-            $validated['profile_photo'] = $request->file('profile_photo')->store('supplier/photos', 'public');
-        }
-
-        $profile->fill($validated);
-        $profile->account_id = $account->id;
-        if (! $profile->profile_completed_at) {
-            $profile->profile_completed_at = now();
-        }
-        $profile->save();
-
-        // Update account display name if updated
-        $account->update(['display_name' => $validated['display_name']]);
-
-        // Sync supplier types with primary flag
-        if ($request->has('supplier_type_ids')) {
-            $typeIds = $request->input('supplier_type_ids', []);
-            $primaryId = $request->input('primary_supplier_type_id');
-            $syncData = [];
-            foreach ($typeIds as $tId) {
-                $syncData[$tId] = ['is_primary' => ($tId == $primaryId)];
-            }
-            $account->supplierTypes()->sync($syncData);
-        }
-
-        // supplier_categories isn't a pure pivot (it also drives
-        // open_matching RFQ eligibility via is_active), so it's synced
-        // manually rather than via a belongsToMany sync() call.
-        $categoryIds = $request->input('category_ids', []);
-        SupplierCategory::where('supplier_account_id', $account->id)
-            ->whereNotIn('category_id', $categoryIds)
-            ->delete();
-        foreach ($categoryIds as $categoryId) {
-            SupplierCategory::updateOrCreate(
-                ['supplier_account_id' => $account->id, 'category_id' => $categoryId],
-                ['is_active' => true]
-            );
-        }
-
-        return redirect()->route('supplier.company.profile')->with('success', 'Supplier profile updated successfully.');
     }
 }
