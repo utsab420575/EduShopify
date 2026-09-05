@@ -73,6 +73,40 @@ if (rfqSearchInput) {
     });
 }
 
+/* RFQ detail — deadline countdown */
+(function () {
+    const el = document.getElementById('deadline-countdown');
+    if (!el || !el.dataset.deadline) return;
+    const diff = Math.ceil((new Date(el.dataset.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+    if (diff > 0) {
+        el.textContent = diff + (diff === 1 ? ' day remaining' : ' days remaining');
+        el.className = 'text-xs text-red-500 mt-0.5';
+    } else if (diff === 0) {
+        el.textContent = 'Closes today';
+        el.className = 'text-xs text-red-600 font-semibold mt-0.5';
+    } else {
+        el.textContent = 'Deadline passed';
+        el.className = 'text-xs text-gray-400 mt-0.5';
+    }
+})();
+
+/* RFQ detail — share button (Web Share API with clipboard fallback) */
+function fnShare() {
+    const data = { title: document.title, url: window.location.href };
+    if (navigator.share) {
+        navigator.share(data).catch(function () {});
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(window.location.href).then(function () {
+            const t = document.createElement('div');
+            t.textContent = 'Link copied to clipboard';
+            t.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm px-4 py-2 rounded-md shadow-lg z-50 transition-opacity';
+            document.body.appendChild(t);
+            setTimeout(function () { t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 300); }, 2500);
+        });
+    }
+}
+window.fnShare = fnShare;
+
 /*
  * Homepage — All Suppliers category tabs (spec §23.4 pattern).
  * Guarded on .supplier-item so this doesn't also attach to the supplier

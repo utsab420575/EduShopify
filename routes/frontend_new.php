@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FrontendNew\HandoffController;
 use App\Http\Controllers\FrontendNew\HomeController;
 use App\Http\Controllers\FrontendNew\ProductController;
 use App\Http\Controllers\FrontendNew\RfqController;
@@ -23,4 +24,9 @@ Route::prefix('v2')->name('v2.')->group(function () {
     Route::get('/product/{listing:slug}', [ProductController::class, 'show'])->name('products.show');
     Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->name('suppliers.show');
     Route::get('/rfqs', [RfqController::class, 'index'])->name('rfqs.index');
+    Route::get('/rfqs/{rfq_number}', [RfqController::class, 'show'])->name('rfqs.show');
+
+    Route::prefix('handoff')->name('handoff.')->group(function () {
+        Route::get('/submit-quotation/{rfq_number}', [HandoffController::class, 'submitQuotation'])->name('submit-quotation');
+    });
 });
