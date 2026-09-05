@@ -19,3 +19,20 @@ function fnCloseMobileMenu() {
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') fnCloseMobileMenu();
 });
+
+/* Homepage — All Suppliers category tabs (spec §23.4 pattern) */
+document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('.tab-btn').forEach(function (b) {
+            b.classList.remove('tag-active');
+            b.classList.add('tag-inactive');
+        });
+        this.classList.remove('tag-inactive');
+        this.classList.add('tag-active');
+
+        const cat = this.dataset.cat;
+        document.querySelectorAll('.supplier-item').forEach(function (item) {
+            item.style.display = (cat === 'all' || item.dataset.cat === cat) ? '' : 'none';
+        });
+    });
+});

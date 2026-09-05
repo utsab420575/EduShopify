@@ -41,4 +41,19 @@ class Country extends Model
     {
         return $query->where('is_active', true)->orderBy('sort_order');
     }
+
+    /**
+     * Derived from iso2 via Unicode regional indicator symbols, rather than
+     * trusting the `flag` column's format (unused elsewhere in the app).
+     */
+    public function getFlagEmojiAttribute(): ?string
+    {
+        if (! $this->iso2 || strlen($this->iso2) !== 2) {
+            return null;
+        }
+
+        $code = strtoupper($this->iso2);
+
+        return mb_chr(0x1F1E6 + (ord($code[0]) - 65)).mb_chr(0x1F1E6 + (ord($code[1]) - 65));
+    }
 }
