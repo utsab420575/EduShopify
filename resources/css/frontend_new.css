@@ -29,13 +29,12 @@
 }
 
 /*
- * Homepage skeleton loading + fade-up reveal — for every section below the
- * hero (which renders immediately on its own, above). #page-skeleton is
- * visible by default (no JS needed to show it) and #page-content is hidden
- * by default via .home-content-hidden — JS removes that class once the
- * page is ready and reveals each .reveal-up section. If JS never runs
- * (disabled/blocked), <noscript> in the view overrides both so the real
- * page is never permanently stuck behind the skeleton.
+ * Homepage per-grid skeleton loading, for every card grid below the hero.
+ * Headings, "See all" links, and category tabs render immediately for
+ * real — only the actual card grid has a shimmer placeholder
+ * ([data-skeleton-target], visible by default, no JS needed to show it)
+ * until frontend_new.js reveals the matching real grid (hidden by default
+ * via .cards-hidden) a short moment later.
  */
 .skel-block {
   background: linear-gradient(90deg, #eef0f2 25%, #e2e5e9 37%, #eef0f2 63%);
@@ -48,22 +47,23 @@
   100% { background-position: 0 50%; }
 }
 
-.home-content-hidden { display: none; }
+.cards-hidden { display: none; }
 
-.reveal-up {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity .6s ease, transform .6s ease;
+/* Generic per-card reveal for sections with no fade-up of their own
+   (Why Choose, Events) — Featured/All Suppliers already have their own
+   .product-card-fade-up from the cards themselves. */
+.card-fade-up {
+  animation: card-fade-up .35s cubic-bezier(.16,1,.3,1) both;
 }
-.reveal-up.is-visible {
-  opacity: 1;
-  transform: translateY(0);
+@keyframes card-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-fade-up > * { animation: none; opacity: 1; transform: none; }
   .skel-block { animation: none; }
-  .reveal-up, .reveal-up.is-visible { transition: none; opacity: 1; transform: none; }
+  .card-fade-up { animation: none; opacity: 1; transform: none; }
 }
 
 /* Shared navbar (all static pages) */

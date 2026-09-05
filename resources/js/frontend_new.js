@@ -108,16 +108,17 @@ function fnShare() {
 window.fnShare = fnShare;
 
 /*
- * Homepage — skeleton loading screen, then fade-up reveal, for every
- * section below the hero (the hero animates independently via pure CSS —
- * see .hero-fade-up — and isn't part of this gate). No-ops on any page
- * without #page-skeleton, so this is safe to run everywhere frontend_new.js
- * loads.
+ * Homepage — per-grid skeleton reveal. The hero animates independently via
+ * pure CSS (.hero-fade-up) and has no skeleton at all. Every other
+ * section's heading/tabs/links render immediately for real; only its card
+ * grid has a placeholder. Each skeleton element carries
+ * data-skeleton-target pointing at the real grid it precedes, so this
+ * works for any number of sections without per-section JS. No-ops on any
+ * page without one, so it's safe to run everywhere frontend_new.js loads.
  */
 (function () {
-    const skeleton = document.getElementById('page-skeleton');
-    const content = document.getElementById('page-content');
-    if (!skeleton || !content) return;
+    const skeletons = document.querySelectorAll('[data-skeleton-target]');
+    if (!skeletons.length) return;
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const MIN_SKELETON_MS = reducedMotion ? 0 : 500;
@@ -128,12 +129,10 @@ window.fnShare = fnShare;
         const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
 
         setTimeout(function () {
-            skeleton.style.display = 'none';
-            content.classList.remove('home-content-hidden');
-
-            const sections = content.querySelectorAll('.reveal-up');
-            sections.forEach(function (section, i) {
-                setTimeout(function () { section.classList.add('is-visible'); }, reducedMotion ? 0 : i * 120);
+            skeletons.forEach(function (skeleton) {
+                const real = document.querySelector(skeleton.dataset.skeletonTarget);
+                skeleton.style.display = 'none';
+                if (real) real.classList.remove('cards-hidden');
             });
         }, wait);
     }
