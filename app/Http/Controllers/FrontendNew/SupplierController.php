@@ -12,7 +12,6 @@ use App\Services\Catalog\PublicListingQuery;
 use App\Support\FrontendNewDemo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class SupplierController extends Controller
 {
@@ -35,12 +34,7 @@ class SupplierController extends Controller
             ->orderBy('sort_order')
             ->get()
             ->map(function (Category $category) {
-                $category->supplier_count = PublicSupplierQuery::base()
-                    ->whereHas('account.listings', function (Builder $q) use ($category) {
-                        $q->where('main_category_id', $category->id)
-                            ->orWhereHas('categories', fn (Builder $c) => $c->where('categories.id', $category->id));
-                    })
-                    ->count();
+                $category->supplier_count = $this->suppliersInCategoryTree($category)->count();
 
                 return $category;
             });
@@ -48,10 +42,14 @@ class SupplierController extends Controller
         $query = PublicSupplierQuery::base()->with(['country', 'account.supplierTypes']);
 
         if ($categorySlug && $categorySlug !== 'all') {
-            $query->whereHas('account.listings', function (Builder $q) use ($categorySlug) {
-                $q->whereHas('mainCategory', fn (Builder $c) => $c->where('slug', $categorySlug))
-                    ->orWhereHas('categories', fn (Builder $c) => $c->where('categories.slug', $categorySlug));
-            });
+            $activeCategory = Category::where('slug', $categorySlug)->first();
+            if ($activeCategory) {
+                $ids = $this->categoryTreeIds($activeCategory);
+                $query->whereHas('account.listings', function (Builder $q) use ($ids) {
+                    $q->whereIn('main_category_id', $ids)
+                        ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
+                });
+            }
         }
 
         if ($search) {
@@ -69,25 +67,57 @@ class SupplierController extends Controller
             return $supplier;
         });
 
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'total' => $suppliers->total(),
-                'suppliers' => $suppliers->map(fn ($s) => [
-                    'name' => $s->display_name,
-                    'type' => $s->account?->supplierTypes?->pluck('name')->implode(' · '),
-                    'image' => $s->banner ? Storage::url($s->banner) : null,
-                    'url' => route('v2.suppliers.show', $s->slug),
-                ]),
-            ]);
-        }
-
-        return view('frontend_new.suppliers.index', [
+        $data = [
             'categories' => $categories,
             'suppliers' => $suppliers,
             'totalSuppliers' => $suppliers->total(),
             'activeCategory' => $categorySlug,
             'search' => $search,
-        ]);
+        ];
+
+        // Live search/tab requests (fetch(), not a normal navigation) get
+        // just the results fragment re-rendered — same partial, same data,
+        // so tabs/counts/pagination all stay correct for the live query
+        // instead of only a page-load doing that.
+        if ($request->ajax()) {
+            return view('frontend_new.suppliers.partials._content', $data);
+        }
+
+        return view('frontend_new.suppliers.index', $data);
+    }
+
+    /**
+     * A root category's tab should match suppliers whose listings are
+     * tagged anywhere in that category's subtree, not only the root
+     * itself — real listings here are tagged at child level (e.g. "Laptop"
+     * under root "Laptop & Netbook"), so a root-only match always finds 0.
+     */
+    private function categoryTreeIds(Category $category): array
+    {
+        $category->loadMissing('childrenRecursive');
+
+        $ids = [$category->id];
+        $walk = function ($children) use (&$ids, &$walk) {
+            foreach ($children as $child) {
+                $ids[] = $child->id;
+                if ($child->childrenRecursive->isNotEmpty()) {
+                    $walk($child->childrenRecursive);
+                }
+            }
+        };
+        $walk($category->childrenRecursive);
+
+        return $ids;
+    }
+
+    private function suppliersInCategoryTree(Category $category): Builder
+    {
+        $ids = $this->categoryTreeIds($category);
+
+        return PublicSupplierQuery::base()->whereHas('account.listings', function (Builder $q) use ($ids) {
+            $q->whereIn('main_category_id', $ids)
+                ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
+        });
     }
 
     public function show(SupplierProfile $supplier)

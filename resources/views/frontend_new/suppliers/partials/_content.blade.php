@@ -1,5 +1,9 @@
-{{-- Main Content: Category Tabs + Supplier Grid --}}
-<main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+{{-- Main Content: Category Tabs + Supplier Grid
+     id="supplier-content" is swapped wholesale (outerHTML) by the hero
+     search's live-filter JS — this partial is also what the controller
+     renders standalone for that AJAX request, so tabs/count/pagination
+     always stay correct together, from one source of truth. --}}
+<main id="supplier-content" data-active-category="{{ $activeCategory }}" class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
   {{-- ── Category Tabs ── --}}
   <div class="flex items-center gap-2 flex-wrap mb-6">
