@@ -4,21 +4,21 @@
     <nav class="flex items-center justify-between gap-4 mt-8" aria-label="Pagination">
         <div>
             @if($paginator->onFirstPage())
-                <span class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 border" style="border-color:var(--fe-border);">Previous</span>
+                <span class="px-3.5 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-200">Previous</span>
             @else
-                <a href="{{ $paginator->previousPageUrl() }}" class="fe-focus-ring px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border hover:bg-slate-50" style="border-color:var(--fe-border-strong);">Previous</a>
+                <a href="{{ $paginator->previousPageUrl() }}" class="fe-focus-ring px-3.5 py-2 rounded-md text-sm font-medium text-gray-600 border border-gray-300 hover:bg-gray-50">Previous</a>
             @endif
         </div>
 
-        <p class="hidden sm:block text-sm" style="color:var(--fe-text-muted);">
+        <p class="hidden sm:block text-sm text-gray-500">
             Page {{ $paginator->currentPage() }} of {{ $paginator->lastPage() }}
         </p>
 
         <div>
             @if($paginator->hasMorePages())
-                <a href="{{ $paginator->nextPageUrl() }}" class="fe-focus-ring px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border hover:bg-slate-50" style="border-color:var(--fe-border-strong);">Next</a>
+                <a href="{{ $paginator->nextPageUrl() }}" class="fe-focus-ring px-3.5 py-2 rounded-md text-sm font-medium text-gray-600 border border-gray-300 hover:bg-gray-50">Next</a>
             @else
-                <span class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 border" style="border-color:var(--fe-border);">Next</span>
+                <span class="px-3.5 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-200">Next</span>
             @endif
         </div>
     </nav>

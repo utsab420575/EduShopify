@@ -1,13 +1,13 @@
 @php($feSocialLinks = collect(config('services.social_links', [])))
-<footer class="mt-16" style="background:var(--fe-dark);color:#CBD5E1;">
+<footer class="mt-16 bg-gray-900 text-gray-300">
     <div class="fe-container py-14">
         <div class="grid grid-cols-2 md:grid-cols-5 gap-10">
             <div class="col-span-2 md:col-span-2">
                 <a href="{{ route('home') }}" class="inline-flex items-center gap-2">
-                    <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm" style="background:var(--fe-primary);font-family:var(--font-display);">ES</span>
-                    <span class="text-lg font-bold text-white" style="font-family:var(--font-display);">EduShopify</span>
+                    <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm font-display bg-emerald-500">ES</span>
+                    <span class="text-lg font-bold text-white font-display">EduShopify</span>
                 </a>
-                <p class="mt-4 text-sm leading-relaxed max-w-sm" style="color:#94A3B8;">
+                <p class="mt-4 text-sm leading-relaxed max-w-sm text-gray-400">
                     The B2B education procurement marketplace connecting institutional buyers with verified suppliers through structured RFQ sourcing.
                 </p>
                 @if($feSocialLinks->isNotEmpty())
@@ -61,7 +61,7 @@
             </div>
         </div>
 
-        <div class="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row gap-3 items-center justify-between text-xs" style="color:#64748B;">
+        <div class="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row gap-3 items-center justify-between text-xs text-gray-500">
             <p>&copy; {{ date('Y') }} EduShopify. All rights reserved.</p>
         </div>
     </div>
