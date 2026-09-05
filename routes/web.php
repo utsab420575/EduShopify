@@ -7,7 +7,6 @@ use App\Livewire\Buyer\BuyerProfileOnboarding;
 use App\Http\Controllers\Subscription\CheckoutController;
 use App\Http\Controllers\Subscription\PricingController;
 use App\Http\Controllers\Subscription\WebhookController;
-use App\Services\Account\PublicHandoffResolver;
 use App\Services\BuyerOnboardingStateService;
 use App\Services\SupplierOnboardingStateService;
 use App\Support\FrontendIntent;
@@ -78,7 +77,7 @@ Route::middleware('guest')->group(function () {
             // sent this user here — resolve it now instead of the default destination.
             if ($request->session()->has('frontend_intent')) {
                 $intent = FrontendIntent::pull();
-                return redirect(app(PublicHandoffResolver::class)->resolve($user, $intent['action'], $intent['params']));
+                return redirect(\App\Http\Controllers\FrontendNew\HandoffController::resolveIntent($user, $intent));
             }
 
             // Buyer — route through onboarding state resolver
@@ -195,7 +194,7 @@ Route::middleware('auth')->group(function () {
 
         if ($request->session()->has('frontend_intent')) {
             $intent = FrontendIntent::pull();
-            return redirect(app(PublicHandoffResolver::class)->resolve($user, $intent['action'], $intent['params']));
+            return redirect(\App\Http\Controllers\FrontendNew\HandoffController::resolveIntent($user, $intent));
         }
 
         // Route buyer to onboarding

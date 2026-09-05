@@ -33,5 +33,6 @@ Route::prefix('v2')->name('v2.')->group(function () {
 
     Route::prefix('handoff')->name('handoff.')->group(function () {
         Route::get('/submit-quotation/{rfq_number}', [HandoffController::class, 'submitQuotation'])->name('submit-quotation');
+        Route::get('/post-rfq', [HandoffController::class, 'postRfq'])->name('post-rfq');
     });
 });
