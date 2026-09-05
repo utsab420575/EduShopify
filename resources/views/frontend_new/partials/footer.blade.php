@@ -27,10 +27,10 @@
     <div>
       <p class="font-semibold text-[15px] text-gray-900 mb-5">Marketplace</p>
       <ul class="space-y-4">
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Browse Suppliers</a></li>
+        <li><a href="{{ route('v2.suppliers.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Browse Suppliers</a></li>
         <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Products</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Categories</a></li>
-        <li><a href="{{ Route::has('v2.rfqs.index') ? route('v2.rfqs.index') : '#' }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Request Quote</a></li>
+        <li><a href="{{ route('v2.categories.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Categories</a></li>
+        <li><a href="{{ route('v2.rfqs.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Request Quote</a></li>
       </ul>
     </div>
 
@@ -39,7 +39,7 @@
       <p class="font-semibold text-[15px] text-gray-900 mb-5">Company</p>
       <ul class="space-y-4">
         <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">About Us</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Blog</a></li>
+        <li><a href="{{ route('v2.resources.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Blog</a></li>
         <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Contact</a></li>
         <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Careers</a></li>
       </ul>

@@ -30,10 +30,10 @@
 
     <!-- Nav links -->
     <nav class="hidden lg:flex items-center gap-5 ml-2">
-      <a href="#" class="nav-link">Categories</a>
-      <a href="{{ Route::has('v2.rfqs.index') ? route('v2.rfqs.index') : '#' }}" class="{{ request()->routeIs('v2.rfqs.*') ? 'nav-link-active' : 'nav-link' }}">RFQ</a>
-      <a href="#" class="{{ request()->routeIs('v2.suppliers.*') ? 'nav-link-active' : 'nav-link' }}">Suppliers</a>
-      <a href="#" class="nav-link">Resources</a>
+      <a href="{{ route('v2.categories.index') }}" class="{{ request()->routeIs('v2.categories.*') ? 'nav-link-active' : 'nav-link' }}">Categories</a>
+      <a href="{{ route('v2.rfqs.index') }}" class="{{ request()->routeIs('v2.rfqs.*') ? 'nav-link-active' : 'nav-link' }}">RFQ</a>
+      <a href="{{ route('v2.suppliers.index') }}" class="{{ request()->routeIs('v2.suppliers.*') ? 'nav-link-active' : 'nav-link' }}">Suppliers</a>
+      <a href="{{ route('v2.resources.index') }}" class="{{ request()->routeIs('v2.resources.*') ? 'nav-link-active' : 'nav-link' }}">Resources</a>
     </nav>
 
     <!-- Right icons -->

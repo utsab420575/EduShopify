@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\FrontendNew\CategoryController;
 use App\Http\Controllers\FrontendNew\HandoffController;
 use App\Http\Controllers\FrontendNew\HomeController;
 use App\Http\Controllers\FrontendNew\ProductController;
+use App\Http\Controllers\FrontendNew\ResourceController;
 use App\Http\Controllers\FrontendNew\RfqController;
 use App\Http\Controllers\FrontendNew\SupplierController;
 use Illuminate\Support\Facades\Route;
@@ -21,8 +23,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v2')->name('v2.')->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
-    Route::get('/product/{listing:slug}', [ProductController::class, 'show'])->name('products.show');
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
     Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->name('suppliers.show');
+    Route::get('/product/{listing:slug}', [ProductController::class, 'show'])->name('products.show');
+    Route::get('/resources', [ResourceController::class, 'index'])->name('resources.index');
     Route::get('/rfqs', [RfqController::class, 'index'])->name('rfqs.index');
     Route::get('/rfqs/{rfq_number}', [RfqController::class, 'show'])->name('rfqs.show');
 

@@ -70,4 +70,44 @@ return [
         ['title' => 'ISE 2026', 'category' => 'AV & Display', 'badge_class' => 'bg-orange-600', 'overlay_class' => 'from-orange-900/70 via-orange-700/20 to-transparent', 'date' => 'Feb 3–6, 2026', 'location' => 'Barcelona, Spain'],
     ],
 
+    /*
+    | Resources / Blog — no Article/Blog model exists in this app at all.
+    | The "Upcoming events" sidebar reuses the 'events' array above rather
+    | than inventing a second fake dataset for the same fictional concept.
+    */
+    'articles' => [
+        [
+            'title' => 'How to Write an RFQ That Gets Better Quotes',
+            'category' => 'Guides',
+            'excerpt' => 'A well-structured RFQ attracts more competitive, accurate quotations. Here is what institutional buyers should include every time.',
+            'author' => 'Edushopify Team',
+            'date' => '2026-08-12',
+            'featured' => true,
+        ],
+        [
+            'title' => '5 Questions to Ask Before Choosing a STEM Supplier',
+            'category' => 'Guides',
+            'excerpt' => 'Verified badges are a start, not the whole picture. These questions help you evaluate fit before you commit.',
+            'author' => 'Edushopify Team',
+            'date' => '2026-07-28',
+            'featured' => false,
+        ],
+        [
+            'title' => 'Case Study: Digitizing Procurement for a 40-School District',
+            'category' => 'Case Studies',
+            'excerpt' => 'How one school district consolidated supplier sourcing and cut RFQ turnaround time significantly.',
+            'author' => 'Edushopify Team',
+            'date' => '2026-07-05',
+            'featured' => false,
+        ],
+        [
+            'title' => 'What "Verified Supplier" Actually Means on Edushopify',
+            'category' => 'News',
+            'excerpt' => 'A look at the eligibility checks every supplier passes before their profile becomes publicly visible.',
+            'author' => 'Edushopify Team',
+            'date' => '2026-06-20',
+            'featured' => false,
+        ],
+    ],
+
 ];
