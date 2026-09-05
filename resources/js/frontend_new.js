@@ -108,6 +108,42 @@ function fnShare() {
 window.fnShare = fnShare;
 
 /*
+ * Homepage — skeleton loading screen, then fade-up reveal.
+ * No-ops on any page without #page-skeleton, so this is safe to run
+ * everywhere frontend_new.js loads.
+ */
+(function () {
+    const skeleton = document.getElementById('page-skeleton');
+    const content = document.getElementById('page-content');
+    if (!skeleton || !content) return;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const MIN_SKELETON_MS = reducedMotion ? 0 : 500;
+    const started = Date.now();
+
+    function reveal() {
+        const elapsed = Date.now() - started;
+        const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
+
+        setTimeout(function () {
+            skeleton.style.display = 'none';
+            content.classList.remove('home-content-hidden');
+
+            const sections = content.querySelectorAll('.reveal-up');
+            sections.forEach(function (section, i) {
+                setTimeout(function () { section.classList.add('is-visible'); }, reducedMotion ? 0 : i * 120);
+            });
+        }, wait);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', reveal);
+    } else {
+        reveal();
+    }
+})();
+
+/*
  * Homepage — All Suppliers category tabs (spec §23.4 pattern).
  * Guarded on .supplier-item so this doesn't also attach to the supplier
  * profile page's differently-purposed .tab-btn section tabs (same class

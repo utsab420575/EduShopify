@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 
+@source '../../resources/views/**/*.blade.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
@@ -10,6 +11,62 @@
  */
 
 * { font-family: 'Inter', sans-serif; }
+
+/*
+ * Homepage skeleton loading + fade-up reveal.
+ * #page-skeleton is visible by default (no JS needed to show it) and
+ * #page-content is hidden by default via .home-content-hidden — JS removes
+ * that class once the page is ready and reveals each .reveal-up section.
+ * If JS never runs (disabled/blocked), <noscript> in the view overrides
+ * both so the real page is never permanently stuck behind the skeleton.
+ */
+#page-skeleton { background: #fff; }
+.skel-block {
+  background: linear-gradient(90deg, #eef0f2 25%, #e2e5e9 37%, #eef0f2 63%);
+  background-size: 400% 100%;
+  border-radius: 10px;
+  animation: skel-shimmer 1.4s ease infinite;
+}
+@keyframes skel-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.home-content-hidden { display: none; }
+
+.reveal-up {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity .6s ease, transform .6s ease;
+}
+.reveal-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hero text/buttons entrance — staggered fade-up per direct child of
+   .hero-fade-up (the hero partial's own heading/subtext/buttons wrapper),
+   triggered once its ancestor .reveal-up section is revealed. Descendant
+   selector, not a direct-child one, since .hero-fade-up sits nested a
+   couple of levels inside the .reveal-up wrapper added around the hero
+   @include, not directly under it. */
+.reveal-up.is-visible .hero-fade-up > * {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: hero-fade-up .7s ease forwards;
+}
+.reveal-up.is-visible .hero-fade-up > *:nth-child(1) { animation-delay: .1s; }
+.reveal-up.is-visible .hero-fade-up > *:nth-child(2) { animation-delay: .25s; }
+.reveal-up.is-visible .hero-fade-up > *:nth-child(3) { animation-delay: .4s; }
+@keyframes hero-fade-up {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel-block { animation: none; }
+  .reveal-up, .reveal-up.is-visible { transition: none; opacity: 1; transform: none; }
+  .reveal-up.is-visible .hero-fade-up > * { animation: none; opacity: 1; transform: none; }
+}
 
 /* Shared navbar (all static pages) */
 .nav-link        { font-size: 14px; font-weight: 500; color: #374151; }
@@ -27,6 +84,9 @@
 .supplier-card      { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #fff; transition: box-shadow .2s; }
 .supplier-card:hover{ box-shadow: 0 4px 20px rgba(0,0,0,.08); }
 .hero-overlay       { background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.3) 60%, rgba(0,0,0,.05) 100%); }
+.hero-btn-find      { background-color: #ffffff; color: #111827; transition: all .2s ease; }
+.hero-btn-find:hover,
+.hero-btn-find:focus-visible { background-color: #059669 !important; color: #ffffff !important; }
 .event-card         { border-radius: 10px; overflow: hidden; position: relative; }
 .event-badge        { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
 .filter-btn         { border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 12px; font-size: 13px; color: #374151; display: flex; align-items: center; gap: 6px; }
