@@ -108,9 +108,11 @@ function fnShare() {
 window.fnShare = fnShare;
 
 /*
- * Homepage — skeleton loading screen, then fade-up reveal.
- * No-ops on any page without #page-skeleton, so this is safe to run
- * everywhere frontend_new.js loads.
+ * Homepage — skeleton loading screen, then fade-up reveal, for every
+ * section below the hero (the hero animates independently via pure CSS —
+ * see .hero-fade-up — and isn't part of this gate). No-ops on any page
+ * without #page-skeleton, so this is safe to run everywhere frontend_new.js
+ * loads.
  */
 (function () {
     const skeleton = document.getElementById('page-skeleton');
