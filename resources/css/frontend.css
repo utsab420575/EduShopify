@@ -9,10 +9,10 @@
 }
 
 :root {
-    /* Brand */
-    --fe-primary: #216C50;
-    --fe-primary-hover: #2D8A67;
-    --fe-primary-soft: #E7F3EE;
+    /* Brand — emerald-500 per edushopify-public-frontend-complete-spec.md */
+    --fe-primary: #10B981;
+    --fe-primary-hover: #059669;
+    --fe-primary-soft: #ECFDF5;
     --fe-primary-contrast: #FFFFFF;
 
     /* Text */
@@ -92,7 +92,7 @@ html.frontend, .frontend {
 }
 .frontend .fe-card-hover:hover {
     border-color: var(--fe-border-strong);
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
 }
 
@@ -116,4 +116,39 @@ html.frontend, .frontend {
         transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/*
+ * Spec design-system primitives (edushopify-public-frontend-complete-spec.md §1.6).
+ * New pages should reach for these plus literal Tailwind classes rather than
+ * the --fe-* custom-property system above, which is being phased out
+ * page-by-page as each is redesigned.
+ */
+.frontend .badge-verified { background: #E8F5EE; color: #1A7F45; border: 1px solid #B6E0C6; }
+.frontend .badge-founding { background: #FFF8E6; color: #A16207; border: 1px solid #FDE68A; }
+.frontend .badge-ise      { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
+.frontend .badge-new      { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+.frontend .badge-featured { background: #FEF9C3; color: #854D0E; border: 1px solid #FEF08A; }
+
+.frontend .tag-active   { background: #111827; color: #FFFFFF; }
+.frontend .tag-inactive { background: #F3F4F6; color: #374151; }
+
+.frontend .star { color: #F59E0B; }
+
+.frontend .hero-overlay {
+    background: linear-gradient(90deg, rgba(0, 0, 0, .72) 0%, rgba(0, 0, 0, .3) 60%, rgba(0, 0, 0, .05) 100%);
+}
+
+.frontend .form-input {
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+    transition: box-shadow .15s;
+}
+.frontend .form-input:focus {
+    box-shadow: 0 0 0 2px #A7F3D0;
+    border-color: #10B981;
 }
