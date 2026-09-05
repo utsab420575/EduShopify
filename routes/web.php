@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Frontend\HomeController;
+use App\Http\Controllers\FrontendNew\HomeController;
 use App\Livewire\Auth\AccountRegister;
 use App\Livewire\Auth\SupplierApplication;
 use App\Livewire\Buyer\BuyerProfileOnboarding;
