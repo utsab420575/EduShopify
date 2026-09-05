@@ -153,8 +153,12 @@
 .badge-bett { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; border-radius: 99px; font-size: 11px; font-weight: 600; padding: 3px 10px; display: inline-block; }
 
 .hero-wrap { border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 8px rgba(0,0,0,.06); margin-bottom: 16px; }
-.hero-banner { position: relative; height: 280px; }
-.hero-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+/* SupplierProfileService::handleFileUpload() already crops every banner
+   upload to a fixed 1200x400 (3:1) via Intervention. Fixing the container to
+   that same ratio (instead of an unrelated 280px height) means the browser
+   never re-crops on top of what was already cropped at upload time. */
+.hero-banner { position: relative; aspect-ratio: 3 / 1; max-height: 340px; }
+.hero-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center center; }
 .hero-save-btn { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; background: rgba(255,255,255,.92); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(0,0,0,.08); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
 .hero-save-btn:hover { background: #fff; }
 .profile-bar { position: absolute; bottom: 0; left: 0; right: 0; padding: 18px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; background: linear-gradient(to top,rgba(0,0,0,.65) 0%,rgba(0,0,0,.2) 55%,rgba(0,0,0,0) 100%); }
@@ -183,6 +187,11 @@
 
 .pt-card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; transition: box-shadow .15s; }
 .pt-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+
+.about-clamp { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.about-clamp.expanded { -webkit-line-clamp: unset; line-clamp: unset; display: block; overflow: visible; }
+.about-readmore-btn { margin-top: 6px; font-size: 12px; font-weight: 600; color: #059669; background: none; border: none; cursor: pointer; padding: 0; }
+.about-readmore-btn:hover { text-decoration: underline; }
 
 .svc-icon { width: 38px; height: 38px; border-radius: 8px; background: #f0fdf4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .svc-tag { border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px; font-weight: 500; color: #374151; padding: 2px 8px; display: inline-block; }

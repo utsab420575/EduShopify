@@ -83,21 +83,30 @@
         <div class="sec-card">
           <h2 class="text-[15px] font-bold text-gray-900 mb-3">About Us</h2>
           <div class="flex gap-4">
-            <div class="flex-1">
-              <p class="text-sm text-gray-600 leading-relaxed mb-2">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-600 leading-relaxed about-clamp">
                 <span class="text-emerald-600 font-medium">{{ $supplier->display_name }}</span>
                 {{ $supplier->description ?? 'has not added a company description yet.' }}
               </p>
+              @if($supplier->description && strlen($supplier->description) > 180)
+                <button type="button" class="about-readmore-btn" onclick="toggleAboutReadMore(this)">Read more</button>
+              @endif
             </div>
             @if($supplier->videos->isNotEmpty())
+              @php($firstVideo = $supplier->videos->first())
               <div class="shrink-0 w-36 h-24 relative rounded-lg overflow-hidden cursor-pointer group" onclick="switchTab(document.querySelectorAll('.tab-btn')[3],'videos')">
+                @if($firstVideo->thumbnailUrl())
+                  <img src="{{ $firstVideo->thumbnailUrl() }}" alt="{{ $firstVideo->title }}" class="absolute inset-0 w-full h-full object-cover" />
+                @else
+                  <div class="absolute inset-0 bg-emerald-900"></div>
+                @endif
                 <div class="absolute inset-0 bg-black/30 flex items-end justify-center pb-2">
                   <div class="absolute inset-0 flex items-center justify-center">
                     <div class="w-9 h-9 bg-white/90 rounded-full flex items-center justify-center group-hover:bg-white transition-colors shadow">
                       <svg class="w-4 h-4 text-emerald-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     </div>
                   </div>
-                  <span class="text-white text-[10px] font-medium relative z-10 bg-black/40 px-1.5 py-0.5 rounded">{{ $supplier->videos->first()->title ?? 'Company Video' }}</span>
+                  <span class="text-white text-[10px] font-medium relative z-10 bg-black/40 px-1.5 py-0.5 rounded">{{ $firstVideo->title ?? 'Company Video' }}</span>
                 </div>
               </div>
             @endif
@@ -129,29 +138,31 @@
           </div>
         @endif
 
-        {{-- "Our Services" is generic filler content — see config/frontend_new_demo.php --}}
-        <div class="sec-card">
-          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Our Services</h2>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            @foreach(array_slice($services, 0, 4) as $service)
-              <div class="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
-                <div class="svc-icon mb-2"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>
-                <p class="text-sm font-semibold text-gray-900 mb-1">{{ $service['title'] }}</p>
-                <p class="text-[11px] text-gray-500 leading-snug">{{ Str::limit($service['text'], 45) }}</p>
-              </div>
-            @endforeach
+        @if($services->isNotEmpty())
+          <div class="sec-card">
+            <h2 class="text-[15px] font-bold text-gray-900 mb-4">Our Services</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              @foreach($services->take(4) as $service)
+                <div class="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                  <div class="svc-icon mb-2"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>
+                  <p class="text-sm font-semibold text-gray-900 mb-1">{{ $service->title }}</p>
+                  <p class="text-[11px] text-gray-500 leading-snug">{{ Str::limit($service->description, 45) }}</p>
+                </div>
+              @endforeach
+            </div>
           </div>
-        </div>
+        @endif
 
-        {{-- "Certifications & Partners" is generic filler content — see config/frontend_new_demo.php --}}
-        <div class="sec-card">
-          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Certifications &amp; Partners</h2>
-          <div class="flex flex-wrap gap-2">
-            @foreach(array_slice($industryPartnerships, 0, 6) as $pill)
-              <span class="cert-pill">{{ $pill }}</span>
-            @endforeach
+        @if($achievements->isNotEmpty())
+          <div class="sec-card">
+            <h2 class="text-[15px] font-bold text-gray-900 mb-4">Certifications &amp; Partners</h2>
+            <div class="flex flex-wrap gap-2">
+              @foreach($achievements->take(6) as $achievement)
+                <span class="cert-pill">{{ $achievement->name }}</span>
+              @endforeach
+            </div>
           </div>
-        </div>
+        @endif
 
       </div>{{-- /tab-about --}}
 
@@ -192,24 +203,25 @@
         </div>
       </div>
 
-      {{-- SERVICES TAB (generic filler — see config/frontend_new_demo.php) --}}
+      {{-- SERVICES TAB — App\Models\Service (real "services" table, status=active) --}}
       <div id="tab-services" class="tab-panel">
         <div class="sec-card">
           <h2 class="text-[15px] font-bold text-gray-900 mb-1">Our Services</h2>
           <p class="text-sm text-gray-500 mb-5">We offer comprehensive support to ensure your institution gets the most from our solutions.</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            @foreach($services as $service)
-              <div class="border border-gray-200 rounded-lg p-4">
-                <div class="flex items-start gap-3 mb-3">
-                  <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>
-                  <div><p class="text-sm font-bold text-gray-900 mb-1">{{ $service['title'] }}</p><p class="text-xs text-gray-500 leading-relaxed">{{ $service['text'] }}</p></div>
+          @if($services->isNotEmpty())
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              @foreach($services as $service)
+                <div class="border border-gray-200 rounded-lg p-4">
+                  <div class="flex items-start gap-3">
+                    <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>
+                    <div><p class="text-sm font-bold text-gray-900 mb-1">{{ $service->title }}</p><p class="text-xs text-gray-500 leading-relaxed">{{ $service->description }}</p></div>
+                  </div>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                  @foreach($service['tags'] as $tag)<span class="svc-tag">{{ $tag }}</span>@endforeach
-                </div>
-              </div>
-            @endforeach
-          </div>
+              @endforeach
+            </div>
+          @else
+            <p class="text-sm text-gray-400">No services published yet.</p>
+          @endif
         </div>
       </div>
 
@@ -223,10 +235,10 @@
               @foreach($supplier->videos as $video)
                 <div class="vid-card">
                   <div class="relative" style="padding-bottom:56.25%; height:0; overflow:hidden;">
-                    @if($video->provider === 'youtube')
-                      <iframe src="https://www.youtube.com/embed/{{ $video->video_id }}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen title="{{ $video->title }}"></iframe>
+                    @if(in_array($video->resolvedProvider(), ['youtube', 'vimeo']) && $video->embedUrl())
+                      <iframe src="{{ $video->embedUrl() }}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen title="{{ $video->title }}"></iframe>
                     @else
-                      <video src="{{ $video->video_url }}" class="absolute top-0 left-0 w-full h-full object-cover" controls></video>
+                      <video src="{{ $video->video_url }}" poster="{{ $video->thumbnailUrl() }}" class="absolute top-0 left-0 w-full h-full object-cover" controls></video>
                     @endif
                   </div>
                   <div class="p-3"><p class="text-sm font-semibold text-emerald-600">{{ $video->title }}</p></div>
@@ -239,30 +251,36 @@
         </div>
       </div>
 
-      {{-- CERTIFICATIONS TAB (generic filler — see config/frontend_new_demo.php) --}}
+      {{-- CERTIFICATIONS TAB — App\Models\Certification (real "certifications" table, status=approved) --}}
       <div id="tab-certifications" class="tab-panel" style="display:none;flex-direction:column;gap:16px;">
         <div class="sec-card">
           <h2 class="text-[15px] font-bold text-gray-900 mb-1">Certifications &amp; Accreditations</h2>
           <p class="text-sm text-emerald-600 mb-5">Our products and operations are certified by leading global bodies in education and quality management.</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            @foreach($certifications as $cert)
-              <div class="cert-card">
-                <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
-                <div>
-                  <p class="text-sm font-bold text-gray-900 mb-0.5">{{ $cert['name'] }}</p>
-                  <p class="text-[11px] text-emerald-600 mb-1.5">{{ $cert['issuer'] }} · Since {{ $cert['since'] }}</p>
-                  <p class="text-xs text-gray-500 leading-relaxed">{{ $cert['text'] }}</p>
+          @if($certifications->isNotEmpty())
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              @foreach($certifications as $cert)
+                <div class="cert-card">
+                  <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+                  <div>
+                    <p class="text-sm font-bold text-gray-900 mb-0.5">{{ $cert->certification_name }}</p>
+                    <p class="text-[11px] text-emerald-600 mb-1.5">{{ $cert->certification_title }}@if($cert->certification_date) · Since {{ $cert->certification_date->format('Y') }}@endif</p>
+                    <p class="text-xs text-gray-500 leading-relaxed">{{ $cert->certification_description }}</p>
+                  </div>
                 </div>
-              </div>
-            @endforeach
-          </div>
+              @endforeach
+            </div>
+          @else
+            <p class="text-sm text-gray-400">No certifications published yet.</p>
+          @endif
         </div>
-        <div class="sec-card">
-          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Industry Partnerships</h2>
-          <div class="flex flex-wrap gap-2">
-            @foreach($industryPartnerships as $pill)<span class="cert-pill">{{ $pill }}</span>@endforeach
+        @if($achievements->isNotEmpty())
+          <div class="sec-card">
+            <h2 class="text-[15px] font-bold text-gray-900 mb-4">Industry Partnerships</h2>
+            <div class="flex flex-wrap gap-2">
+              @foreach($achievements as $achievement)<span class="cert-pill">{{ $achievement->name }}</span>@endforeach
+            </div>
           </div>
-        </div>
+        @endif
       </div>
 
       {{-- REVIEWS TAB --}}
@@ -455,38 +473,15 @@
 
   {{-- YOU MAY ALSO LIKE --}}
   @if($similarSuppliers->isNotEmpty())
-    <div class="mt-10">
-      <div class="flex items-center justify-between mb-5">
-        <h2 class="text-[17px] font-bold text-gray-900">You May Also Like</h2>
-        <a href="{{ route('v2.home') }}" class="text-sm text-emerald-600 hover:text-emerald-700 font-medium">See all →</a>
+    <div class="mt-12 pt-8 border-t border-gray-100">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-gray-900">You May Also Like</h2>
+        <a href="{{ route('v2.suppliers.index') }}" class="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline">See all →</a>
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         @foreach($similarSuppliers as $s)
-          <div class="supp-card">
-            <div class="relative">
-              @if($s->banner)
-                <img src="{{ \Illuminate\Support\Facades\Storage::url($s->banner) }}" class="w-full h-36 object-cover" />
-              @else
-                <div class="w-full h-36 bg-emerald-50"></div>
-              @endif
-              <div class="absolute bottom-2 left-2 flex items-center gap-1.5">
-                <div class="supp-av bg-white text-emerald-700 border border-gray-100">{{ strtoupper(substr($s->display_name, 0, 1)) }}</div>
-                <span class="text-white text-xs font-semibold drop-shadow">{{ $s->display_name }}</span>
-              </div>
-            </div>
-            <div class="p-3">
-              <div class="flex flex-wrap gap-1 mb-2">
-                <span class="badge-verified text-[10px] px-1.5 py-0.5">✓ Verified</span>
-                @if($s->demo_founding)<span class="badge-founding text-[10px] px-1.5 py-0.5">Founding Supplier</span>@endif
-                @if($s->demo_ise)<span class="badge-ise text-[10px] px-1.5 py-0.5">ISE Exhibitor</span>@endif
-              </div>
-              <p class="text-xs text-gray-500 mb-2">{{ $s->account?->supplierTypes?->pluck('name')->implode(' · ') }}</p>
-              <div class="flex items-center justify-between text-xs mb-1">
-                <span class="text-gray-600"><span class="star-filled">★</span> {{ number_format((float) $s->rating, 1) }} <span class="text-gray-400">({{ $s->reviews_count ?? 0 }})</span></span>
-                <span class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>{{ $s->country?->name }}</span>
-              </div>
-              <div class="flex items-center justify-between text-xs"><span class="text-gray-400">🛍 {{ $s->product_count }}+ Products</span><a href="{{ route('v2.suppliers.show', $s->slug) }}" class="text-emerald-600 font-semibold hover:underline">View Profile →</a></div>
-            </div>
+          <div class="product-card-fade-up" style="animation-delay: {{ $loop->index * 55 }}ms">
+            @include('frontend_new.components.supplier-card', ['supplier' => $s])
           </div>
         @endforeach
       </div>
@@ -506,5 +501,12 @@
       active.style.gap = '16px';
     }
   });
+
+  function toggleAboutReadMore(btn) {
+    var p = btn.previousElementSibling;
+    if (!p) return;
+    var expanded = p.classList.toggle('expanded');
+    btn.textContent = expanded ? 'Read less' : 'Read more';
+  }
 </script>
 @endsection

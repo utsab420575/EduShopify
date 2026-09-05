@@ -117,6 +117,21 @@ class SupplierController extends Controller
             'videos' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
         ]);
 
+        $services = $supplier->account->services()->where('status', 'active')->latest()->get();
+
+        $certifications = $supplier->account->certifications()->approved()->latest()->get();
+
+        // "Certifications & Partners" (About tab) and "Industry Partnerships"
+        // (Certifications tab) both show the same admin-approved achievement
+        // claims — real badges the supplier has earned, not two different
+        // generic pill lists.
+        $achievements = $supplier->account->accountAchievements()
+            ->approved()
+            ->with('achievement')
+            ->get()
+            ->pluck('achievement')
+            ->filter();
+
         $featuredProducts = PublicListingQuery::forSupplierAccount($supplier->account_id)
             ->where('is_featured', true)->with('brand')->limit(4)->get();
         if ($featuredProducts->count() < 4) {
@@ -177,9 +192,9 @@ class SupplierController extends Controller
             'demoFounding' => $badges['founding'],
             'demoIse' => $badges['ise'],
             'demoBett' => $badges['bett'],
-            'services' => config('frontend_new_demo.supplier_services', []),
-            'certifications' => config('frontend_new_demo.supplier_certifications', []),
-            'industryPartnerships' => config('frontend_new_demo.supplier_industry_partnerships', []),
+            'services' => $services,
+            'certifications' => $certifications,
+            'achievements' => $achievements,
         ]);
     }
 }

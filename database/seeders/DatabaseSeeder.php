@@ -65,6 +65,13 @@ class DatabaseSeeder extends Seeder
             DemoListingAndRfqSeeder::class,
         ]);
 
+        // 7a. Achievement catalogue + demo reviews/certifications/achievement
+        //     claims for the supplier profile page's real-data sections.
+        $this->call([
+            AchievementSeeder::class,
+            SupplierDemoContentSeeder::class,
+        ]);
+
         // 8. Spatie caches permissions aggressively; clear it after seeding.
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
