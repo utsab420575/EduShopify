@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/*
+ * Edushopify Frontend V2 — classes copied verbatim from the static HTML
+ * references in docs/AI/Frontend/*.html, grouped per page as each phase
+ * lands. Independent of resources/css/frontend.css (legacy).
+ */
+
+* { font-family: 'Inter', sans-serif; }
+
+/* Shared navbar (all static pages) */
+.nav-link        { font-size: 14px; font-weight: 500; color: #374151; }
+.nav-link:hover  { color: #111; }
+.nav-link-active { font-size: 14px; font-weight: 600; color: #111827; background: #f3f4f6; padding: 4px 12px; border-radius: 6px; }

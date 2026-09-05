@@ -11,6 +11,8 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/css/frontend.css',
                 'resources/js/frontend.js',
+                'resources/css/frontend_new.css',
+                'resources/js/frontend_new.js',
             ],
             refresh: true,
             fonts: [

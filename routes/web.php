@@ -303,5 +303,9 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
    ModelNotFoundException since Laravel matches routes in registration order. ── */
 require __DIR__.'/frontend.php';
 
+/* ── Public Frontend V2 (fresh implementation, /v2 prefix) ──
+   See routes/frontend_new.php — independent of frontend.php above. ── */
+require __DIR__.'/frontend_new.php';
+
 /* ── Stripe Webhook (no auth, no CSRF) ── */
 Route::post('/stripe/webhook', [WebhookController::class, 'handle'])->name('stripe.webhook');
