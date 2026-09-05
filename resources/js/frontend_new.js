@@ -56,6 +56,23 @@ window.fnCloseMobileMenu = fnCloseMobileMenu;
 window.switchImg = switchImg;
 window.switchTab = switchTab;
 
+/* RFQ list — live client-side search filter over the current page's cards */
+const rfqSearchInput = document.getElementById('rfq-search');
+if (rfqSearchInput) {
+    rfqSearchInput.addEventListener('input', function () {
+        const q = this.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('#rfq-list .rfq-card');
+        let visible = 0;
+        cards.forEach(function (card) {
+            const match = card.textContent.toLowerCase().includes(q);
+            card.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        const empty = document.getElementById('empty-state');
+        if (empty) empty.classList.toggle('hidden', visible > 0);
+    });
+}
+
 /*
  * Homepage — All Suppliers category tabs (spec §23.4 pattern).
  * Guarded on .supplier-item so this doesn't also attach to the supplier
