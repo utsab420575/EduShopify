@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Services\Account\PublicSupplierQuery;
 use App\Services\Catalog\PublicListingQuery;
+use App\Support\FrontendNewDemo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -85,15 +86,14 @@ class HomeController extends Controller
     }
 
     /**
-     * Demo-only Founding/ISE badge flags applied by position — see
-     * config/frontend_new_demo.php for why.
+     * Demo-only Founding/ISE badge flags — see config/frontend_new_demo.php
+     * and App\Support\FrontendNewDemo for why these are ID-deterministic
+     * rather than fabricated per-supplier facts.
      */
     private function applyBadgePattern(Collection $suppliers): Collection
     {
-        $pattern = config('frontend_new_demo.supplier_badge_pattern', []);
-
-        return $suppliers->values()->map(function ($supplier, $index) use ($pattern) {
-            $flags = $pattern[$index % max(count($pattern), 1)] ?? ['founding' => false, 'ise' => false];
+        return $suppliers->values()->map(function ($supplier) {
+            $flags = FrontendNewDemo::supplierBadges($supplier->id);
             $supplier->demo_founding = $flags['founding'];
             $supplier->demo_ise = $flags['ise'];
             $supplier->product_count = PublicListingQuery::forSupplierAccount($supplier->account_id)->count();
