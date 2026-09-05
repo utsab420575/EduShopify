@@ -106,4 +106,50 @@
     @include('backend.supplier.company.partials._achievements')
 </div>
 
+@if($openSection)
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var el = document.getElementById('sp-section-{{ $openSection }}');
+            if (el) {
+                setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+            }
+        });
+    </script>
+@endif
+
+@endsection
+
+{{--
+    Override the shared layout's content section: it normally includes
+    backend.layouts.partials.shared._flash, which dumps every validation
+    error from $errors->all() into one global "Please fix the following"
+    box. With 10 independent accordion sections on this one page (several
+    sharing field names, e.g. "title" on both Video and Service), that
+    global box can't say which section actually failed. Each section shows
+    its own errors instead (see partials._section-errors), so only the
+    session flashes are kept here — not the global error dump. This must
+    come AFTER @section('body') above: @yield('body') below only sees
+    content already captured on the section stack, and 'body' has to have
+    been defined first.
+--}}
+@section('content')
+    @if(session('success'))
+        <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-6" role="alert">
+            <i class="fa-solid fa-circle-check mt-0.5"></i>
+            <p class="text-sm">{{ session('success') }}</p>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-6" role="alert">
+            <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+            <p class="text-sm">{{ session('error') }}</p>
+        </div>
+    @endif
+    @if(session('warning'))
+        <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 mb-6" role="alert">
+            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+            <p class="text-sm">{{ session('warning') }}</p>
+        </div>
+    @endif
+    @yield('body')
 @endsection

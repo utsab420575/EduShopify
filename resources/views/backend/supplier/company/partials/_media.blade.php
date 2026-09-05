@@ -1,5 +1,5 @@
 {{-- ── 3. Media & Branding ── --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('media', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-media', v ? '1' : '0'))">
+<div id="sp-section-media" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('media', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-media', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
         <div class="flex items-center gap-3">
@@ -18,6 +18,8 @@
         <form method="POST" action="{{ route('supplier.company.profile.media.update') }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
+
+            @include('backend.supplier.company.partials._section-errors', ['section' => 'media'])
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
                 <div>

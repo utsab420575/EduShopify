@@ -1,5 +1,5 @@
 {{-- ── 2. Contact Information ── --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+<div id="sp-section-contact" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
      x-data="{
          open: {{ $spAccOpen('contact', false) }},
          country: {{ (int) old('country_id', $profile?->country_id ?? 0) }},
@@ -28,6 +28,8 @@
         <form method="POST" action="{{ route('supplier.company.profile.contact.update') }}">
             @csrf
             @method('PUT')
+
+            @include('backend.supplier.company.partials._section-errors', ['section' => 'contact'])
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>

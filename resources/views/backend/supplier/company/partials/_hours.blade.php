@@ -1,5 +1,5 @@
 {{-- ── 6. Business Hours ── --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('hours', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-hours', v ? '1' : '0'))">
+<div id="sp-section-hours" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('hours', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-hours', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
         <div class="flex items-center gap-3">
@@ -27,6 +27,8 @@
                  });
              }
          }">
+
+        @include('backend.supplier.company.partials._section-errors', ['section' => 'hours'])
 
         <div class="flex flex-wrap items-end gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
             <div>

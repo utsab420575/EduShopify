@@ -1,5 +1,5 @@
 {{-- ── 10. Achievements & Certifications ── --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('achievements', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-achievements', v ? '1' : '0'))">
+<div id="sp-section-achievements" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('achievements', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-achievements', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
         <div class="flex items-center gap-3">
@@ -15,6 +15,8 @@
     </button>
 
     <div x-show="open" x-cloak x-transition class="border-t border-gray-100 px-6 py-6">
+
+        @include('backend.supplier.company.partials._section-errors', ['section' => 'achievements'])
 
         {{-- Achievements --}}
         <label class="block text-sm font-medium text-gray-700 mb-3">Achievements</label>

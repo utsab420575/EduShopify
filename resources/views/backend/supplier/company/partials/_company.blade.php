@@ -4,7 +4,7 @@
 @endphp
 
 {{-- ── 1. Company Information ── --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('company', true) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-company', v ? '1' : '0'))">
+<div id="sp-section-company" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('company', true) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-company', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
         <div class="flex items-center gap-3">
@@ -24,7 +24,7 @@
             @csrf
             @method('PUT')
 
-            @error('display_name') <p class="text-xs text-red-600 mb-3">{{ $message }}</p> @enderror
+            @include('backend.supplier.company.partials._section-errors', ['section' => 'company'])
 
             <div class="space-y-5">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

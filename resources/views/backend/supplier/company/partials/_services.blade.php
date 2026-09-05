@@ -1,5 +1,5 @@
 {{-- ── 9. Services ── --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm"
+<div id="sp-section-services" class="bg-white rounded-2xl border border-gray-200 shadow-sm"
      :class="open ? 'overflow-visible' : 'overflow-hidden'"
      x-data="{
          open: {{ $spAccOpen('services', false) }},
@@ -27,6 +27,8 @@
     </button>
 
     <div x-show="open" x-cloak x-transition class="border-t border-gray-100 px-6 py-6">
+
+        @include('backend.supplier.company.partials._section-errors', ['section' => 'services'])
 
         @foreach($services as $service)
             <div class="mb-4 border border-gray-200 rounded-xl" :class="editing ? 'overflow-visible' : 'overflow-hidden'" x-data="{ editing: false }">

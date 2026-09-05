@@ -1,5 +1,5 @@
 {{-- ── 8. Documents & Verification ── --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('documents', false) }}, docTypeId: '{{ old('document_type_id', '') }}' }" x-init="$watch('open', v => localStorage.setItem('sp-acc-documents', v ? '1' : '0'))">
+<div id="sp-section-documents" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('documents', false) }}, docTypeId: '{{ old('document_type_id', '') }}' }" x-init="$watch('open', v => localStorage.setItem('sp-acc-documents', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
         <div class="flex items-center gap-3">
@@ -16,7 +16,7 @@
 
     <div x-show="open" x-cloak x-transition class="border-t border-gray-100 px-6 py-6">
 
-        @error('file') <p class="text-xs text-red-600 mb-3">{{ $message }}</p> @enderror
+        @include('backend.supplier.company.partials._section-errors', ['section' => 'documents'])
 
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Required Verification Checklist</p>
         <ul class="space-y-2 text-sm mb-6">
