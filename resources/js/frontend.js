@@ -108,6 +108,45 @@ Alpine.data('quantityEstimator', (tiers, basePrice) => ({
     },
 }));
 
+Alpine.data('marketplaceToast', () => ({
+    toasts: [],
+    init() {
+        const handleToast = (detail) => {
+            if (!detail || !detail.message) return;
+            this.add(detail.message, detail.type, detail.actionUrl, detail.actionLabel);
+        };
+        window.addEventListener('toast', (e) => handleToast(e.detail));
+        window.addEventListener('compare:toast', (e) => handleToast(e.detail));
+        window.marketplaceToast = (msg, type = 'success', url = null, label = null) => {
+            this.add(msg, type, url, label);
+        };
+    },
+    add(message, type = 'success', actionUrl = null, actionLabel = null) {
+        if (!message) return;
+        const now = Date.now();
+        // Prevent duplicate toast with identical message within 600ms
+        if (this.toasts.some((t) => t.message === message && (now - t.createdAt) < 600)) {
+            return;
+        }
+        const id = now + Math.random();
+        this.toasts.push({
+            id,
+            createdAt: now,
+            message,
+            type: type || 'success',
+            actionUrl: actionUrl || null,
+            actionLabel: actionLabel || null,
+        });
+        setTimeout(() => this.remove(id), 2000);
+    },
+    push(message, type = 'success', actionUrl = null, actionLabel = null) {
+        this.add(message, type, actionUrl, actionLabel);
+    },
+    remove(id) {
+        this.toasts = this.toasts.filter((t) => t.id !== id);
+    },
+}));
+
 registerComparisonAlpine(Alpine);
 
 window.Alpine = Alpine;

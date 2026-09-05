@@ -6,7 +6,7 @@
     reason). All data here comes from the JSON the page already fetched —
     never re-requested per column.
 --}}
-<th class="align-top px-4 py-4 text-left" style="width:220px;min-width:220px;border-left:1px solid var(--fe-border);">
+<th class="align-top px-4 py-4 text-left" style="width:220px;min-width:220px;border-left:1px solid var(--fe-border);background:var(--fe-surface);">
     <div class="relative">
         <button type="button" @click="remove(item.listing_id, item.variant_id)"
                 class="comparison-hide-print fe-focus-ring absolute -top-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center text-xs z-10"
@@ -26,7 +26,12 @@
 
         <p class="text-xs mb-1" style="color:var(--fe-text-muted);" x-show="item.brand" x-text="item.brand"></p>
 
-        <a :href="item.supplier_slug ? '/supplier/' + item.supplier_slug : '#'" class="text-xs font-medium hover:underline block mb-2" style="color:var(--fe-primary);" x-text="item.supplier_name || 'Supplier'"></a>
+        <a :href="item.supplier_slug ? '/supplier/' + item.supplier_slug : '#'" class="fe-focus-ring text-xs font-medium hover:underline block mb-2" style="color:var(--fe-primary);" x-text="item.supplier_name || 'Supplier'"></a>
+
+        {{-- Product/Supplier ratings moved to their own comparison rows —
+             see the "Reviews" tbody in compare/index.blade.php — so they sit
+             next to each other across every column the same way specs do,
+             instead of being buried in each card. --}}
 
         {{-- Variant picker --}}
         <template x-if="item.variants && item.variants.length > 1">
@@ -51,7 +56,12 @@
             <p class="text-sm font-semibold mb-2" style="color:var(--fe-primary);">Request Quote</p>
         </template>
 
-        <p class="text-[11px] mb-3" style="color:var(--fe-text-muted);" x-show="item.moq" x-text="'MOQ: ' + item.moq + (item.unit ? ' ' + item.unit : '')"></p>
+        <p class="text-[11px] mb-1" style="color:var(--fe-text-muted);" x-show="item.moq" x-text="'MOQ: ' + item.moq + (item.unit ? ' ' + item.unit : '')"></p>
+
+        <p class="text-[11px] mb-3 font-semibold" x-show="item.is_product" :style="item.stock_status === 'out_of_stock' ? 'color:var(--fe-danger);' : 'color:var(--fe-success);'">
+            <i class="fa-solid" :class="item.stock_status === 'out_of_stock' ? 'fa-circle-xmark' : 'fa-circle-check'"></i>
+            <span x-text="({in_stock:'In Stock', limited:'Limited Stock', on_request:'Made to Order', out_of_stock:'Out of Stock'})[item.stock_status] || 'Available'"></span>
+        </p>
 
         {{-- Actions --}}
         <div class="comparison-hide-print space-y-1.5">

@@ -83,8 +83,8 @@ function writeRaw(state) {
     window.dispatchEvent(new CustomEvent('compare:changed', { detail: { count: state.items.length } }));
 }
 
-export function toast(message, type = 'success') {
-    window.dispatchEvent(new CustomEvent('compare:toast', { detail: { message, type } }));
+export function toast(message, type = 'success', actionUrl = null, actionLabel = null) {
+    window.dispatchEvent(new CustomEvent('compare:toast', { detail: { message, type, actionUrl, actionLabel } }));
 }
 
 export const EdushopifyCompare = {
@@ -177,17 +177,17 @@ export function registerComparisonAlpine(Alpine) {
         toggle() {
             if (this.active) {
                 EdushopifyCompare.removeItem(this.listingId, this.variantId);
-                toast('Product removed from comparison.', 'success');
+                toast('Product removed from', 'info', '/compare', 'compare');
                 return;
             }
 
             const result = EdushopifyCompare.addItem(this.listingId, this.variantId);
             if (result === 'added') {
-                toast('Product added to comparison.', 'success');
+                toast('Product added to', 'success', '/compare', 'compare');
             } else if (result === 'duplicate') {
-                toast('This product is already in your comparison.', 'info');
+                toast('This product is already in', 'info', '/compare', 'compare');
             } else if (result === 'max_reached') {
-                toast(`You can compare up to ${MAX_ITEMS} products at a time.`, 'warning');
+                toast(`You can compare up to ${MAX_ITEMS} products in`, 'warning', '/compare', 'compare');
             }
         },
     }));
@@ -199,7 +199,6 @@ export function registerComparisonAlpine(Alpine) {
         matrix: { key_specs: [], additional_groups: [] },
         maxItems: MAX_ITEMS,
         showAdditional: false,
-        highlightDiffs: true,
         showDiffsOnly: false,
         addMoreQuery: '',
         addMoreResults: [],
@@ -265,7 +264,7 @@ export function registerComparisonAlpine(Alpine) {
 
         remove(listingId, variantId) {
             EdushopifyCompare.removeItem(listingId, variantId);
-            toast('Product removed from comparison.', 'success');
+            toast('Product removed from', 'info', '/compare', 'compare');
             this.refresh();
         },
 
@@ -279,7 +278,7 @@ export function registerComparisonAlpine(Alpine) {
             this.items = [];
             this.listings = [];
             this.matrix = { key_specs: [], additional_groups: [] };
-            toast('Comparison cleared.', 'success');
+            toast('Comparison cleared.', 'info');
         },
 
         async searchAddMore() {
@@ -305,28 +304,52 @@ export function registerComparisonAlpine(Alpine) {
             this.addMoreResults = [];
 
             if (result === 'added') {
-                toast('Product added to comparison.', 'success');
+                toast('Product added to', 'success', '/compare', 'compare');
                 await this.refresh();
             } else if (result === 'duplicate') {
-                toast('This product is already in your comparison.', 'info');
+                toast('This product is already in', 'info', '/compare', 'compare');
             } else if (result === 'max_reached') {
-                toast(`You can compare up to ${MAX_ITEMS} products at a time.`, 'warning');
+                toast(`You can compare up to ${MAX_ITEMS} products in`, 'warning', '/compare', 'compare');
             }
         },
 
-        rowVisible(values) {
-            if (!this.showDiffsOnly) return true;
+        /**
+         * True only when every column has a (non-empty) value AND all of
+         * them are identical — the "green check" case. A row with a missing
+         * value in even one column is never "all same," since that column
+         * simply doesn't have the spec at all.
+         */
+        rowAllSame(values) {
             const nonNull = values.filter((v) => v !== null && v !== undefined && v !== '');
+            if (nonNull.length !== values.length) return false;
             const unique = new Set(nonNull.map((v) => JSON.stringify(v)));
-            // A row counts as "different" if values disagree, OR if some
-            // columns have a value and others are missing it entirely.
-            return unique.size > 1 || nonNull.length !== values.length;
+            return unique.size === 1;
         },
 
-        rowDiffers(values) {
-            const nonNull = values.filter((v) => v !== null && v !== undefined && v !== '');
-            const unique = new Set(nonNull.map((v) => JSON.stringify(v)));
-            return unique.size > 1 || nonNull.length !== values.length;
+        rowVisible(values) {
+            return !this.showDiffsOnly || !this.rowAllSame(values);
+        },
+
+        /**
+         * Per-cell match, not per-row: true when this column's value is
+         * shared by at least one OTHER column, even if the remaining
+         * columns disagree or are missing it entirely. With only 2 products
+         * "all same" and "shared by another" are the same thing, which is
+         * why this only became visible once a 3rd column was added — two
+         * columns agreeing while a 3rd differs is still a real match worth
+         * marking, not just an all-or-nothing row-wide agreement.
+         */
+        valueHasMatch(values, index) {
+            const val = values[index];
+            if (val === null || val === undefined || val === '') return false;
+            const key = JSON.stringify(val);
+            let matches = 0;
+            for (const v of values) {
+                if (v !== null && v !== undefined && v !== '' && JSON.stringify(v) === key) {
+                    matches++;
+                }
+            }
+            return matches >= 2;
         },
     }));
 }

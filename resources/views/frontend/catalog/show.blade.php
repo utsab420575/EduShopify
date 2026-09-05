@@ -222,6 +222,17 @@
                 @endif
             </div>
 
+            {{-- Product rating — independent of the supplier's own rating
+                 shown in the "Sold by" card below; this one rates the
+                 product itself, not the seller. --}}
+            <div class="mt-3 flex items-center gap-1.5">
+                <span class="text-xs font-semibold" style="color:var(--fe-text-muted);">Product Rating:</span>
+                <x-frontend::marketplace.rating-summary
+                    :rating="$listing->product_rating"
+                    :count="$listing->product_reviews_count ?? 0"
+                    size="full" />
+            </div>
+
             {{-- Short description --}}
             @if($listing->short_description)
                 <p class="mt-4 text-sm leading-relaxed" style="color:var(--fe-text-muted);">
@@ -410,28 +421,86 @@
                         @endauth
 
                         <button type="button" @click="$dispatch('open-inquiry-listing')"
-                                class="fe-focus-ring block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold border"
-                                style="border-color:var(--fe-border-strong);color:var(--fe-text);">
-                            <i class="fa-regular fa-comment-dots mr-1.5"></i> Contact Supplier
+                                class="group fe-focus-ring block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200 ease-in-out cursor-pointer shadow-xs bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 active:bg-slate-100">
+                            <i class="fa-regular fa-comment-dots mr-1.5 transition-transform duration-200 group-hover:scale-110"></i> Contact Supplier
                         </button>
 
-                        <a href="{{ auth()->check() ? route('buyer.saved-items.toggle') : route('frontend.handoff.save-listing', $listing->slug) }}"
-                           @if(auth()->check())
-                           onclick="event.preventDefault(); document.getElementById('fe-save-listing-form').submit();"
-                           @endif
-                           class="fe-focus-ring block w-full text-center px-4 py-2 rounded-xl text-sm font-medium transition-colors hover:opacity-80"
-                           style="color:var(--fe-text-muted);">
-                            <i class="fa-regular fa-bookmark mr-1.5"></i> Save Listing
-                        </a>
+                        <div x-data="{
+                            isSaved: {{ $isSaved ? 'true' : 'false' }},
+                            loading: false,
+                            async saveListing() {
+                                @guest
+                                    window.location.href = '{{ route('frontend.handoff.save-listing', $listing->slug) }}';
+                                    return;
+                                @endguest
+
+                                if (this.loading) return;
+                                this.loading = true;
+
+                                try {
+                                    const res = await fetch('{{ route('buyer.saved-items.toggle') }}', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content
+                                        },
+                                        body: JSON.stringify({
+                                            type: 'listing',
+                                            id: {{ $listing->id }},
+                                            action: 'save'
+                                        })
+                                    });
+
+                                    const data = await res.json();
+                                    if (res.ok) {
+                                        this.isSaved = true;
+                                        const toastDetail = {
+                                            message: data.message || (this.isSaved ? 'Already in saved list' : 'Product is saved'),
+                                            type: 'success',
+                                            actionUrl: '{{ route('buyer.saved-items.index', ['type' => 'listing']) }}',
+                                            actionLabel: 'saved items'
+                                        };
+                                        window.dispatchEvent(new CustomEvent('toast', { detail: toastDetail }));
+                                    } else {
+                                        const errDetail = {
+                                            message: data.message || 'Could not save listing.',
+                                            type: 'danger'
+                                        };
+                                        window.dispatchEvent(new CustomEvent('toast', { detail: errDetail }));
+                                    }
+                                } catch (e) {
+                                    console.error(e);
+                                    window.dispatchEvent(new CustomEvent('toast', {
+                                        detail: {
+                                            message: 'An error occurred while saving.',
+                                            type: 'danger'
+                                        }
+                                    }));
+                                } finally {
+                                    this.loading = false;
+                                }
+                            }
+                        }"
+                        @if(request('save_intent'))
+                            x-init="$nextTick(() => saveListing())"
+                        @endif
+                        class="w-full">
+                            <button type="button"
+                                    id="fe-save-listing-btn"
+                                    @click="saveListing()"
+                                    :disabled="loading"
+                                    class="group fe-focus-ring flex items-center justify-center w-full px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ease-in-out cursor-pointer shadow-xs focus:outline-none focus:ring-2 active:scale-[0.99]"
+                                    :class="isSaved
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100/70 hover:border-emerald-400 hover:text-emerald-800 focus:ring-emerald-500/40 focus:border-emerald-500'
+                                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-emerald-50/70 hover:text-emerald-700 hover:border-emerald-300 focus:ring-emerald-500/40 focus:border-emerald-400'">
+                                <i :class="isSaved ? 'fa-solid fa-bookmark text-emerald-600' : 'fa-regular fa-bookmark text-slate-400 group-hover:text-emerald-600'"
+                                   class="mr-2 transition-transform duration-200 group-hover:scale-110"
+                                   :class="loading ? 'animate-pulse' : ''"></i>
+                                <span x-text="isSaved ? 'Saved' : 'Save Listing'"></span>
+                            </button>
+                        </div>
                         <x-frontend::marketplace.compare-button :listing="$listing" style="text" />
-                        @auth
-                            <form id="fe-save-listing-form" method="POST"
-                                  action="{{ route('buyer.saved-items.toggle') }}" class="hidden">
-                                @csrf
-                                <input type="hidden" name="type" value="listing">
-                                <input type="hidden" name="id" value="{{ $listing->id }}">
-                            </form>
-                        @endauth
                     </div>
 
                     {{-- Trust badges --}}
@@ -453,6 +522,7 @@
                             </span>
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold truncate" style="color:var(--fe-text);">{{ $supplierProfile->display_name }}</p>
+                                <p class="text-[10px] font-semibold uppercase tracking-wide" style="color:var(--fe-text-subtle);">Supplier Rating</p>
                                 <x-frontend::marketplace.rating-summary
                                     :rating="$supplierProfile->rating"
                                     :count="$supplierProfile->reviews_count ?? 0" />
@@ -640,13 +710,7 @@
     />
 @endif
 
-@auth
-    @if(request('save_intent'))
-        @push('scripts')
-            <script>document.getElementById('fe-save-listing-form')?.submit();</script>
-        @endpush
-    @endif
-@endauth
+{{-- save_intent handled by Alpine on page load --}}
 
 @if(request('contact') && $supplierProfile)
     @push('scripts')

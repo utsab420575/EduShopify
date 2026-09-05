@@ -10,12 +10,31 @@
 
 @push('styles')
 <style>
+    /* border-collapse breaks position:sticky on table cells in several
+       browsers (a well-known interaction) — border-separate with zero
+       spacing keeps the same visual grid while keeping the sticky first
+       column reliable at any number of compared columns. */
+    .comparison-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
     .comparison-table th.sticky, .comparison-table td.sticky {
         position: sticky;
         left: 0;
     }
-    .comparison-row-diff {
-        background: var(--fe-warning-soft);
+    /* Sticky header row (the product cards) — stays visible as you scroll
+       down through a long spec list, offset below the site's own sticky
+       top nav (h-20 = 5rem, resources/views/frontend/layouts/partials/_header.blade.php). */
+    .comparison-table thead th {
+        position: sticky;
+        top: 5rem;
+        z-index: 15;
+    }
+    /* The top-left corner cell is sticky on both axes at once — it must sit
+       above every other sticky cell (header row AND left column) so it never
+       gets visually covered when both scroll directions are active together. */
+    .comparison-table thead th.sticky {
+        z-index: 25;
     }
     @media print {
         header, #main-content > .fe-container > nav, .comparison-hide-print,
@@ -60,10 +79,6 @@
                 </h1>
                 <div class="comparison-controls comparison-hide-print flex items-center gap-3 flex-wrap">
                     <label class="inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer" style="color:var(--fe-text);">
-                        <input type="checkbox" x-model="highlightDiffs" class="rounded" style="accent-color:var(--fe-primary);">
-                        Highlight Differences
-                    </label>
-                    <label class="inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer" style="color:var(--fe-text);">
                         <input type="checkbox" x-model="showDiffsOnly" class="rounded" style="accent-color:var(--fe-primary);">
                         Show Differences Only
                     </label>
@@ -76,9 +91,21 @@
                 </div>
             </div>
 
+            {{-- Bulk RFQ — the marketplace's own advantage over a plain catalog compare: send one request to every supplier behind the compared products. --}}
+            <div class="comparison-hide-print mb-5 flex items-center justify-between gap-3 flex-wrap rounded-xl px-4 py-3" style="background:var(--fe-primary-soft);border:1px solid var(--fe-border);">
+                <p class="text-xs font-medium" style="color:var(--fe-text-muted);">
+                    <i class="fa-solid fa-file-invoice mr-1" style="color:var(--fe-primary);"></i>
+                    Request a quote for all <span x-text="count"></span> compared product<span x-show="count !== 1">s</span> at once.
+                </p>
+                <a :href="{{ auth()->check() ? "'/buyer/rfqs/create?listings=' + listings.map(l => l.listing_id).join(',')" : "'/handoff/compare-rfq?listings=' + listings.map(l => l.slug).join(',')" }}"
+                   class="fe-btn-primary fe-focus-ring text-xs font-semibold px-4 py-2 rounded-lg inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-paper-plane"></i> Send RFQ to All Suppliers
+                </a>
+            </div>
+
             <div class="rounded-2xl border overflow-hidden" style="border-color:var(--fe-border);" id="comparison-print-area">
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse comparison-table" style="min-width:720px;">
+                    <table class="w-full comparison-table" style="min-width:720px;">
                         <thead>
                             <tr>
                                 <th class="sticky z-20 text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="background:var(--fe-surface-soft);color:var(--fe-text-muted);width:160px;min-width:160px;">
@@ -113,6 +140,53 @@
                                 </th>
                             </tr>
                         </thead>
+
+                        {{-- Reviews — product rating and supplier rating are two
+                             independent numbers (Priority 3), shown as their own
+                             rows so they line up across columns the same way specs
+                             do, instead of sitting inline in each header card.
+                             Always visible, even at 0 — empty stars + "0" says
+                             "no reviews yet," which is a real, current fact about
+                             that product/supplier, not missing data (so no ❌ here,
+                             unlike a genuinely unanswered spec). --}}
+                        <tbody>
+                            <tr>
+                                <td class="sticky z-10 px-4 py-2 text-[11px] font-bold uppercase tracking-wide" style="background:var(--fe-surface-soft);color:var(--fe-primary);border-top:1px solid var(--fe-border);">Reviews</td>
+                                <td :colspan="listings.length" class="px-4 py-2 text-[11px] font-bold uppercase tracking-wide" style="background:var(--fe-surface-soft);border-top:1px solid var(--fe-border);border-left:1px solid var(--fe-border);"></td>
+                            </tr>
+                            <tr>
+                                <td class="sticky left-0 z-10 px-4 py-3 text-xs font-medium align-top" style="background:var(--fe-surface);color:var(--fe-text-muted);border-top:1px solid var(--fe-border);">Product Rating</td>
+                                <template x-for="item in listings" :key="'product-rating-' + item.listing_id + ':' + (item.variant_id ?? 0)">
+                                    <td class="px-4 py-3 text-xs align-top" style="border-top:1px solid var(--fe-border);border-left:1px solid var(--fe-border);">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="flex items-center gap-0.5">
+                                                <template x-for="star in [1,2,3,4,5]" :key="star">
+                                                    <i class="fa-solid fa-star text-[10px]" :style="star <= Math.round(item.product_rating) ? 'color:#f59e0b;' : 'color:#e2e8f0;'"></i>
+                                                </template>
+                                            </span>
+                                            <span class="font-semibold" style="color:var(--fe-text);" x-text="item.product_rating.toFixed(1)"></span>
+                                            <span style="color:var(--fe-text-muted);" x-text="'(' + item.product_reviews_count + ')'"></span>
+                                        </div>
+                                    </td>
+                                </template>
+                            </tr>
+                            <tr>
+                                <td class="sticky left-0 z-10 px-4 py-3 text-xs font-medium align-top" style="background:var(--fe-surface);color:var(--fe-text-muted);border-top:1px solid var(--fe-border);">Supplier Rating</td>
+                                <template x-for="item in listings" :key="'supplier-rating-' + item.listing_id + ':' + (item.variant_id ?? 0)">
+                                    <td class="px-4 py-3 text-xs align-top" style="border-top:1px solid var(--fe-border);border-left:1px solid var(--fe-border);">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="flex items-center gap-0.5">
+                                                <template x-for="star in [1,2,3,4,5]" :key="star">
+                                                    <i class="fa-solid fa-star text-[10px]" :style="star <= Math.round(item.supplier_rating ?? 0) ? 'color:#f59e0b;' : 'color:#e2e8f0;'"></i>
+                                                </template>
+                                            </span>
+                                            <span class="font-semibold" style="color:var(--fe-text);" x-text="(item.supplier_rating ?? 0).toFixed(1)"></span>
+                                            <span style="color:var(--fe-text-muted);" x-text="'(' + item.supplier_reviews_count + ')'"></span>
+                                        </div>
+                                    </td>
+                                </template>
+                            </tr>
+                        </tbody>
 
                         {{-- Key / basic specifications --}}
                         <tbody>

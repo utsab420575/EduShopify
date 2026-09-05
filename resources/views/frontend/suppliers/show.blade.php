@@ -36,18 +36,79 @@
                 <a href="{{ route('frontend.handoff.request-quote-supplier', $supplier->slug) }}" class="fe-btn-primary fe-focus-ring px-4 py-2.5 rounded-lg text-sm font-semibold">Request Quote</a>
             @endauth
             <button type="button" @click="$dispatch('open-inquiry-supplier')" class="fe-focus-ring px-4 py-2.5 rounded-lg text-sm font-semibold border" style="border-color:var(--fe-border-strong);color:var(--fe-text);">Contact Supplier</button>
-            <a href="{{ auth()->check() ? '#' : route('frontend.handoff.save-supplier', $supplier->slug) }}"
-               @if(auth()->check()) onclick="event.preventDefault(); document.getElementById('fe-save-supplier-form').submit();" @endif
-               class="fe-focus-ring px-4 py-2.5 rounded-lg text-sm font-semibold border" style="border-color:var(--fe-border-strong);color:var(--fe-text);">
-                <i class="fa-regular fa-bookmark mr-1.5"></i>Save Supplier
-            </a>
-            @auth
-                <form id="fe-save-supplier-form" method="POST" action="{{ route('buyer.saved-items.toggle') }}" class="hidden">
-                    @csrf
-                    <input type="hidden" name="type" value="supplier">
-                    <input type="hidden" name="id" value="{{ $supplier->account_id }}">
-                </form>
-            @endauth
+            <div x-data="{
+                isSaved: {{ $isSaved ? 'true' : 'false' }},
+                loading: false,
+                async saveSupplier() {
+                    @guest
+                        window.location.href = '{{ route('frontend.handoff.save-supplier', $supplier->slug) }}';
+                        return;
+                    @endguest
+
+                    if (this.loading) return;
+                    this.loading = true;
+
+                    try {
+                        const res = await fetch('{{ route('buyer.saved-items.toggle') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content
+                            },
+                            body: JSON.stringify({
+                                type: 'supplier',
+                                id: {{ $supplier->account_id }},
+                                action: 'save'
+                            })
+                        });
+
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.isSaved = true;
+                            const toastDetail = {
+                                message: data.message || 'Supplier is saved',
+                                type: 'success',
+                                actionUrl: '{{ route('buyer.saved-items.index', ['type' => 'supplier']) }}',
+                                actionLabel: 'saved suppliers'
+                            };
+                            window.dispatchEvent(new CustomEvent('toast', { detail: toastDetail }));
+                        } else {
+                            const errDetail = {
+                                message: data.message || 'Could not save supplier.',
+                                type: 'danger'
+                            };
+                            window.dispatchEvent(new CustomEvent('toast', { detail: errDetail }));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: {
+                                message: 'An error occurred while saving.',
+                                type: 'danger'
+                            }
+                        }));
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }"
+            @if(request('save_intent'))
+                x-init="$nextTick(() => saveSupplier())"
+            @endif>
+                <button type="button"
+                        @click="saveSupplier()"
+                        :disabled="loading"
+                        class="group fe-focus-ring px-4 py-2.5 rounded-xl text-sm font-semibold border flex items-center gap-2 transition-all duration-200 cursor-pointer shadow-xs focus:outline-none focus:ring-2 active:scale-[0.99]"
+                        :class="isSaved
+                            ? 'text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100/70 hover:border-emerald-400 focus:ring-emerald-500/40 focus:border-emerald-500'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-emerald-50/70 hover:text-emerald-700 hover:border-emerald-300 focus:ring-emerald-500/40 focus:border-emerald-400'">
+                    <i :class="isSaved ? 'fa-solid fa-bookmark text-emerald-600' : 'fa-regular fa-bookmark text-slate-400 group-hover:text-emerald-600'"
+                       class="text-sm transition-transform duration-200 group-hover:scale-110"
+                       :class="loading ? 'animate-pulse' : ''"></i>
+                    <span x-text="isSaved ? 'Saved' : 'Save Supplier'"></span>
+                </button>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-12">
@@ -192,11 +253,5 @@
         :context="$supplier->display_name"
     />
 
-    @auth
-        @if(request('save_intent'))
-            @push('scripts')
-                <script>document.getElementById('fe-save-supplier-form')?.submit();</script>
-            @endpush
-        @endif
-    @endauth
+    {{-- save_intent handled by Alpine on page load --}}
 @endsection

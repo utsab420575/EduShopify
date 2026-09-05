@@ -54,10 +54,13 @@
 
             {{-- Auth actions --}}
             <div class="hidden lg:flex items-center gap-2 shrink-0">
-                <a href="{{ route('frontend.compare.index') }}" x-data="compareBadge" class="fe-focus-ring relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-[--fe-primary]" aria-label="Product comparison">
-                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                <a href="{{ route('frontend.compare.index') }}" x-data="compareBadge"
+                   class="group fe-focus-ring relative inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/80 transition-all duration-200 ease-in-out"
+                   aria-label="Product comparison" title="View product comparison">
+                    <i class="fa-solid fa-arrow-right-arrow-left text-xs text-slate-400 group-hover:text-emerald-600 transition-transform duration-200 group-hover:rotate-180"></i>
                     <span class="hidden xl:inline">Compare</span>
-                    <span x-show="count > 0" x-cloak x-text="'(' + count + ')'" class="text-xs font-semibold"></span>
+                    <span x-show="count > 0" x-cloak x-text="count"
+                          class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-xs transition-transform duration-200 group-hover:scale-110"></span>
                 </a>
                 @guest
                     <a href="{{ route('login') }}" class="fe-focus-ring px-3 py-2 text-sm font-medium text-slate-600 hover:text-[--fe-primary]">Log in</a>
