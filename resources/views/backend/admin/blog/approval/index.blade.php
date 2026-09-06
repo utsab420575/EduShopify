@@ -102,7 +102,7 @@
                 <div><dt class="text-xs text-gray-500">Reading Time</dt><dd class="font-medium text-gray-900">{{ $post->reading_time_minutes }} min</dd></div>
                 @if($post->cover_image)
                     <div class="sm:col-span-2">
-                        <img src="{{ str_starts_with($post->cover_image, 'http') || str_starts_with($post->cover_image, '/') ? $post->cover_image : \Illuminate\Support\Facades\Storage::url($post->cover_image) }}" class="w-full h-48 object-cover rounded-lg border border-gray-200">
+                        <img src="{{ $post->coverImageUrl() }}" class="w-full h-48 object-cover rounded-lg border border-gray-200">
                     </div>
                 @endif
                 @if($post->excerpt)

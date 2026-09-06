@@ -51,7 +51,7 @@
     <x-backend.form-card title="Cover Image">
         <div class="flex items-center gap-4">
             <img id="cover-preview"
-                 src="{{ $post->cover_image ? (str_starts_with($post->cover_image, 'http') || str_starts_with($post->cover_image, '/') ? $post->cover_image : \Illuminate\Support\Facades\Storage::url($post->cover_image)) : '' }}"
+                 src="{{ $post->cover_image ? $post->coverImageUrl() : '' }}"
                  class="w-28 h-20 rounded-lg object-cover border border-gray-200 bg-gray-50" style="{{ $post->cover_image ? '' : 'display:none' }}" alt="">
             <div class="flex-1">
                 <input type="file" name="cover_image" accept="image/*" onchange="previewCoverImage(this)"

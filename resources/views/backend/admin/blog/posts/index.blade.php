@@ -51,7 +51,7 @@
                 <tr class="hover:bg-gray-50">
                     <td class="px-5 py-3.5">
                         <div class="flex items-center gap-3 min-w-0">
-                            <img src="{{ $post->cover_image ? (str_starts_with($post->cover_image, 'http') || str_starts_with($post->cover_image, '/') ? $post->cover_image : \Illuminate\Support\Facades\Storage::url($post->cover_image)) : asset('images/herosection.png') }}"
+                            <img src="{{ $post->coverImageUrl() }}"
                                  class="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0" alt="">
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-gray-900 truncate max-w-xs">{{ $post->title }}</p>
