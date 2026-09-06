@@ -54,10 +54,9 @@
                  src="{{ $post->cover_image ? (str_starts_with($post->cover_image, 'http') || str_starts_with($post->cover_image, '/') ? $post->cover_image : \Illuminate\Support\Facades\Storage::url($post->cover_image)) : '' }}"
                  class="w-28 h-20 rounded-lg object-cover border border-gray-200 bg-gray-50" style="{{ $post->cover_image ? '' : 'display:none' }}" alt="">
             <div class="flex-1">
-                <input type="file" name="cover_image" accept="image/*"
-                       onchange="if(this.files[0]){var p=document.getElementById('cover-preview');p.src=URL.createObjectURL(this.files[0]);p.style.display='block';}"
+                <input type="file" name="cover_image" accept="image/*" onchange="previewCoverImage(this)"
                        class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                <p class="text-xs text-gray-400 mt-1">JPG, PNG or WEBP, up to 4MB. Shown on listing cards and at the top of the post.</p>
+                <p class="text-xs text-gray-400 mt-1">JPG, PNG or WEBP, up to 10MB. Shown on listing cards and at the top of the post.</p>
                 @error('cover_image') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
         </div>
@@ -130,6 +129,26 @@
                 },
             });
         });
+
+        function previewCoverImage(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            try {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const preview = document.getElementById('cover-preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } catch (e) {
+                // Preview is a nice-to-have — if it fails for any reason
+                // (unsupported API, browser extension interference, etc.)
+                // the file is still attached and uploads normally on submit.
+                console.warn('Cover image preview failed', e);
+            }
+        }
 
         function uploadBlogContentImage(file) {
             const data = new FormData();
