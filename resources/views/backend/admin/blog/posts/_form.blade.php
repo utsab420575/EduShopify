@@ -64,6 +64,7 @@
 
     <x-backend.form-card title="Content">
         <textarea name="content" id="blog-content-editor">{{ old('content', $post->content) }}</textarea>
+        <input type="file" id="blog-image-file-input" accept="image/*" multiple class="hidden">
         @error('content') <p class="text-xs text-red-600 mt-2">{{ $message }}</p> @enderror
     </x-backend.form-card>
 
@@ -107,6 +108,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.js"></script>
     <script>
         $(function () {
+            // Summernote's own built-in "Insert Image" dialog/backdrop was
+            // freezing the whole page for some users, with no way to
+            // interact with anything underneath it. This custom toolbar
+            // button replaces it entirely — it never opens Summernote's
+            // dialog at all, just triggers the browser's native file
+            // picker directly via the hidden <input> below, uploading
+            // through the same already-verified endpoint.
+            $.extend($.summernote.plugins, {
+                blogImageButton: function (context) {
+                    var ui = $.summernote.ui;
+                    context.memo('button.blogImage', function () {
+                        var button = ui.button({
+                            contents: '<i class="note-icon-picture"></i>',
+                            tooltip: 'Insert Image',
+                            click: function () {
+                                document.getElementById('blog-image-file-input').click();
+                            },
+                        });
+                        return button.render();
+                    });
+                },
+            });
+
             $('#blog-content-editor').summernote({
                 height: 420,
                 placeholder: 'Write the blog post content here...',
@@ -117,9 +141,13 @@
                     ['color', ['color']],
                     ['para', ['ul', 'ol', 'paragraph']],
                     ['table', ['table']],
-                    ['insert', ['link', 'picture', 'video']],
+                    ['insert', ['link', 'blogImage', 'video']],
                     ['view', ['fullscreen', 'codeview', 'help']],
                 ],
+                // Kept so a pasted or drag-and-dropped image still uploads
+                // as a real file instead of Summernote's default fallback
+                // of embedding it as base64 directly in the content HTML.
+                // Neither path touches the dialog this replaces above.
                 callbacks: {
                     onImageUpload: function (files) {
                         for (let i = 0; i < files.length; i++) {
@@ -127,6 +155,11 @@
                         }
                     },
                 },
+            });
+
+            document.getElementById('blog-image-file-input').addEventListener('change', function () {
+                Array.from(this.files || []).forEach(uploadBlogContentImage);
+                this.value = ''; // allow choosing the same file again next time
             });
         });
 
