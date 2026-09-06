@@ -2,6 +2,9 @@
 
 namespace App\View\Composers;
 
+use App\Models\AccountAchievement;
+use App\Models\BlogPost;
+use App\Models\Certification;
 use App\Support\Approvals\ApprovalQueueRegistry;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -30,6 +33,23 @@ class AdminLayoutComposer
 
         $view->with('approvalQueues', $approvalQueues);
         $view->with('approvalQueueTotal', array_sum(array_column($approvalQueues, 'count')));
+
+        if ($user->can('platform.achievements.review') || $user->can('platform.certifications.review')) {
+            $achievementRequestsPending = $user->can('platform.achievements.review')
+                ? AccountAchievement::where('status', 'pending')->count()
+                : 0;
+            $certificationRequestsPending = $user->can('platform.certifications.review')
+                ? Certification::where('status', 'pending')->count()
+                : 0;
+
+            $view->with('achievementRequestsPending', $achievementRequestsPending);
+            $view->with('certificationRequestsPending', $certificationRequestsPending);
+            $view->with('achievementsPendingCount', $achievementRequestsPending + $certificationRequestsPending);
+        }
+
+        if ($user->can('platform.blog.review')) {
+            $view->with('blogPendingCount', BlogPost::where('status', 'pending')->count());
+        }
     }
 
     private function approvalQueues($user): array

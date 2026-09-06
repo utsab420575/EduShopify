@@ -6,6 +6,8 @@
     $groups = [
         'users-accounts' => ['admin.users.*', 'admin.accounts.*', 'admin.buyers.*', 'admin.suppliers.*', 'admin.account-members.*', 'admin.capabilities.*', 'admin.conversions.*', 'admin.closures.*'],
         'catalog' => ['admin.catalog.*'],
+        'achievements' => ['admin.achievements.*', 'admin.achievement-requests.*', 'admin.certification-requests.*'],
+        'blog' => ['admin.blog.*'],
         'procurement' => ['admin.procurement.*'],
         'billing' => ['admin.billing.*'],
         'communication' => ['admin.communication.*'],
@@ -20,7 +22,7 @@
        :class="mobileSidebar ? 'translate-x-0' : '-translate-x-full'">
 
     <div class="h-20 flex items-center px-4 border-b shrink-0" style="border-color:var(--sidebar-border)">
-        <a href="{{ route('admin.dashboard') }}" class="flex items-center min-w-0">
+        <a href="{{ route('home') }}" class="flex items-center min-w-0">
             <div class="w-9 h-9 rounded-lg btn-primary flex items-center justify-center font-bold text-sm shrink-0">ES</div>
             <div class="ml-3 leading-tight min-w-0">
                 <p class="text-sm font-bold text-gray-900 truncate">EduShopify</p>
@@ -114,12 +116,74 @@
                 <a href="{{ route('admin.catalog.sales-modes.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.sales-modes.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Sales Modes</a>
                 <a href="{{ route('admin.catalog.listing-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.listing-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Listing Types</a>
                 <a href="{{ route('admin.catalog.visibility-types.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.visibility-types.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Visibility Types</a>
+                <a href="{{ route('admin.catalog.icon-libraries.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.icon-libraries.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Icon Libraries</a>
+                <a href="{{ route('admin.catalog.icons.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.icons.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Icons</a>
                 @endcan
                 @can('platform.brands.manage')
                 <a href="{{ route('admin.catalog.brands.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.brands.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Brands</a>
                 @endcan
                 @can('platform.listings.moderate')
                 <a href="{{ route('admin.catalog.listings.index') }}" class="sidebar-submenu-item {{ $isActive('admin.catalog.listings.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Listings</a>
+                @endcan
+            </div>
+        </div>
+        @endcanany
+
+        @canany(['platform.achievements.manage', 'platform.achievements.review', 'platform.certifications.review'])
+        <div x-data="{ open: {{ $groupActive($groups['achievements']) ? 'true' : 'false' }} }">
+            <button @click="open = !open" class="sidebar-menu-item {{ $groupActive($groups['achievements']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive($groups['achievements']) ? '' : 'border-transparent' }}">
+                <i class="fa-solid fa-trophy sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">Achievements</span>
+                @if(($achievementsPendingCount ?? 0) > 0)
+                    <span class="text-[10px] font-semibold text-white rounded-full px-1.5 py-0.5 mr-1" style="background:#ef4444">{{ $achievementsPendingCount }}</span>
+                @endif
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                @can('platform.achievements.manage')
+                <a href="{{ route('admin.achievements.index') }}" class="sidebar-submenu-item {{ $isActive('admin.achievements.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Achievement List</a>
+                @endcan
+                @can('platform.achievements.review')
+                <a href="{{ route('admin.achievement-requests.index') }}" class="sidebar-submenu-item {{ $isActive('admin.achievement-requests.*') ? 'active' : '' }} flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-md">
+                    <span>Achievement Requests</span>
+                    @if(($achievementRequestsPending ?? 0) > 0)
+                        <span class="text-[10px] font-bold rounded-full px-1.5 py-0.5 shrink-0" style="background:#FEF3C7;color:#92400E;">{{ $achievementRequestsPending }}</span>
+                    @endif
+                </a>
+                @endcan
+                @can('platform.certifications.review')
+                <a href="{{ route('admin.certification-requests.index') }}" class="sidebar-submenu-item {{ $isActive('admin.certification-requests.*') ? 'active' : '' }} flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-md">
+                    <span>Certification Requests</span>
+                    @if(($certificationRequestsPending ?? 0) > 0)
+                        <span class="text-[10px] font-bold rounded-full px-1.5 py-0.5 shrink-0" style="background:#FEF3C7;color:#92400E;">{{ $certificationRequestsPending }}</span>
+                    @endif
+                </a>
+                @endcan
+            </div>
+        </div>
+        @endcanany
+
+        @canany(['platform.blog.manage', 'platform.blog.review'])
+        <div x-data="{ open: {{ $groupActive($groups['blog']) ? 'true' : 'false' }} }">
+            <button @click="open = !open" class="sidebar-menu-item {{ $groupActive($groups['blog']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive($groups['blog']) ? '' : 'border-transparent' }}">
+                <i class="fa-solid fa-blog sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">Blog</span>
+                @if(($blogPendingCount ?? 0) > 0)
+                    <span class="text-[10px] font-semibold text-white rounded-full px-1.5 py-0.5 mr-1" style="background:#ef4444">{{ $blogPendingCount }}</span>
+                @endif
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                @can('platform.blog.manage')
+                <a href="{{ route('admin.blog.posts.index') }}" class="sidebar-submenu-item {{ $isActive('admin.blog.posts.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Blog Create</a>
+                @endcan
+                @can('platform.blog.review')
+                <a href="{{ route('admin.blog.approval.index') }}" class="sidebar-submenu-item {{ $isActive('admin.blog.approval.*') ? 'active' : '' }} flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-md">
+                    <span>Blog Approval</span>
+                    @if(($blogPendingCount ?? 0) > 0)
+                        <span class="text-[10px] font-bold rounded-full px-1.5 py-0.5 shrink-0" style="background:#FEF3C7;color:#92400E;">{{ $blogPendingCount }}</span>
+                    @endif
+                </a>
                 @endcan
             </div>
         </div>

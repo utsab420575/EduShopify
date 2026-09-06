@@ -12,22 +12,31 @@ use App\Http\Controllers\Backend\Admin\Account\ConversionController;
 use App\Http\Controllers\Backend\Admin\Account\SupplierController;
 use App\Http\Controllers\Backend\Admin\Account\SupplierDocumentController;
 use App\Http\Controllers\Backend\Admin\Account\UserController;
+use App\Http\Controllers\Backend\Admin\Achievement\AchievementController;
+use App\Http\Controllers\Backend\Admin\Achievement\AchievementRequestController;
+use App\Http\Controllers\Backend\Admin\Achievement\CertificationRequestController;
 use App\Http\Controllers\Backend\Admin\Approval\ApprovalCenterController;
 use App\Http\Controllers\Backend\Admin\Billing\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Backend\Admin\Billing\SubscriptionPaymentController;
 use App\Http\Controllers\Backend\Admin\Billing\SubscriptionPlanController;
 use App\Http\Controllers\Backend\Admin\Catalog\AttributeController;
 use App\Http\Controllers\Backend\Admin\Catalog\AttributeGroupController;
+use App\Http\Controllers\Backend\Admin\Catalog\AttributeGroupImportController;
+use App\Http\Controllers\Backend\Admin\Catalog\AttributeImportController;
+use App\Http\Controllers\Backend\Admin\Catalog\AttributeValueImportController;
 use App\Http\Controllers\Backend\Admin\Catalog\BrandController;
 use App\Http\Controllers\Backend\Admin\Catalog\BuyerTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryAttributeController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryBuilderController;
 use App\Http\Controllers\Backend\Admin\Catalog\CategoryController;
+use App\Http\Controllers\Backend\Admin\Catalog\CategoryImportController;
 use App\Http\Controllers\Backend\Admin\Catalog\CurrencyController as CatalogCurrencyController;
 use App\Http\Controllers\Backend\Admin\Catalog\CustomAttributeValueController;
 use App\Http\Controllers\Backend\Admin\Catalog\DocumentTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\DocumentTypeEnableController;
 use App\Http\Controllers\Backend\Admin\Catalog\ExhibitionController;
+use App\Http\Controllers\Backend\Admin\Catalog\IconController;
+use App\Http\Controllers\Backend\Admin\Catalog\IconLibraryController;
 use App\Http\Controllers\Backend\Admin\Catalog\InputTypeController;
 use App\Http\Controllers\Backend\Admin\Catalog\ListingController;
 use App\Http\Controllers\Backend\Admin\Catalog\ListingTypeController;
@@ -132,6 +141,40 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         Route::post('/closures/{account}/finalize', [ClosureController::class, 'finalize'])->name('closures.finalize');
         Route::post('/closures/{account}/hold', [ClosureController::class, 'hold'])->name('closures.hold');
 
+        /* Achievements & Certifications */
+        Route::get('/achievements', [AchievementController::class, 'index'])->name('achievements.index');
+        Route::post('/achievements', [AchievementController::class, 'store'])->name('achievements.store');
+        Route::put('/achievements/{achievement}', [AchievementController::class, 'update'])->name('achievements.update');
+        Route::delete('/achievements/{achievement}', [AchievementController::class, 'destroy'])->name('achievements.destroy');
+
+        Route::get('/achievement-requests', [AchievementRequestController::class, 'index'])->name('achievement-requests.index');
+        Route::post('/achievement-requests/{accountAchievement}/approve', [AchievementRequestController::class, 'approve'])->name('achievement-requests.approve');
+        Route::post('/achievement-requests/{accountAchievement}/reject', [AchievementRequestController::class, 'reject'])->name('achievement-requests.reject');
+        Route::post('/achievement-requests/{accountAchievement}/undo', [AchievementRequestController::class, 'undo'])->name('achievement-requests.undo');
+
+        Route::get('/certification-requests', [CertificationRequestController::class, 'index'])->name('certification-requests.index');
+        Route::post('/certification-requests/{certification}/approve', [CertificationRequestController::class, 'approve'])->name('certification-requests.approve');
+        Route::post('/certification-requests/{certification}/reject', [CertificationRequestController::class, 'reject'])->name('certification-requests.reject');
+        Route::post('/certification-requests/{certification}/undo', [CertificationRequestController::class, 'undo'])->name('certification-requests.undo');
+
+        /* Blog */
+        Route::prefix('blog')->name('blog.')->group(function () {
+            Route::get('/posts', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'index'])->name('posts.index');
+            Route::get('/posts/create', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'create'])->name('posts.create');
+            Route::post('/posts', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'store'])->name('posts.store');
+            Route::get('/posts/{post}/edit', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'edit'])->name('posts.edit');
+            Route::put('/posts/{post}', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'update'])->name('posts.update');
+            Route::delete('/posts/{post}', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'destroy'])->name('posts.destroy');
+            Route::post('/posts/upload-image', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'uploadContentImage'])->name('posts.upload-image');
+
+            Route::post('/categories/quick-add', [\App\Http\Controllers\Backend\Admin\Blog\BlogCategoryController::class, 'store'])->name('categories.quick-add');
+
+            Route::get('/approval', [\App\Http\Controllers\Backend\Admin\Blog\BlogApprovalController::class, 'index'])->name('approval.index');
+            Route::post('/approval/{post}/approve', [\App\Http\Controllers\Backend\Admin\Blog\BlogApprovalController::class, 'approve'])->name('approval.approve');
+            Route::post('/approval/{post}/reject', [\App\Http\Controllers\Backend\Admin\Blog\BlogApprovalController::class, 'reject'])->name('approval.reject');
+            Route::post('/approval/{post}/undo', [\App\Http\Controllers\Backend\Admin\Blog\BlogApprovalController::class, 'undo'])->name('approval.undo');
+        });
+
         /* Approval Center */
         Route::get('/approvals', [ApprovalCenterController::class, 'index'])->name('approvals.index');
         Route::get('/approvals/{queue}', [ApprovalCenterController::class, 'show'])->name('approvals.show');
@@ -150,6 +193,11 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::put('/categories/{category}/attributes/{attribute}', [CategoryAttributeController::class, 'update'])->name('categories.attributes.update');
             Route::delete('/categories/{category}/attributes/{attribute}', [CategoryAttributeController::class, 'destroy'])->name('categories.attributes.destroy');
 
+            // Bulk category import from a path-based CSV ("Electronics > Computer > Laptop").
+            Route::get('/categories/import/template', [CategoryImportController::class, 'template'])->name('categories.import.template');
+            Route::post('/categories/import/preview', [CategoryImportController::class, 'preview'])->name('categories.import.preview');
+            Route::post('/categories/import/store', [CategoryImportController::class, 'store'])->name('categories.import.store');
+
             // Category Builder — unified workspace: Category / Attribute Group / Attribute / Assignment.
             // Display-only routes; all writes go through the resource controllers above.
             Route::prefix('builder')->name('builder.')->group(function () {
@@ -163,6 +211,11 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::resource('attribute-groups', AttributeGroupController::class)->except(['show']);
             Route::post('/attribute-groups/{attributeGroup}/toggle-active', [AttributeGroupController::class, 'toggleActive'])->name('attribute-groups.toggle-active');
 
+            // Bulk attribute group import from a flat CSV (one group per row).
+            Route::get('/attribute-groups/import/template', [AttributeGroupImportController::class, 'template'])->name('attribute-groups.import.template');
+            Route::post('/attribute-groups/import/preview', [AttributeGroupImportController::class, 'preview'])->name('attribute-groups.import.preview');
+            Route::post('/attribute-groups/import/store', [AttributeGroupImportController::class, 'store'])->name('attribute-groups.import.store');
+
             // Custom ("Other") attribute value review — supplier-submitted free
             // text on select/multi_select/color attributes, surfaced via the
             // Approval Center's "Custom Attribute Values" queue.
@@ -170,8 +223,20 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::post('/custom-attribute-values/ignore', [CustomAttributeValueController::class, 'ignore'])->name('custom-attribute-values.ignore');
 
             Route::resource('attributes', AttributeController::class)->except(['show']);
+            Route::post('/attributes/{attribute}/toggle-active', [AttributeController::class, 'toggleActive'])->name('attributes.toggle-active');
             Route::post('/attributes/suggestions/{suggestion}/approve', [AttributeController::class, 'approveSuggestion'])->name('attributes.suggestions.approve');
             Route::post('/attributes/suggestions/{suggestion}/reject', [AttributeController::class, 'rejectSuggestion'])->name('attributes.suggestions.reject');
+
+            // Bulk attribute import from a flat CSV (one attribute per row).
+            Route::get('/attributes/import/template', [AttributeImportController::class, 'template'])->name('attributes.import.template');
+            Route::post('/attributes/import/preview', [AttributeImportController::class, 'preview'])->name('attributes.import.preview');
+            Route::post('/attributes/import/store', [AttributeImportController::class, 'store'])->name('attributes.import.store');
+
+            // Bulk attribute VALUE import from a flat CSV (one value per row,
+            // referencing its attribute by name) — run after the import above.
+            Route::get('/attributes/values-import/template', [AttributeValueImportController::class, 'template'])->name('attributes.values-import.template');
+            Route::post('/attributes/values-import/preview', [AttributeValueImportController::class, 'preview'])->name('attributes.values-import.preview');
+            Route::post('/attributes/values-import/store', [AttributeValueImportController::class, 'store'])->name('attributes.values-import.store');
 
             Route::resource('brands', BrandController::class)->except(['show']);
             Route::post('/brands/{brand}/approve', [BrandController::class, 'approve'])->name('brands.approve');
@@ -214,6 +279,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::resource('document-type-enables', DocumentTypeEnableController::class)->except(['show']);
             Route::post('document-type-enables/{documentTypeEnable}/toggle', [DocumentTypeEnableController::class, 'toggleRequirement'])->name('document-type-enables.toggle');
             Route::resource('exhibitions', ExhibitionController::class)->except(['show']);
+
+            // Icon Libraries & Icons
+            Route::resource('icon-libraries', IconLibraryController::class)->except(['show']);
+            Route::post('/icon-libraries/{iconLibrary}/toggle-active', [IconLibraryController::class, 'toggleActive'])->name('icon-libraries.toggle-active');
+
+            Route::get('/icons/api/search', [IconController::class, 'apiSearch'])->name('icons.api.search');
+            Route::resource('icons', IconController::class)->except(['show']);
+            Route::post('/icons/{icon}/toggle-active', [IconController::class, 'toggleActive'])->name('icons.toggle-active');
         });
 
         /* Procurement Oversight (read + controlled override) */
