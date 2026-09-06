@@ -159,7 +159,7 @@ class BlogPostController extends Controller
     {
         $this->authorize('platform.blog.manage');
 
-        $request->validate(['file' => 'required|image|max:4096']);
+        $request->validate(['file' => 'required|image|max:10240']);
 
         return response()->json([
             'url' => Storage::disk('public')->url($this->storeImage($request->file('file'))),

@@ -18,7 +18,7 @@ class BlogPostRequest extends FormRequest
             'category_id' => 'nullable|integer|exists:blog_categories,id',
             'excerpt' => 'nullable|string|max:500',
             'content' => 'required|string',
-            'cover_image' => 'nullable|image|max:4096',
+            'cover_image' => 'nullable|image|max:10240',
             'featured' => 'nullable|boolean',
             'status' => 'required|in:draft,approved',
             'tags' => 'nullable|string|max:500',

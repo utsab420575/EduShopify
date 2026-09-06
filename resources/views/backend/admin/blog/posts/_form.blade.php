@@ -136,10 +136,31 @@
             data.append('file', file);
             data.append('_token', '{{ csrf_token() }}');
 
-            fetch('{{ route('admin.blog.posts.upload-image') }}', { method: 'POST', body: data })
-                .then((r) => { if (!r.ok) throw new Error('Upload failed'); return r.json(); })
+            fetch('{{ route('admin.blog.posts.upload-image') }}', {
+                method: 'POST',
+                body: data,
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+            })
+                .then(async (r) => {
+                    let body = null;
+                    try { body = await r.json(); } catch (e) { /* non-JSON response, e.g. an HTML error page */ }
+
+                    if (!r.ok) {
+                        console.error('Blog image upload failed', r.status, body);
+
+                        if (r.status === 419) {
+                            throw new Error('Your session has expired. Please refresh the page and try again.');
+                        }
+                        if (r.status === 422 && body?.errors?.file) {
+                            throw new Error(body.errors.file[0]);
+                        }
+                        throw new Error(body?.message || ('Upload failed (HTTP ' + r.status + ').'));
+                    }
+
+                    return body;
+                })
                 .then((res) => $('#blog-content-editor').summernote('insertImage', res.url))
-                .catch(() => Swal.fire('Upload failed', 'Could not upload this image. Please try again.', 'error'));
+                .catch((e) => Swal.fire('Image upload failed', e.message, 'error'));
         }
 
         function quickAddBlogCategory() {
