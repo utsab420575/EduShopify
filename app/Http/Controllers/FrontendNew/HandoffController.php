@@ -65,6 +65,22 @@ class HandoffController extends Controller
     }
 
     /**
+     * "Request Quotation" from a supplier profile — guests are sent to
+     * login with the supplier slug remembered; PublicHandoffResolver
+     * re-resolves it fresh once authenticated.
+     */
+    public function requestQuoteSupplier(string $supplier)
+    {
+        if (! Auth::check()) {
+            FrontendIntent::remember('request_quote_supplier', ['slug' => $supplier]);
+
+            return redirect()->route('login');
+        }
+
+        return redirect(app(PublicHandoffResolver::class)->resolve(Auth::user(), 'request_quote_supplier', ['slug' => $supplier]));
+    }
+
+    /**
      * "Contact Supplier" from a PDP or supplier profile — guests are sent to
      * login with the supplier slug remembered; PublicHandoffResolver starts
      * (or resumes) the conversation once authenticated, branching to the

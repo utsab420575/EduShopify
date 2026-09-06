@@ -31,6 +31,8 @@ class SaveRfqRequest extends FormRequest
         }
 
         return [
+            'rfq_id' => ['nullable', 'integer', 'exists:rfqs,id'],
+            'current_step' => ['nullable', 'integer', 'between:1,4'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
 
@@ -73,6 +75,13 @@ class SaveRfqRequest extends FormRequest
             'items.*.attribute_values.*.value_boolean' => ['nullable', 'boolean'],
             'items.*.attribute_values.*.value_date' => ['nullable', 'date'],
             'items.*.attribute_values.*.value_json' => ['nullable'],
+
+            'items.*.custom_attributes' => ['nullable', 'array'],
+            'items.*.custom_attributes.*.name' => ['nullable', 'string', 'max:255'],
+            'items.*.custom_attributes.*.value' => ['nullable', 'string', 'max:1000'],
+            'items.*.specs' => ['nullable', 'array'],
+            'items.*.specs.*.name' => ['nullable', 'string', 'max:255'],
+            'items.*.specs.*.value' => ['nullable', 'string', 'max:1000'],
 
             'target_filter' => ['nullable', 'array'],
             'target_filter.category_id' => ['nullable', 'integer', 'exists:categories,id'],
@@ -131,6 +140,7 @@ class SaveRfqRequest extends FormRequest
             'allow_partial_quotation' => $this->boolean('allow_partial_quotation', true),
             'allow_alternative_products' => $this->boolean('allow_alternative_products', true),
             'items' => array_values($this->input('items', [])),
+            'selected_supplier_ids' => $this->input('selected_supplier_ids', []),
         ]);
 
         // The delivery/target-filter location selects use 0 as their

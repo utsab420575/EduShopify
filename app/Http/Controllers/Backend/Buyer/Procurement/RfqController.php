@@ -87,18 +87,28 @@ class RfqController extends Controller
                 $itemAttributeValues[$idx] = $this->listingAttributeValuesForPrefill($listing);
             });
 
-            $items = $items->map(fn (Listing $listing) => (object) [
-                'id' => null,
-                'item_type' => $listing->listing_type,
-                'listing_id' => $listing->id,
-                'category_id' => $listing->main_category_id,
-                'item_name' => $listing->name,
-                'description' => $listing->short_description,
-                'quantity' => (string) ($listing->min_order_quantity ?: 1),
-                'unit_id' => $listing->unit_id,
-                'custom_unit' => null,
-                'estimated_unit_price' => $listing->base_price,
-            ]);
+            $items = $items->map(function (Listing $listing) {
+                $imageUrl = $listing->primaryImage?->getUrl()
+                    ?? ($listing->relationLoaded('media') && $listing->media->isNotEmpty() ? $listing->media->first()?->getUrl() : null)
+                    ?? $listing->getFirstMediaUrl('gallery')
+                    ?: null;
+
+                return (object) [
+                    'id' => null,
+                    'item_type' => $listing->listing_type,
+                    'listing_id' => $listing->id,
+                    'category_id' => $listing->main_category_id,
+                    'category_name' => $listing->mainCategory?->name,
+                    'item_name' => $listing->name,
+                    'description' => $listing->short_description,
+                    'quantity' => (string) ($listing->min_order_quantity ?: 1),
+                    'unit_id' => $listing->unit_id,
+                    'custom_unit' => null,
+                    'estimated_unit_price' => $listing->base_price,
+                    'listing_image_url' => $imageUrl,
+                    'specs' => [],
+                ];
+            });
 
             $involvedSuppliers = $listings->values()
                 ->map(fn ($listing) => $listing->supplierAccount()->with('supplierProfile')->first())
@@ -120,17 +130,25 @@ class RfqController extends Controller
             $listing = Listing::published()->find($request->integer('listing'));
 
             if ($listing) {
+                $imageUrl = $listing->primaryImage?->getUrl()
+                    ?? ($listing->relationLoaded('media') && $listing->media->isNotEmpty() ? $listing->media->first()?->getUrl() : null)
+                    ?? $listing->getFirstMediaUrl('gallery')
+                    ?: null;
+
                 $items = collect([(object) [
                     'id' => null,
                     'item_type' => $listing->listing_type,
                     'listing_id' => $listing->id,
                     'category_id' => $listing->main_category_id,
+                    'category_name' => $listing->mainCategory?->name,
                     'item_name' => $listing->name,
                     'description' => $listing->short_description,
                     'quantity' => (string) ($listing->min_order_quantity ?: 1),
                     'unit_id' => $listing->unit_id,
                     'custom_unit' => null,
                     'estimated_unit_price' => $listing->base_price,
+                    'listing_image_url' => $imageUrl,
+                    'specs' => [],
                 ]]);
 
                 $itemAttributeValues[0] = $this->listingAttributeValuesForPrefill($listing);
@@ -232,16 +250,24 @@ class RfqController extends Controller
             ? $listing->mainCategory?->attributesGroupedForForm(array_keys($existingValues))
             : null;
 
+        $imageUrl = $listing->primaryImage?->getUrl()
+            ?? ($listing->relationLoaded('media') && $listing->media->isNotEmpty() ? $listing->media->first()?->getUrl() : null)
+            ?? $listing->getFirstMediaUrl('gallery')
+            ?: null;
+
         return response()->json([
             'item' => [
                 'item_type' => $listing->listing_type,
                 'listing_id' => $listing->id,
                 'category_id' => $listing->main_category_id,
+                'category_name' => $listing->mainCategory?->name,
                 'item_name' => $listing->name,
                 'description' => $listing->short_description,
                 'quantity' => (string) ($listing->min_order_quantity ?: 1),
                 'unit_id' => $listing->unit_id,
                 'estimated_unit_price' => $listing->base_price,
+                'listing_image_url' => $imageUrl,
+                'custom_attributes' => [],
             ],
             'category_attributes' => $categoryAttributes,
             'attribute_values' => $existingValues,
@@ -293,8 +319,13 @@ class RfqController extends Controller
         $account = $this->currentAccount();
         $this->authorize('create', Rfq::class);
 
+        $existingRfq = null;
+        if ($request->filled('rfq_id')) {
+            $existingRfq = $account->rfqs()->where('status', 'draft')->find($request->input('rfq_id'));
+        }
+
         try {
-            $rfq = $service->saveDraft($account, $this->currentUser(), $request->validated());
+            $rfq = $service->saveDraft($account, $this->currentUser(), $request->validated(), $existingRfq);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }

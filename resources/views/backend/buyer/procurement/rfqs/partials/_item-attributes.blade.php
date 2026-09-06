@@ -125,9 +125,11 @@
 
                             {{-- DATE --}}
                             <template x-if="attr.input_type === 'date'">
-                                <input type="date"
+                                <input type="text"
                                        :name="'items[' + index + '][attribute_values][' + attr.id + '][value_date]'"
                                        x-model="getAttrVal(item, attr.id).value_date"
+                                       x-init="typeof flatpickr !== 'undefined' && flatpickr($el, getAttrVal(item, attr.id).value_date ? { dateFormat: 'Y-m-d', defaultDate: getAttrVal(item, attr.id).value_date } : { dateFormat: 'Y-m-d' })"
+                                       autocomplete="off" placeholder="Select date"
                                        class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
                             </template>
 
@@ -169,5 +171,5 @@
 </template>
 
 <p x-show="!item._attrLoading && item.category_id && item._attrGroups.length === 0" class="text-xs text-gray-400 mt-2">
-    No standard specifications configured for this category — use the field above for any additional requirements.
+    No standard specifications configured for this category — you can add custom specifications below.
 </p>

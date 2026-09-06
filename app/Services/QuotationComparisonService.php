@@ -202,8 +202,13 @@ class QuotationComparisonService
             ];
         })->values();
 
+        // Not ->only($extraAttributeIds): $supplierAttrs is an Eloquent
+        // Collection, whose only() filters by each model's DB primary key
+        // (quotation_item_attribute_values.id) rather than by the
+        // keyBy('attribute_id') index — silently dropping every "additional"
+        // spec. filter() keys on the collection's actual keys instead.
         $extraAttributeIds = $supplierAttrs->keys()->diff($buyerAttrsByAttributeId->keys())->all();
-        $additional = $supplierAttrs->only($extraAttributeIds)->map(fn ($v) => [
+        $additional = $supplierAttrs->filter(fn ($v, $attributeId) => in_array($attributeId, $extraAttributeIds))->map(fn ($v) => [
             'attribute_id' => $v->attribute_id,
             'name'         => $v->attribute?->name,
             'unit'         => $v->attribute?->unit?->symbol ?? $v->attribute?->unit?->name,

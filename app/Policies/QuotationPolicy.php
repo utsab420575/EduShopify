@@ -126,9 +126,13 @@ class QuotationPolicy
 
     public function update(User $user, Quotation $quotation): bool
     {
+        $versionChanged = $quotation->rfq && $quotation->rfq_version_no !== $quotation->rfq->current_version_no;
+        $canReviseStatus = in_array($quotation->status, ['draft', 'revision_requested'], true)
+            || ($versionChanged && in_array($quotation->status, ['submitted', 'under_review', 'revised', 'shortlisted'], true));
+
         return $this->checkAccess($user, 'supplier', 'quotation.revise') !== null
             && $this->ownsAsSupplier($user, $quotation)
-            && in_array($quotation->status, ['draft', 'revision_requested'], true)
+            && $canReviseStatus
             && $quotation->rfq->acceptsQuotations();
     }
 

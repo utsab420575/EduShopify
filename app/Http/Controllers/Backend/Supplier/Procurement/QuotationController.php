@@ -72,7 +72,11 @@ class QuotationController extends Controller
             return redirect()->route('supplier.quotations.show', $existing);
         }
 
-        $rfq->load(['items.unit', 'items.category', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue', 'buyerAccount.buyerProfile']);
+        $rfq->load([
+            'items.unit', 'items.category', 'items.listing.attributeValues.attribute', 'items.listing.media',
+            'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
+            'buyerAccount.buyerProfile'
+        ]);
 
         return view('backend.supplier.procurement.quotations.create', [
             'account' => $account,
@@ -102,6 +106,10 @@ class QuotationController extends Controller
 
         $quotation->load([
             'rfq.buyerAccount.buyerProfile',
+            'rfq.items.unit',
+            'rfq.items.category',
+            'rfq.items.listing.attributeValues.attribute',
+            'rfq.items.listing.media',
             'rfq.items.attributeValues.attribute.unit',
             'rfq.items.attributeValues.attributeValue',
             'items.attributeValues.attribute.unit',
@@ -133,7 +141,8 @@ class QuotationController extends Controller
         $this->authorize('editDraft', $quotation);
 
         $quotation->load([
-            'rfq.items.unit', 'rfq.items.category', 'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
+            'rfq.items.unit', 'rfq.items.category', 'rfq.items.listing.attributeValues.attribute', 'rfq.items.listing.media',
+            'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
             'items.attributeValues',
         ]);
 

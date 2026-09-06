@@ -19,7 +19,8 @@ class QuotationRevisionController extends Controller
         $this->authorize('update', $quotation);
 
         $quotation->load([
-            'rfq.items.unit', 'rfq.items.category', 'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
+            'rfq.items.unit', 'rfq.items.category', 'rfq.items.listing.attributeValues.attribute', 'rfq.items.listing.media',
+            'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
             'items.attributeValues',
             'revisionRequests' => fn ($q) => $q->where('status', 'pending'),
         ]);

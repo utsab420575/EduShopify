@@ -80,6 +80,7 @@ class RfqService
                 'quotation_deadline'         => $data['quotation_deadline'] ?? $rfq?->quotation_deadline,
                 'qna_deadline'               => $data['qna_deadline'] ?? null,
                 'expected_delivery_date'     => $data['expected_delivery_date'] ?? null,
+                'current_step'               => isset($data['current_step']) ? (int) $data['current_step'] : ($rfq?->current_step ?? 1),
             ];
 
             if ($rfq) {
@@ -181,20 +182,20 @@ class RfqService
             $oldSnapshot = $this->snapshot($rfq);
 
             $fields = [
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-                'currency_code' => $data['currency_code'] ?? null,
-                'budget_min' => $data['budget_min'] ?? null,
-                'budget_max' => $data['budget_max'] ?? null,
-                'delivery_country_id' => $data['delivery_country_id'] ?? null,
-                'delivery_state_id' => $data['delivery_state_id'] ?? null,
-                'delivery_city_id' => $data['delivery_city_id'] ?? null,
-                'delivery_address' => $data['delivery_address'] ?? null,
+                'title' => $data['title'] ?? $rfq->title,
+                'description' => array_key_exists('description', $data) ? $data['description'] : $rfq->description,
+                'currency_code' => $data['currency_code'] ?? $rfq->currency_code,
+                'budget_min' => array_key_exists('budget_min', $data) ? $data['budget_min'] : $rfq->budget_min,
+                'budget_max' => array_key_exists('budget_max', $data) ? $data['budget_max'] : $rfq->budget_max,
+                'delivery_country_id' => array_key_exists('delivery_country_id', $data) ? $data['delivery_country_id'] : $rfq->delivery_country_id,
+                'delivery_state_id' => array_key_exists('delivery_state_id', $data) ? $data['delivery_state_id'] : $rfq->delivery_state_id,
+                'delivery_city_id' => array_key_exists('delivery_city_id', $data) ? $data['delivery_city_id'] : $rfq->delivery_city_id,
+                'delivery_address' => array_key_exists('delivery_address', $data) ? $data['delivery_address'] : $rfq->delivery_address,
                 'allow_partial_quotation' => $data['allow_partial_quotation'] ?? $rfq->allow_partial_quotation,
                 'allow_alternative_products' => $data['allow_alternative_products'] ?? $rfq->allow_alternative_products,
-                'quotation_deadline' => $data['quotation_deadline'],
-                'qna_deadline' => $data['qna_deadline'] ?? null,
-                'expected_delivery_date' => $data['expected_delivery_date'] ?? null,
+                'quotation_deadline' => $data['quotation_deadline'] ?? $rfq->quotation_deadline,
+                'qna_deadline' => array_key_exists('qna_deadline', $data) ? $data['qna_deadline'] : $rfq->qna_deadline,
+                'expected_delivery_date' => array_key_exists('expected_delivery_date', $data) ? $data['expected_delivery_date'] : $rfq->expected_delivery_date,
             ];
 
             $visibilityTypeId = $data['visibility_type_id'] ?? null;
@@ -253,6 +254,10 @@ class RfqService
             ]);
 
             $rfq = $rfq->fresh(['items', 'invitedSupplierAccounts']);
+
+            if ($rfq->status === 'open') {
+                app(RfqQueueService::class)->generateForRfq($rfq);
+            }
 
             RfqChangeLog::create([
                 'rfq_id' => $rfq->id,
@@ -370,12 +375,22 @@ class RfqService
         }
 
         $current = $currentItems->map(fn (RfqItem $i) => [
-            (string) $i->id, $i->item_name, (string) $i->quantity, $i->unit_id, $i->category_id, $i->estimated_unit_price,
+            (string) $i->id, $i->item_name, (string) $i->quantity, $i->unit_id, $i->category_id, $i->estimated_unit_price, json_encode($i->specs),
         ])->all();
 
-        $incoming = array_map(fn ($i) => [
-            (string) ($i['id'] ?? ''), $i['item_name'], (string) $i['quantity'], $i['unit_id'] ?? null, $i['category_id'] ?? null, $i['estimated_unit_price'] ?? null,
-        ], array_values($incomingItems));
+        $incoming = array_map(function ($i) {
+            $rawSpecs = $i['specs'] ?? $i['custom_attributes'] ?? null;
+            $cleanSpecs = null;
+            if (is_array($rawSpecs)) {
+                $cleanSpecs = array_values(array_filter(
+                    $rawSpecs,
+                    fn ($s) => is_array($s) && (!empty(trim((string) ($s['name'] ?? ''))) || !empty(trim((string) ($s['value'] ?? ''))))
+                ));
+            }
+            return [
+                (string) ($i['id'] ?? ''), $i['item_name'], (string) $i['quantity'], $i['unit_id'] ?? null, $i['category_id'] ?? null, $i['estimated_unit_price'] ?? null, !empty($cleanSpecs) ? json_encode($cleanSpecs) : null,
+            ];
+        }, array_values($incomingItems));
 
         sort($current);
         sort($incoming);
@@ -437,6 +452,15 @@ class RfqService
         $keepIds = [];
 
         foreach (array_values($items) as $i => $item) {
+            $rawSpecs = $item['specs'] ?? $item['custom_attributes'] ?? null;
+            $cleanSpecs = null;
+            if (is_array($rawSpecs)) {
+                $cleanSpecs = array_values(array_filter(
+                    $rawSpecs,
+                    fn ($s) => is_array($s) && (!empty(trim((string) ($s['name'] ?? ''))) || !empty(trim((string) ($s['value'] ?? ''))))
+                ));
+            }
+
             $attributes = [
                 'rfq_id'                => $rfq->id,
                 'item_type'             => $item['item_type'],
@@ -448,6 +472,7 @@ class RfqService
                 'unit_id'               => $item['unit_id'] ?? null,
                 'custom_unit'           => $item['custom_unit'] ?? null,
                 'estimated_unit_price'  => $item['estimated_unit_price'] ?? null,
+                'specs'                 => !empty($cleanSpecs) ? $cleanSpecs : null,
                 'sort_order'            => $i,
             ];
 

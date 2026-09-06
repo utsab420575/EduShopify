@@ -86,6 +86,7 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
 
         Route::prefix('quotations')->name('quotations.')->group(function () {
             Route::get('/', [QuotationController::class, 'index'])->name('index');
+            Route::get('/compare', [QuotationController::class, 'compareIndex'])->name('compare-index');
             Route::get('/compare/{rfq}', [QuotationController::class, 'compare'])->name('compare');
             Route::post('/compare/{rfq}/data', [QuotationController::class, 'compareData'])->name('compare.data');
             Route::get('/{quotation}', [QuotationController::class, 'show'])->name('show');

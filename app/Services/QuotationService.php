@@ -159,6 +159,7 @@ class QuotationService
                 'support_terms'       => $data['support_terms'] ?? $quotation->support_terms,
                 'payment_terms'       => $data['payment_terms'] ?? $quotation->payment_terms,
                 'proposal'            => $data['proposal'] ?? $quotation->proposal,
+                'rfq_version_no'      => $quotation->rfq->current_version_no,
                 'status'              => 'revised',
                 'revised_at'          => now(),
             ]);

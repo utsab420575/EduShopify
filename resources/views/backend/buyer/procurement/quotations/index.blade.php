@@ -19,9 +19,10 @@
         @endif
     </x-backend.page-header>
 
-    @if($compareRfqId)
-        <p class="text-xs text-gray-500 -mt-4 mb-6">Check "Add to Compare" on 2–5 quotations below, then use "Compare Quotations" to view them side by side. Selections only apply to this RFQ.</p>
-    @endif
+    <p class="text-xs text-gray-500 -mt-4 mb-6">
+        Use the <i class="fa-solid fa-scale-balanced"></i> icon to add 2–5 quotations from the same RFQ to a comparison, then open it from
+        <a href="{{ route('buyer.quotations.compare-index') }}" class="font-medium text-gray-700 hover:underline">Procurement &rsaquo; Compare</a>.
+    </p>
 
     <x-backend.table>
         <x-slot:toolbar>
@@ -65,9 +66,6 @@
             <x-slot:head>
                 <tr>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
-                    @if($compareRfqId)
-                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Compare</th>
-                    @endif
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">RFQ</th>
                     <x-backend.sortable-th column="quotation_number" label="Quote #" />
@@ -79,18 +77,6 @@
             @foreach($quotations as $quotation)
                 <tr class="hover:bg-gray-50">
                     <td class="px-5 py-3.5 text-sm text-gray-500">{{ $quotations->firstItem() + $loop->index }}</td>
-                    @if($compareRfqId)
-                        <td class="px-5 py-3.5">
-                            @if((int) $quotation->rfq_id === $compareRfqId && in_array($quotation->status, $compareEligibleStatuses, true))
-                                <label class="inline-flex items-center gap-2 cursor-pointer" x-data="compareCheckbox({{ $compareRfqId }}, {{ $quotation->id }})" data-max-items="{{ $maxCompareItems }}">
-                                    <input type="checkbox" x-model="checked" @change="toggle" class="w-4 h-4 rounded border-gray-300" style="accent-color:var(--theme-primary)">
-                                    <span class="text-xs text-gray-500">Add to Compare</span>
-                                </label>
-                            @else
-                                <span class="text-xs text-gray-300">&mdash;</span>
-                            @endif
-                        </td>
-                    @endif
                     <td class="px-5 py-3.5">
                         <p class="text-sm font-medium text-gray-900">{{ $quotation->supplierAccount?->supplierProfile?->display_name }}</p>
                         <p class="text-xs text-gray-400">{{ $quotation->submitted_at?->format('d M Y') }}</p>
@@ -100,7 +86,19 @@
                     <td class="px-5 py-3.5 text-sm text-gray-900 text-right font-medium">{{ number_format($quotation->grand_total, 2) }} {{ $quotation->currency_code }}</td>
                     <td class="px-5 py-3.5"><x-backend.status-badge :status="$quotation->status" /></td>
                     <td class="px-5 py-3.5 text-right">
-                        <a href="{{ route('buyer.quotations.show', $quotation) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100"><i class="fa-regular fa-eye"></i></a>
+                        <div class="flex items-center justify-end gap-1.5">
+                            <a href="{{ route('buyer.quotations.show', $quotation) }}" title="View" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100"><i class="fa-regular fa-eye"></i></a>
+                            @if(in_array($quotation->status, $compareEligibleStatuses, true))
+                                <button type="button" title="Add to Compare"
+                                        x-data="compareCheckbox({{ $quotation->rfq_id }}, {{ $quotation->id }})"
+                                        data-max-items="{{ $maxCompareItems }}"
+                                        @click="toggle"
+                                        :class="checked ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-500 hover:bg-gray-100'"
+                                        class="w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors">
+                                    <i class="fa-solid fa-scale-balanced"></i>
+                                </button>
+                            @endif
+                        </div>
                     </td>
                 </tr>
             @endforeach
@@ -125,6 +123,22 @@
             </div>
         </div>
         <div class="h-16"></div>
+    @else
+        <div x-data="compareTrayGlobal()">
+            <div
+                x-show="totalCount > 0"
+                x-cloak
+                class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
+            >
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+                    <p class="text-sm text-gray-600"><span class="font-semibold text-gray-900" x-text="totalCount"></span> quotation<span x-show="totalCount !== 1">s</span> selected across <span class="font-semibold text-gray-900" x-text="rfqCount"></span> RFQ<span x-show="rfqCount !== 1">s</span>.</p>
+                    <a href="{{ route('buyer.quotations.compare-index') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">
+                        <i class="fa-solid fa-scale-balanced mr-1"></i> View Comparisons
+                    </a>
+                </div>
+            </div>
+            <div x-show="totalCount > 0" x-cloak class="h-16"></div>
+        </div>
     @endif
 
     @include('backend.buyer.procurement.quotations.partials._compare-store')

@@ -64,7 +64,7 @@ class OpportunityController extends Controller
 
         $rfq->load([
             'buyerAccount.buyerProfile',
-            'items.unit', 'items.category', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
+            'items.unit', 'items.category', 'items.listing.attributeValues.attribute', 'items.listing.media', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
             'questions' => fn ($q) => $q->where('status', 'answered')->orWhere('supplier_account_id', $account->id),
         ]);
 

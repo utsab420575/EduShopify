@@ -54,7 +54,8 @@
                     <a href="{{ route('buyer.rfqs.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.rfqs.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">RFQs</a>
                 @endcanany
                 @canany(['quotation.view_received', 'buyer.quotations.index'])
-                    <a href="{{ route('buyer.quotations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.quotations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Quotations</a>
+                    <a href="{{ route('buyer.quotations.index') }}" class="sidebar-submenu-item {{ request()->routeIs('buyer.quotations.index') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Quotations</a>
+                    <a href="{{ route('buyer.quotations.compare-index') }}" class="sidebar-submenu-item {{ $isActive('buyer.quotations.compare*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Compare</a>
                 @endcanany
                 @canany(['quotation.award', 'buyer.awards.index'])
                     <a href="{{ route('buyer.awards.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.awards.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Awards</a>

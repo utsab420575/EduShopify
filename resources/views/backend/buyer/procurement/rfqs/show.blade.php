@@ -3,6 +3,14 @@
 @section('title', $rfq->title)
 @section('breadcrumb', 'Procurement / RFQs / ' . $rfq->rfq_number)
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+@endpush
+
 @section('body')
 
     <x-backend.page-header :title="$rfq->title" :subtitle="$rfq->rfq_number">
@@ -123,37 +131,58 @@
             </div>
         </div>
 
-        <div x-show="tab === 'items'" x-cloak class="space-y-4">
-            @foreach($rfq->items as $item)
-                <x-backend.form-card>
-                    <div class="flex items-start justify-between gap-3 mb-1">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
-                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
-                                    {{ $item->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
-                                </span>
+        <div x-show="tab === 'items'" x-cloak>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                @forelse($rfq->items as $item)
+                    <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 transition-colors">
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500' }}">
+                                {{ $loop->iteration }}
                             </div>
-                            @if($item->description)<p class="text-xs text-gray-500 mt-1">{{ $item->description }}</p>@endif
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
+                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
+                                        {{ $item->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $item->category?->name ?? 'No category selected' }}</p>
+                                @if($item->description)<p class="text-xs text-gray-500 mt-1.5">{{ $item->description }}</p>@endif
+                            </div>
                         </div>
-                        <div class="text-right shrink-0">
-                            <p class="text-sm text-gray-900 font-medium">{{ rtrim(rtrim((string) $item->quantity, '0'), '.') }} {{ $item->unit?->symbol ?? $item->custom_unit }}</p>
-                            <p class="text-xs text-gray-400">{{ $item->estimated_unit_price ? 'Est. '.number_format($item->estimated_unit_price, 2).' / unit' : 'No estimate' }}</p>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-400 mb-3">{{ $item->category?->name ?? 'No category selected' }}</p>
 
-                    @if($item->attributeValues->isNotEmpty())
-                        <div class="flex flex-wrap gap-1.5 pt-3 border-t border-gray-100">
-                            @foreach($item->attributeValues as $value)
-                                <span class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
-                                    <span class="font-medium text-gray-500">{{ $value->attribute?->name }}:</span> {{ $value->formattedValue() }}
-                                </span>
-                            @endforeach
+                        <div class="grid grid-cols-3 gap-2 mb-4 py-3 border-y border-gray-100">
+                            <div class="text-center">
+                                <p class="text-sm font-bold text-gray-900">{{ rtrim(rtrim((string) $item->quantity, '0'), '.') }}</p>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">{{ $item->unit?->symbol ?? $item->custom_unit ?? 'Qty' }}</p>
+                            </div>
+                            <div class="text-center border-x border-gray-100">
+                                <p class="text-sm font-bold text-gray-900">{{ $item->estimated_unit_price ? number_format($item->estimated_unit_price, 2) : '—' }}</p>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Est. / Unit</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm font-bold text-gray-900">{{ $item->attributeValues->count() }}</p>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Specs</p>
+                            </div>
                         </div>
-                    @endif
-                </x-backend.form-card>
-            @endforeach
+
+                        @if($item->attributeValues->isNotEmpty())
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                                @foreach($item->attributeValues as $value)
+                                    <div class="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-gray-50">
+                                        <span class="text-gray-500 truncate">{{ $value->attribute?->name }}</span>
+                                        <span class="text-gray-900 font-medium text-right truncate">{{ $value->formattedValue() }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @empty
+                    <div class="col-span-full">
+                        <x-backend.empty-state icon="fa-box-open" title="No items yet" description="Items added to this RFQ will appear here." />
+                    </div>
+                @endforelse
+            </div>
         </div>
 
         <div x-show="tab === 'suppliers'" x-cloak>
@@ -262,7 +291,8 @@
             <form method="POST" action="{{ route('buyer.rfqs.extend-deadline', $rfq) }}" class="space-y-4">
                 @csrf
                 <x-backend.select name="deadline_type" label="Deadline" required :options="['quotation' => 'Quotation Deadline', 'qna' => 'Q&A Deadline']" />
-                <x-backend.input type="datetime-local" name="new_deadline" label="New Deadline" required />
+                <x-backend.input type="text" name="new_deadline" label="New Deadline" required autocomplete="off" placeholder="Select date &amp; time"
+                                  x-init="typeof flatpickr !== 'undefined' && flatpickr($el, { enableTime: true, time_24hr: true, dateFormat: 'Y-m-d H:i' })" />
                 <x-backend.textarea name="reason" label="Reason (optional)" />
                 <div class="flex justify-end gap-2">
                     <button type="button" @click="open = false" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>

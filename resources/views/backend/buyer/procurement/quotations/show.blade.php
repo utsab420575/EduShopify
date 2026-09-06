@@ -57,7 +57,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            @foreach($quotation->items as $item)
+                            @forelse($quotation->items as $item)
                                 <tr>
                                     <td class="px-5 py-3">
                                         <p class="text-sm font-medium text-gray-900">{{ $item->item_name }}</p>
@@ -69,7 +69,11 @@
                                     <td class="px-5 py-3 text-sm text-gray-600 text-right">{{ number_format($item->unit_price, 2) }}</td>
                                     <td class="px-5 py-3 text-sm font-medium text-gray-900 text-right">{{ number_format($item->line_total, 2) }}</td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="px-5 py-6 text-sm text-gray-400 text-center">No items quoted yet.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>

@@ -69,8 +69,16 @@
                         <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-indigo-50/60">Buyer Requirement</th>
                         <template x-for="q in data.summary" :key="q.quotation_id">
                             <th class="px-5 py-3 min-w-[220px] align-top">
-                                <p class="text-sm font-semibold text-gray-900" x-text="q.supplier_name"></p>
-                                <p class="text-xs text-gray-400" x-text="q.quotation_number"></p>
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900" x-text="q.supplier_name"></p>
+                                        <p class="text-xs text-gray-400" x-text="q.quotation_number"></p>
+                                    </div>
+                                    <button type="button" title="Remove from comparison" @click="remove(q.quotation_id)"
+                                            class="shrink-0 w-6 h-6 rounded-md inline-flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
                                 <div class="flex flex-wrap gap-1 mt-1.5">
                                     <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border"
                                           :class="{

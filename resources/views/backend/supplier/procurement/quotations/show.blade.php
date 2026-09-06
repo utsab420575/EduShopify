@@ -14,6 +14,10 @@
         $sourceClass = fn ($item) => $item->is_alternative
             ? 'bg-amber-50 text-amber-700 border-amber-200'
             : ($item->offered_listing_id ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-600 border-gray-200');
+
+        $quotedRfqItemIds = $quotation->items->pluck('rfq_item_id')->filter()->all();
+        $unquotedRfqItems = $quotation->rfq ? $quotation->rfq->items->whereNotIn('id', $quotedRfqItemIds)->values() : collect();
+        $canReviseForUpdate = ($versionChanged || $unquotedRfqItems->isNotEmpty()) && in_array($quotation->status, ['submitted', 'under_review', 'revised', 'shortlisted']);
     @endphp
 
     <x-backend.page-header title="Quotation {{ $quotation->quotation_number }}" subtitle="For RFQ: {{ $quotation->rfq?->title ?? 'RFQ #' . $quotation->rfq_id }}">
@@ -29,9 +33,9 @@
                             <i class="fa-solid fa-paper-plane"></i> Submit Quotation
                         </button>
                     </form>
-                @elseif($quotation->status === 'revision_requested')
-                    <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 animate-pulse">
-                        <i class="fa-solid fa-rotate"></i> Submit Revision
+                @elseif($quotation->status === 'revision_requested' || $canReviseForUpdate)
+                    <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 {{ $quotation->status === 'revision_requested' ? 'animate-pulse' : '' }}">
+                        <i class="fa-solid fa-rotate"></i> Revise Quote
                     </a>
                 @endif
                 @if(in_array($quotation->status, ['submitted', 'under_review', 'revision_requested', 'revised', 'shortlisted']))
@@ -45,6 +49,43 @@
             </div>
         </x-slot:actions>
     </x-backend.page-header>
+
+    {{-- Unquoted Items Notice Banner --}}
+    @if($unquotedRfqItems->isNotEmpty())
+        <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 sm:p-5 mb-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row items-start justify-between gap-4">
+                <div class="flex items-start gap-3.5 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-bell text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-amber-950">Additional Items Added to this RFQ</h4>
+                        <p class="text-xs text-amber-800 mt-1 leading-relaxed">
+                            The buyer has updated this RFQ (v{{ $quotation->rfq->current_version_no }}) with <strong>{{ $unquotedRfqItems->count() }} additional item(s)</strong> that are not in your quotation:
+                        </p>
+                        <div class="mt-2.5 flex flex-wrap gap-2">
+                            @foreach($unquotedRfqItems as $uItem)
+                                <span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-amber-900 font-medium shadow-2xs">
+                                    <i class="fa-solid fa-circle-plus text-amber-600 text-[10px]"></i>
+                                    <span class="font-bold">{{ $uItem->item_name }}</span>
+                                    <span class="text-gray-500">({{ (float)$uItem->quantity }} {{ $uItem->unit?->name ?? $uItem->custom_unit ?? 'units' }})</span>
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @if($canReviseForUpdate)
+                    <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shrink-0 shadow-sm whitespace-nowrap">
+                        <i class="fa-solid fa-rotate"></i> Revise Quote to Include Items
+                    </a>
+                @elseif($quotation->status === 'draft')
+                    <a href="{{ route('supplier.quotations.edit', $quotation) }}" class="btn-primary text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shrink-0 shadow-sm whitespace-nowrap">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit Quote to Include Items
+                    </a>
+                @endif
+            </div>
+        </div>
+    @endif
 
     @if($errors->has('rfq_version'))
         <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
@@ -70,6 +111,16 @@
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
             <h4 class="text-sm font-bold text-amber-900 flex items-center gap-1.5"><i class="fa-solid fa-circle-info"></i> RFQ Updated Since You Started</h4>
             <p class="text-xs text-amber-800 mt-1">The RFQ moved from version {{ $quotation->rfq_version_no }} to version {{ $quotation->rfq->current_version_no }}. Review the changes before submitting.</p>
+        </div>
+    @elseif($versionChanged && $canReviseForUpdate && $unquotedRfqItems->isEmpty())
+        <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row items-start justify-between gap-4">
+            <div>
+                <h4 class="text-sm font-bold text-amber-900 flex items-center gap-1.5"><i class="fa-solid fa-circle-info"></i> RFQ Updated by Buyer</h4>
+                <p class="text-xs text-amber-800 mt-1">The buyer updated this RFQ (moved from v{{ $quotation->rfq_version_no }} to v{{ $quotation->rfq->current_version_no }}). You can submit a revised quotation if needed.</p>
+            </div>
+            <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-4 py-2 rounded-lg shrink-0">
+                <i class="fa-solid fa-rotate mr-1"></i> Revise Quotation
+            </a>
         </div>
     @endif
 
@@ -182,6 +233,46 @@
                     @empty
                         <p class="text-sm text-gray-400">No items quoted yet.</p>
                     @endforelse
+
+                    @if($unquotedRfqItems->isNotEmpty())
+                        <div class="mt-4 pt-4 border-t-2 border-dashed border-amber-200">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h5 class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                                        Buyer's Requested Items Not in this Quotation ({{ $unquotedRfqItems->count() }})
+                                    </h5>
+                                    <p class="text-[11px] text-gray-500 mt-0.5">These items were added to the RFQ after or separately from this quote.</p>
+                                </div>
+                                @if($canReviseForUpdate)
+                                    <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                                        <i class="fa-solid fa-plus text-[10px]"></i> Add to Quote
+                                    </a>
+                                @endif
+                            </div>
+                            <div class="space-y-2">
+                                @foreach($unquotedRfqItems as $uItem)
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-amber-50/50 border border-amber-200 text-xs">
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-bold text-gray-900">{{ $uItem->item_name }}</span>
+                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $uItem->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
+                                                    {{ $uItem->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
+                                                </span>
+                                            </div>
+                                            <p class="text-[11px] text-gray-500 mt-0.5">{{ $uItem->category?->name ?? 'General' }}</p>
+                                        </div>
+                                        <div class="text-right shrink-0">
+                                            <span class="font-bold text-gray-800">{{ (float)$uItem->quantity }} {{ $uItem->unit?->name ?? $uItem->custom_unit ?? 'units' }}</span>
+                                            @if($uItem->estimated_unit_price)
+                                                <p class="text-[11px] text-indigo-600 font-semibold">Target: {{ $quotation->currency_code }} {{ number_format((float)$uItem->estimated_unit_price, 2) }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </x-backend.form-card>
 

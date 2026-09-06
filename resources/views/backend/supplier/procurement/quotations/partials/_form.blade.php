@@ -10,17 +10,75 @@
     // Read-only "what the buyer asked for" lookup, keyed by rfq_item id —
     // shared by every response row so the comparison always reflects the
     // buyer's actual requirement, never the supplier's own listing data.
-    $rfqItemsById = $rfq->items->keyBy('id')->map(fn ($i) => [
-        'item_name' => $i->item_name,
-        'category_id' => $i->category_id,
-        'category_name' => $i->category?->name,
-        'quantity' => rtrim(rtrim((string) $i->quantity, '0'), '.'),
-        'unit' => $i->unit?->symbol ?? $i->unit?->name ?? $i->custom_unit,
-        'description' => $i->description,
-        'attributes_by_id' => $i->attributeValues->mapWithKeys(fn ($v) => [$v->attribute_id => $v->formattedValue()]),
-    ]);
+    // Raw, structured version of the buyer's attribute values (as opposed to
+    // the formatted display strings in `attributes`/`attributes_by_id` below)
+    // — rfq_item_attribute_values and listing_attribute_values mirror
+    // quotation_item_attribute_values' columns exactly, so these can be
+    // copied straight into a quotation item's attribute_values with no
+    // string parsing/matching, keyed by attribute_id like the offer side.
+    $toRawAttrValue = fn ($v) => [
+        'attribute_value_id' => $v->attribute_value_id,
+        'custom_value' => $v->custom_value,
+        'value_text' => $v->value_text,
+        'value_number' => $v->value_number !== null ? rtrim(rtrim((string) $v->value_number, '0'), '.') : null,
+        'value_boolean' => $v->value_boolean,
+        'value_date' => $v->value_date?->format('Y-m-d'),
+        'value_json' => $v->value_json,
+    ];
+
+    $rfqItemsById = $rfq->items->keyBy('id')->map(function ($i) use ($toRawAttrValue) {
+        $attrs = collect();
+        // Plain array, not a Collection — attribute_id keys are integers, and
+        // Collection::merge() runs them through array_merge(), which
+        // silently renumbers/duplicates integer keys instead of overwriting
+        // by key. Direct array assignment overwrites correctly regardless of
+        // key type, same as attributes_by_id further below relies on.
+        $attrsRawById = [];
+        if ($i->listing && $i->listing->relationLoaded('attributeValues')) {
+            $attrs = $i->listing->attributeValues->map(fn ($v) => [
+                'name' => $v->attribute?->name,
+                'value' => $v->custom_value ?? $v->value_text ?? $v->value_number ?? ($v->attributeValue?->name ?? null),
+            ])->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
+            foreach ($i->listing->attributeValues as $v) {
+                $attrsRawById[$v->attribute_id] = $toRawAttrValue($v);
+            }
+        }
+        if ($i->attributeValues->isNotEmpty()) {
+            $customAttrs = $i->attributeValues->map(fn ($v) => [
+                'name' => $v->attribute?->name,
+                'value' => $v->formattedValue(),
+            ])->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
+            $attrs = $attrs->keyBy('name')->merge($customAttrs->keyBy('name'))->values();
+            foreach ($i->attributeValues as $v) {
+                $attrsRawById[$v->attribute_id] = $toRawAttrValue($v);
+            }
+        }
+
+        $imageUrl = $i->listing?->primaryImage?->getUrl()
+            ?? ($i->listing?->relationLoaded('media') && $i->listing?->media->isNotEmpty() ? $i->listing?->media->first()?->getUrl() : null)
+            ?? $i->listing?->getFirstMediaUrl('gallery')
+            ?: null;
+
+        return [
+            'item_name' => $i->item_name,
+            'category_id' => $i->category_id,
+            'category_name' => $i->category?->name ?? $i->listing?->mainCategory?->name,
+            'quantity' => rtrim(rtrim((string) $i->quantity, '0'), '.'),
+            'unit' => $i->unit?->symbol ?? $i->unit?->name ?? $i->custom_unit ?? $i->listing?->unit?->symbol ?? $i->listing?->unit?->name,
+            'unit_id' => $i->unit_id,
+            'description' => $i->description ?? $i->listing?->short_description,
+            'listing_image_url' => $imageUrl,
+            'is_marketplace' => !empty($i->listing_id),
+            'estimated_unit_price' => $i->estimated_unit_price ? number_format((float)$i->estimated_unit_price, 2) : ($i->listing?->base_price ? number_format((float)$i->listing->base_price, 2) : null),
+            'specs' => is_array($i->specs) ? array_values(array_filter($i->specs, fn($s) => is_array($s) && (!empty(trim((string)($s['name'] ?? ''))) || !empty(trim((string)($s['value'] ?? '')))))) : [],
+            'attributes' => $attrs->values(),
+            'attributes_by_id' => $i->attributeValues->mapWithKeys(fn ($v) => [$v->attribute_id => $v->formattedValue()]),
+            'attribute_values_raw' => $attrsRawById,
+        ];
+    });
 
     if ($isEdit || $isRevision) {
+        $existingRfqItemIds = $quotation->items->pluck('rfq_item_id')->filter()->all();
         $initialItems = $quotation->items->where('is_optional_addon', false)->values()->map(fn ($item) => [
             'id' => $item->id, 'rfq_item_id' => $item->rfq_item_id,
             'offered_listing_id' => $item->offered_listing_id, 'offered_variant_id' => $item->offered_variant_id,
@@ -36,6 +94,17 @@
             ]])->all(),
             '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [],
         ])->values();
+
+        $newRfqItems = $rfq->items->whereNotIn('id', $existingRfqItemIds)->map(fn ($item) => [
+            'id' => null, 'rfq_item_id' => $item->id,
+            'offered_listing_id' => null, 'offered_variant_id' => null, 'is_alternative' => false,
+            'item_name' => $item->item_name, 'description' => null, 'quantity' => (string) $item->quantity,
+            'unit_id' => $item->unit_id, 'custom_unit' => $item->custom_unit,
+            'unit_price' => null, 'tax_rate' => null, 'discount_amount' => null, 'lead_time_days' => null,
+            'attribute_values' => (object) [],
+            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [],
+        ]);
+        $initialItems = $initialItems->concat($newRfqItems)->values();
 
         $initialAddons = $quotation->items->where('is_optional_addon', true)->values()->map(fn ($item) => [
             'id' => $item->id, 'item_name' => $item->item_name, 'description' => $item->description,
@@ -177,6 +246,37 @@
                 this.items.forEach(item => {
                     const buyerItem = this.rfqItemsById[item.rfq_item_id];
                     if (buyerItem) this.fetchItemAttributes(item, buyerItem.category_id);
+                });
+            },
+
+            // "Copy buyer's specifications" checkbox above one item's
+            // Specifications Comparison — fills that item's name,
+            // description, quantity, unit AND every buyer-requested attribute
+            // value straight into the matching "Your Offer" fields, so the
+            // supplier starts from the buyer's ask instead of retyping it.
+            // Attribute values copy 1:1 (attribute_value_id/value_text/etc.)
+            // rather than parsing the formatted display text, since
+            // rfq_item_attribute_values and listing_attribute_values mirror
+            // quotation_item_attribute_values' columns exactly — same
+            // attribute definitions, same option ids, on both sides.
+            applyCopyBuyerRequirements(item) {
+                const buyerItem = this.rfqItemsById[item.rfq_item_id];
+                if (!buyerItem) return;
+
+                if (buyerItem.item_name) item.item_name = buyerItem.item_name;
+                if (buyerItem.description) item.description = buyerItem.description;
+                if (buyerItem.quantity) item.quantity = buyerItem.quantity;
+                if (buyerItem.unit_id) item.unit_id = buyerItem.unit_id;
+
+                Object.entries(buyerItem.attribute_values_raw || {}).forEach(([attrId, raw]) => {
+                    const target = this.getAttrVal(item, attrId);
+                    target.attribute_value_id = raw.attribute_value_id;
+                    target.custom_value = raw.custom_value;
+                    target.value_text = raw.value_text;
+                    target.value_number = raw.value_number;
+                    target.value_boolean = raw.value_boolean;
+                    target.value_date = raw.value_date;
+                    target.value_json = raw.value_json;
                 });
             },
 

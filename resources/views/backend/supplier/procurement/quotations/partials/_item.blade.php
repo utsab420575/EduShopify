@@ -18,14 +18,86 @@
     <input type="hidden" :name="'items['+index+'][is_optional_addon]'" value="0">
 
     {{-- Buyer Requested (read-only) --}}
-    <div x-show="item.rfq_item_id && rfqItemsById[item.rfq_item_id]" x-cloak class="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-3">
-        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Buyer Requested</p>
-        <p class="text-sm font-semibold text-gray-900" x-text="rfqItemsById[item.rfq_item_id]?.item_name"></p>
-        <p class="text-xs text-gray-500 mt-0.5">
-            <span x-text="rfqItemsById[item.rfq_item_id]?.category_name || 'No category'"></span>
-            &middot; Qty <span x-text="rfqItemsById[item.rfq_item_id]?.quantity"></span> <span x-text="rfqItemsById[item.rfq_item_id]?.unit"></span>
-        </p>
-        <p x-show="rfqItemsById[item.rfq_item_id]?.description" class="text-xs text-gray-500 mt-1" x-text="rfqItemsById[item.rfq_item_id]?.description"></p>
+    <div x-show="item.rfq_item_id && rfqItemsById[item.rfq_item_id]" x-cloak class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4 shadow-2xs">
+        <div class="flex items-start justify-between gap-3 mb-2.5">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700">Buyer Requested</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      :class="rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200'"
+                      x-text="rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'Marketplace Product' : 'Custom Requirement'">
+                </span>
+            </div>
+            <div class="text-right shrink-0 bg-white px-2.5 py-1 rounded-md border border-slate-200/80 shadow-2xs">
+                <span class="text-xs font-bold text-gray-900">
+                    <span x-text="rfqItemsById[item.rfq_item_id]?.quantity"></span> 
+                    <span class="text-gray-500 font-medium text-[11px]" x-text="rfqItemsById[item.rfq_item_id]?.unit"></span>
+                </span>
+            </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+            <template x-if="rfqItemsById[item.rfq_item_id]?.listing_image_url">
+                <div class="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shrink-0 bg-white shadow-2xs">
+                    <img :src="rfqItemsById[item.rfq_item_id]?.listing_image_url" :alt="rfqItemsById[item.rfq_item_id]?.item_name" class="w-full h-full object-cover">
+                </div>
+            </template>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-gray-900 leading-snug" x-text="rfqItemsById[item.rfq_item_id]?.item_name"></p>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500 mt-0.5">
+                    <span x-text="rfqItemsById[item.rfq_item_id]?.category_name || 'General Category'"></span>
+                    <template x-if="rfqItemsById[item.rfq_item_id]?.estimated_unit_price">
+                        <span class="text-indigo-600 font-semibold">
+                            &middot; Target: {{ $rfq->currency_code ?? 'USD' }} <span x-text="rfqItemsById[item.rfq_item_id]?.estimated_unit_price"></span> / <span x-text="rfqItemsById[item.rfq_item_id]?.unit || 'unit'"></span>
+                        </span>
+                    </template>
+                </div>
+                <p x-show="rfqItemsById[item.rfq_item_id]?.description" class="text-xs text-gray-600 mt-1.5 leading-relaxed bg-white/70 p-2 rounded-lg border border-slate-200/60" x-text="rfqItemsById[item.rfq_item_id]?.description"></p>
+            </div>
+        </div>
+
+        {{-- Standard Category Attributes / Listing Specifications --}}
+        <template x-if="rfqItemsById[item.rfq_item_id]?.attributes && rfqItemsById[item.rfq_item_id]?.attributes.length > 0">
+            <div class="mt-2.5 pt-2.5 border-t border-slate-200/60" x-data="{ expanded: false }">
+                <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1">
+                        <i class="fa-solid fa-list-check text-indigo-500 text-[11px]"></i>
+                        <span x-text="rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'Product Specifications:' : 'Category Specifications:'"></span>
+                        <span class="text-gray-400 font-normal" x-text="'(' + rfqItemsById[item.rfq_item_id]?.attributes.length + ')'"></span>
+                    </p>
+                    <button type="button" x-show="rfqItemsById[item.rfq_item_id]?.attributes.length > 6"
+                            @click="expanded = !expanded"
+                            class="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800">
+                        <span x-text="expanded ? 'Show Less' : 'Show All (' + rfqItemsById[item.rfq_item_id]?.attributes.length + ')'"></span>
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <template x-for="(attr, aIdx) in (expanded ? rfqItemsById[item.rfq_item_id]?.attributes : rfqItemsById[item.rfq_item_id]?.attributes.slice(0, 6))" :key="aIdx">
+                        <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-700 shadow-2xs">
+                            <span class="text-gray-500 font-medium" x-text="attr.name + ':'"></span>
+                            <span class="font-semibold text-gray-900" x-text="attr.value"></span>
+                        </span>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        {{-- Custom Specifications --}}
+        <template x-if="rfqItemsById[item.rfq_item_id]?.specs && rfqItemsById[item.rfq_item_id]?.specs.length > 0">
+            <div class="mt-2.5 pt-2.5 border-t border-slate-200/60">
+                <p class="text-[10px] font-bold text-indigo-900 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-sliders text-indigo-500 text-[11px]"></i>
+                    Buyer's Custom Specifications:
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                    <template x-for="(spec, sIdx) in rfqItemsById[item.rfq_item_id]?.specs" :key="sIdx">
+                        <span class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-indigo-50/90 border border-indigo-200 text-indigo-950 font-medium shadow-2xs">
+                            <span class="text-indigo-600 font-semibold" x-text="(spec.name || 'Spec') + ':'"></span>
+                            <span class="font-bold text-gray-900" x-text="spec.value || '—'"></span>
+                        </span>
+                    </template>
+                </div>
+            </div>
+        </template>
     </div>
 
     {{-- Offer Type --}}
@@ -136,7 +208,13 @@
     </div>
 
     <div x-show="item.rfq_item_id && rfqItemsById[item.rfq_item_id]" x-cloak class="mt-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Specifications Comparison</label>
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700">Specifications Comparison</label>
+            <label class="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700 cursor-pointer select-none">
+                <input type="checkbox" @change="$event.target.checked && applyCopyBuyerRequirements(item)" class="w-3.5 h-3.5 rounded border-gray-300" style="accent-color:var(--theme-primary)">
+                Copy buyer's requirements into your offer
+            </label>
+        </div>
         @include('backend.supplier.procurement.quotations.partials._item-attributes')
     </div>
 </div>

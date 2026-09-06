@@ -77,32 +77,135 @@
 
             {{-- Items Requested --}}
             <x-backend.form-card title="Requested Items">
-                <div class="space-y-3">
+                <div class="space-y-4">
                     @foreach($rfq->items as $item)
-                        <div class="border border-gray-200 rounded-xl p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
-                                        <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
-                                            {{ $item->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
-                                        </span>
-                                    </div>
-                                    <p class="text-xs text-gray-400 mt-0.5">{{ $item->category?->name ?? 'No category' }}</p>
-                                    @if($item->description)
-                                        <p class="text-xs text-gray-500 mt-1">{{ $item->description }}</p>
+                        @php
+                            $itemImage = $item->listing?->primaryImage?->getUrl()
+                                ?? ($item->listing?->relationLoaded('media') && $item->listing?->media->isNotEmpty() ? $item->listing?->media->first()?->getUrl() : null)
+                                ?? $item->listing?->getFirstMediaUrl('gallery')
+                                ?: null;
+                            $specs = is_array($item->specs) ? array_filter($item->specs, fn($s) => is_array($s) && (!empty(trim((string)($s['name'] ?? ''))) || !empty(trim((string)($s['value'] ?? ''))))) : [];
+
+                            $listingAttrs = collect();
+                            if ($item->listing && $item->listing->relationLoaded('attributeValues')) {
+                                $listingAttrs = $item->listing->attributeValues->map(fn ($v) => [
+                                    'name' => $v->attribute?->name,
+                                    'value' => $v->custom_value ?? $v->value_text ?? $v->value_number ?? ($v->attributeValue?->name ?? null),
+                                ])->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
+                            }
+                            if ($item->attributeValues->isNotEmpty()) {
+                                $rfqAttrs = $item->attributeValues->map(fn ($v) => [
+                                    'name' => $v->attribute?->name,
+                                    'value' => $v->formattedValue(),
+                                ])->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
+                                $itemAttributes = $listingAttrs->keyBy('name')->merge($rfqAttrs->keyBy('name'))->values();
+                            } else {
+                                $itemAttributes = $listingAttrs->values();
+                            }
+                        @endphp
+                        <div class="border border-gray-200 rounded-xl p-5 bg-white hover:border-gray-300 transition-colors shadow-2xs">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-start gap-4 min-w-0">
+                                    @if($itemImage)
+                                        <div class="w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shrink-0 bg-gray-100 shadow-2xs">
+                                            <img src="{{ $itemImage }}" alt="{{ $item->item_name }}" class="w-full h-full object-cover">
+                                        </div>
+                                    @elseif($item->listing_id)
+                                        <div class="w-16 h-16 rounded-xl border border-gray-200 shrink-0 bg-emerald-50/70 flex items-center justify-center text-emerald-600 shadow-2xs">
+                                            <i class="fa-solid fa-store text-2xl"></i>
+                                        </div>
+                                    @else
+                                        <div class="w-16 h-16 rounded-xl border border-gray-200 shrink-0 bg-gray-50 flex items-center justify-center text-gray-400 shadow-2xs">
+                                            <i class="fa-solid fa-box-open text-2xl text-gray-400"></i>
+                                        </div>
                                     @endif
+
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                            <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold">
+                                                {{ $loop->iteration }}
+                                            </span>
+                                            <p class="text-base font-bold text-gray-900 leading-tight">{{ $item->item_name }}</p>
+                                            <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
+                                                <i class="fa-solid {{ $item->listing_id ? 'fa-store text-emerald-600' : 'fa-pen-to-square text-gray-400' }} text-[9px] mr-0.5"></i>
+                                                {{ $item->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
+                                            </span>
+                                            @if($item->listing_id)
+                                                <span class="text-[10px] text-gray-400 font-mono">ID #{{ $item->listing_id }}</span>
+                                            @endif
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-1">
+                                            <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
+                                                {{ $item->category?->name ?? $item->listing?->mainCategory?->name ?? 'General Category' }}
+                                            </span>
+                                            <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200 font-medium capitalize">
+                                                {{ $item->item_type ?? 'product' }}
+                                            </span>
+                                            @if($item->estimated_unit_price)
+                                                <span class="text-indigo-600 font-semibold bg-indigo-50/50 px-2 py-0.5 rounded border border-indigo-100">
+                                                    Target: {{ $rfq->currency_code ?? 'USD' }} {{ number_format((float)$item->estimated_unit_price, 2) }} / {{ $item->unit?->name ?? $item->custom_unit ?? 'unit' }}
+                                                </span>
+                                            @endif
+                                        </div>
+
+                                        @if($item->description)
+                                            <p class="text-xs text-gray-600 mt-2 leading-relaxed bg-gray-50/70 p-2.5 rounded-lg border border-gray-100">
+                                                {{ $item->description }}
+                                            </p>
+                                        @endif
+                                    </div>
                                 </div>
-                                <p class="text-xs font-semibold text-gray-800 shrink-0">{{ (float)$item->quantity }} {{ $item->unit?->name ?? $item->custom_unit ?? 'Units' }}</p>
+
+                                <div class="text-right shrink-0 bg-indigo-50/60 px-4 py-2.5 rounded-xl border border-indigo-100 text-center min-w-[120px]">
+                                    <span class="text-[10px] text-indigo-700 block uppercase font-bold tracking-wider mb-0.5">Quantity Needed</span>
+                                    <span class="text-base font-black text-gray-900">{{ (float)$item->quantity }}</span>
+                                    <span class="text-xs font-semibold text-gray-600 block">{{ $item->unit?->name ?? $item->custom_unit ?? 'Units' }}</span>
+                                </div>
                             </div>
 
-                            @if($item->attributeValues->isNotEmpty())
-                                <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
-                                    @foreach($item->attributeValues as $value)
-                                        <span class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
-                                            <span class="font-medium text-gray-500">{{ $value->attribute?->name }}:</span> {{ $value->formattedValue() }}
-                                        </span>
-                                    @endforeach
+                            {{-- Product / Category Specifications --}}
+                            @if($itemAttributes->isNotEmpty())
+                                <div class="mt-4 pt-3.5 border-t border-gray-100" x-data="{ expanded: false }">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <p class="text-[11px] font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                                            <i class="fa-solid fa-list-check text-indigo-500 text-xs"></i>
+                                            {{ $item->listing_id ? 'Listing Specifications' : 'Category Specifications' }}
+                                            <span class="text-gray-400 font-normal">({{ $itemAttributes->count() }})</span>
+                                        </p>
+                                        @if($itemAttributes->count() > 8)
+                                            <button type="button" @click="expanded = !expanded" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                                                <span x-text="expanded ? 'Show Less' : 'Show All ({{ $itemAttributes->count() }})'"></span>
+                                            </button>
+                                        @endif
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                        @foreach($itemAttributes as $idx => $attr)
+                                            <div class="flex items-start justify-between gap-2 p-2 rounded-lg bg-gray-50/80 border border-gray-100 text-xs"
+                                                 @if($idx >= 8) x-show="expanded" x-cloak @endif>
+                                                <span class="text-gray-500 font-medium shrink-0 leading-tight">{{ $attr['name'] }}:</span>
+                                                <span class="font-semibold text-gray-900 text-right leading-tight truncate" title="{{ $attr['value'] }}">{{ $attr['value'] }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Buyer's Custom Specifications --}}
+                            @if(!empty($specs))
+                                <div class="mt-3.5 pt-3.5 border-t border-gray-100">
+                                    <p class="text-[11px] font-bold text-indigo-900 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-sliders text-indigo-500 text-xs"></i>
+                                        Buyer's Custom Specifications:
+                                    </p>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($specs as $spec)
+                                            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-950 font-medium shadow-2xs">
+                                                <span class="text-indigo-600 font-bold">{{ $spec['name'] ?? 'Spec' }}:</span>
+                                                <span class="font-bold text-gray-900">{{ $spec['value'] ?? '—' }}</span>
+                                            </span>
+                                        @endforeach
+                                    </div>
                                 </div>
                             @endif
                         </div>
@@ -175,6 +278,18 @@
                         </a>
                     </div>
                 @endif
+
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <form method="POST" action="{{ route('supplier.messages.start') }}">
+                        @csrf
+                        <input type="hidden" name="recipient_account_id" value="{{ $rfq->buyer_account_id }}">
+                        <input type="hidden" name="context_type" value="rfq">
+                        <input type="hidden" name="context_id" value="{{ $rfq->id }}">
+                        <button type="submit" class="w-full text-sm font-medium py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-comment-dots"></i> Message Buyer
+                        </button>
+                    </form>
+                </div>
             </x-backend.form-card>
 
         </div>

@@ -30,6 +30,6 @@
     </div>
     <div class="py-3 flex items-start justify-between gap-4">
         <dt class="text-gray-500 shrink-0">Suppliers</dt>
-        <dd class="font-medium text-gray-900 text-right" x-text="isOpenMatchingMode() ? 'Open to eligible suppliers' : (suppliers.map(s => s.name).join(', ') || 'None selected yet')"></dd>
+        <dd class="font-medium text-gray-900 text-right" x-text="activeSuppliersSummary()"></dd>
     </div>
 </dl>

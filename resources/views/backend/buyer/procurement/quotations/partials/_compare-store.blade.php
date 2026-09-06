@@ -58,6 +58,24 @@
             try { window.localStorage.removeItem(this.key(rfqId)); } catch (e) { /* noop */ }
             window.dispatchEvent(new CustomEvent('quotation-compare:changed', { detail: { rfqId: rfqId, count: 0 } }));
         },
+
+        // Every RFQ with a non-empty selection, scanned directly off
+        // localStorage keys — the only way to discover selections made
+        // for RFQs other than the one currently on screen.
+        activeSets() {
+            const sets = [];
+            try {
+                for (let i = 0; i < window.localStorage.length; i++) {
+                    const key = window.localStorage.key(i);
+                    if (!key || key.indexOf('edushopify_quotation_compare_') !== 0) continue;
+                    const rfqId = parseInt(key.slice('edushopify_quotation_compare_'.length), 10);
+                    if (!Number.isInteger(rfqId) || rfqId <= 0) continue;
+                    const count = this.get(rfqId).quotation_ids.length;
+                    if (count > 0) sets.push({ rfqId, count });
+                }
+            } catch (e) { /* localStorage unavailable — no active sets */ }
+            return sets;
+        },
     };
 
     function toast(icon, title) {
@@ -108,6 +126,38 @@
                 window.addEventListener('quotation-compare:changed', (e) => {
                     if (e.detail.rfqId === rfqId) this.count = e.detail.count;
                 });
+            },
+        }));
+
+        // Page-agnostic floating tray for the unfiltered Quotations index —
+        // "Add to Compare" there can touch any RFQ's selection, so this
+        // tracks totals across all of them rather than a single rfqId.
+        Alpine.data('compareTrayGlobal', () => ({
+            totalCount: 0,
+            rfqCount: 0,
+            init() {
+                this.refresh();
+                window.addEventListener('quotation-compare:changed', () => this.refresh());
+            },
+            refresh() {
+                const sets = QuotationCompareStore.activeSets();
+                this.totalCount = sets.reduce((sum, s) => sum + s.count, 0);
+                this.rfqCount = sets.length;
+            },
+        }));
+
+        Alpine.data('compareOverviewPage', (compareUrlTemplate) => ({
+            activeSets: [],
+            compareUrlTemplate: compareUrlTemplate,
+            init() {
+                this.refresh();
+                window.addEventListener('quotation-compare:changed', () => this.refresh());
+            },
+            refresh() {
+                this.activeSets = QuotationCompareStore.activeSets();
+            },
+            clearSet(rfqId) {
+                QuotationCompareStore.clear(rfqId);
             },
         }));
 

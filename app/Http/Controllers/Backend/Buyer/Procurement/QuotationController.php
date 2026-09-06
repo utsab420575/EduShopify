@@ -61,6 +61,32 @@ class QuotationController extends Controller
         ]);
     }
 
+    /**
+     * "Compare" landing page (Procurement sidebar) — RFQ comparison only
+     * makes sense within one RFQ at a time (items must line up), so this
+     * just surfaces which of the buyer's RFQs are worth comparing rather
+     * than attempting a cross-RFQ comparison. Active localStorage selections
+     * are picked up client-side by compareTrayGlobal in _compare-store.
+     */
+    public function compareIndex()
+    {
+        $this->authorize('viewAny', Quotation::class);
+
+        $account = $this->currentAccount();
+        $eligibleStatuses = config('quotation_comparison.eligible_statuses', []);
+
+        $rfqs = $account->rfqs()
+            ->withCount(['quotations as eligible_quotations_count' => fn ($q) => $q->whereIn('status', $eligibleStatuses)])
+            ->having('eligible_quotations_count', '>=', 2)
+            ->orderByDesc('id')
+            ->get(['id', 'title', 'rfq_number']);
+
+        return view('backend.buyer.procurement.quotations.compare-index', [
+            'rfqs' => $rfqs,
+            'maxItems' => (int) config('quotation_comparison.max_items', 5),
+        ]);
+    }
+
     public function compare(Rfq $rfq)
     {
         $this->authorize('compare', $rfq);

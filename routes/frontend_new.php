@@ -52,6 +52,7 @@ Route::prefix('v2')->name('v2.')->group(function () {
         Route::get('/post-rfq', [HandoffController::class, 'postRfq'])->name('post-rfq');
         Route::get('/compare-rfq', [HandoffController::class, 'compareRfq'])->name('compare-rfq');
         Route::get('/request-quote/{listing}', [HandoffController::class, 'requestQuoteListing'])->name('request-quote-listing');
+        Route::get('/request-quote-supplier/{supplier}', [HandoffController::class, 'requestQuoteSupplier'])->name('request-quote-supplier');
         Route::get('/contact-supplier/{supplier}', [HandoffController::class, 'contactSupplier'])->name('contact-supplier');
     });
 });
