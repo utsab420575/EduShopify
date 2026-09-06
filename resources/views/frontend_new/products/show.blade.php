@@ -29,6 +29,37 @@
           @else
             <div id="main-img" class="w-full h-[340px] sm:h-[400px] bg-gray-100 flex items-center justify-center text-gray-400">No image available</div>
           @endif
+
+          {{-- Badges Overlay in Top-Left Corner of Image --}}
+          <div class="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-1.5 pointer-events-none">
+            @if($supplierProfile)
+              <span class="badge-verified text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 shadow-sm bg-white/95 backdrop-blur-xs">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-xs"></i> Verified Supplier
+              </span>
+            @endif
+            @if($listing->is_featured)
+              <span class="bg-amber-400 text-amber-950 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-sm uppercase tracking-wide">
+                <i class="fa-solid fa-star text-[10px]"></i> Featured
+              </span>
+            @endif
+          </div>
+
+          {{-- Floating Compare & Save Buttons on Main Image (Top Right) --}}
+          <div class="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onclick="event.preventDefault(); event.stopPropagation(); fnToggleCompare({{ (int) $listing->id }});"
+              data-compare-id="{{ (int) $listing->id }}"
+              data-style="icon"
+              title="Add to compare"
+              aria-label="Add to compare"
+              class="fn-compare-btn w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out shrink-0 cursor-pointer shadow-sm bg-white/95 text-slate-500 border border-slate-200/90 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 hover:scale-110 hover:shadow-md backdrop-blur-xs"
+            >
+              <i class="fa-solid fa-arrow-right-arrow-left text-xs transition-transform duration-200"></i>
+            </button>
+
+            @include('frontend_new.components.listing-save-btn', ['listing' => $listing, 'class' => 'shadow-sm'])
+          </div>
         </div>
         @if($images->count() > 1)
           <div class="flex gap-2 p-3 border-t border-gray-100">
@@ -209,17 +240,34 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           Request Quotation
         </button>
-        <button class="w-full border border-gray-200 hover:border-gray-300 text-gray-700 font-medium py-2.5 rounded-md text-sm flex items-center justify-center gap-2 mb-4 hover:bg-gray-50 transition-colors">
+        <a href="{{ $supplierProfile ? route('v2.handoff.contact-supplier', $supplierProfile->slug) : '#' }}" class="w-full border border-gray-200 hover:border-gray-300 text-gray-700 font-medium py-2.5 rounded-md text-sm flex items-center justify-center gap-2 mb-4 hover:bg-gray-50 transition-colors">
           <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Contact Supplier
-        </button>
+        </a>
 
         <div class="flex items-center gap-2">
-          <button class="flex-1 flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 py-2 border border-gray-200 hover:border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            Save
+          <button
+            type="button"
+            id="fn-listing-save-sidebar-{{ $listing->id }}"
+            class="fn-listing-save-btn flex-1 flex items-center justify-center gap-1.5 text-sm py-2 border rounded-md transition-colors cursor-pointer {{ ($listing->is_saved ?? false) ? 'is-saved bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200' : 'text-gray-600 hover:text-gray-900 border-gray-200 hover:border-gray-300 hover:bg-gray-50' }}"
+            data-listing-slug="{{ $listing->slug }}"
+            data-listing-id="{{ $listing->id }}"
+            data-saved="{{ ($listing->is_saved ?? false) ? '1' : '0' }}"
+            data-saves-count="{{ $listing->saves_count ?? 0 }}"
+            data-save-url="{{ route('v2.products.save', $listing->slug) }}"
+            onclick="event.preventDefault(); event.stopPropagation(); window.fnToggleListingSave && window.fnToggleListingSave(this);"
+          >
+            <i class="fn-fav-icon fa-{{ ($listing->is_saved ?? false) ? 'solid text-rose-500' : 'regular text-gray-400' }} fa-heart text-sm transition-transform duration-200"></i>
+            <span class="fn-save-label font-medium">{{ ($listing->is_saved ?? false) ? 'Saved' : 'Save' }}</span>
+            <span class="fn-fav-count text-xs font-semibold {{ ($listing->saves_count ?? 0) > 0 ? '' : 'hidden' }}">({{ $listing->saves_count ?? 0 }})</span>
           </button>
-          <button class="flex-1 flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 py-2 border border-gray-200 hover:border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+          <button
+            type="button"
+            id="fn-product-share-btn"
+            class="flex-1 flex items-center justify-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 py-2 border border-gray-200 hover:border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+            onclick="window.fnOpenProductShareModal && window.fnOpenProductShareModal()"
+            title="Share this product"
+          >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             Share
           </button>
@@ -295,39 +343,108 @@
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         @foreach($relatedProducts as $related)
-          <div class="product-card">
-            <div class="relative">
-              @if($related->primaryImage)
-                <img src="{{ $related->primaryImage->getUrl() }}" alt="{{ $related->name }}" class="w-full h-36 object-cover" />
-              @else
-                <div class="w-full h-36 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No image</div>
-              @endif
-              @if($related->is_active)
-                <span class="in-stock absolute top-2 left-2">In Stock</span>
-              @endif
-            </div>
-            <div class="p-3">
-              @if($related->brand)
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{{ strtoupper($related->brand->name) }}</p>
-              @endif
-              <p class="text-sm font-semibold text-gray-900 leading-snug mb-2">{{ $related->name }}</p>
-              <div class="flex items-center gap-1 mb-2">
-                @for($i = 1; $i <= 5; $i++)
-                  <span class="{{ $i <= round($related->product_rating) ? 'star-filled' : 'star-empty' }} text-xs">★</span>
-                @endfor
-                <span class="text-xs text-gray-400">({{ $related->product_reviews_count }})</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <p class="text-sm font-bold text-emerald-600">${{ number_format((float) $related->base_price, 2) }}</p>
-                <a href="{{ route('v2.products.show', $related->slug) }}" class="text-xs text-emerald-600 font-medium hover:underline shrink-0">View →</a>
-              </div>
-            </div>
-          </div>
+          @include('frontend_new.components.product-card', ['listing' => $related])
         @endforeach
       </div>
     </div>
   @endif
 
 </main>
+
+{{-- ── Share Product Modal ── --}}
+<div id="fn-share-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200" aria-modal="true" role="dialog" onclick="if(event.target === this) window.fnCloseProductShareModal();">
+  <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 overflow-hidden transform scale-95 transition-all duration-200" id="fn-share-modal-card">
+    {{-- Modal Header --}}
+    <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </div>
+        <h3 class="text-base font-bold text-gray-900">Share this Product</h3>
+      </div>
+      <button type="button" onclick="window.fnCloseProductShareModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    {{-- Product Preview Card in Modal --}}
+    <div class="flex items-center gap-3 p-3 my-4 bg-gray-50 rounded-xl border border-gray-100">
+      <div class="w-14 h-14 rounded-lg bg-white overflow-hidden border border-gray-200 shrink-0 flex items-center justify-center">
+        @if($images->isNotEmpty())
+          <img src="{{ $images->first()->getUrl() }}" alt="{{ $listing->name }}" class="w-full h-full object-cover">
+        @else
+          <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        @endif
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wide truncate">{{ $listing->category?->name ?? 'Product' }}</p>
+        <p class="text-sm font-semibold text-gray-900 truncate">{{ $listing->name }}</p>
+        <p class="text-xs text-gray-500 truncate">{{ $supplierProfile?->display_name ?? 'Edushopify' }}</p>
+      </div>
+    </div>
+
+    {{-- Social Share Buttons Grid --}}
+    <div class="mb-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2.5">Share via social media</p>
+      <div class="grid grid-cols-4 gap-2.5 text-center">
+        {{-- WhatsApp --}}
+        <a href="https://api.whatsapp.com/send?text={{ rawurlencode($listing->name . ' ' . url()->current()) }}" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/50 group transition-all">
+          <div class="w-10 h-10 rounded-full bg-[#25D366]/10 text-[#25D366] flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i class="fa-brands fa-whatsapp text-lg"></i>
+          </div>
+          <span class="text-[11px] font-medium text-gray-700 mt-1.5 group-hover:text-emerald-700">WhatsApp</span>
+        </a>
+
+        {{-- Facebook --}}
+        <a href="https://www.facebook.com/sharer/sharer.php?u={{ rawurlencode(url()->current()) }}" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 group transition-all">
+          <div class="w-10 h-10 rounded-full bg-[#1877F2]/10 text-[#1877F2] flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i class="fa-brands fa-facebook-f text-base"></i>
+          </div>
+          <span class="text-[11px] font-medium text-gray-700 mt-1.5 group-hover:text-blue-700">Facebook</span>
+        </a>
+
+        {{-- LinkedIn --}}
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ rawurlencode(url()->current()) }}" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-gray-100 hover:border-sky-200 hover:bg-sky-50/50 group transition-all">
+          <div class="w-10 h-10 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i class="fa-brands fa-linkedin-in text-base"></i>
+          </div>
+          <span class="text-[11px] font-medium text-gray-700 mt-1.5 group-hover:text-sky-700">LinkedIn</span>
+        </a>
+
+        {{-- Twitter / X --}}
+        <a href="https://twitter.com/intent/tweet?url={{ rawurlencode(url()->current()) }}&text={{ rawurlencode($listing->name) }}" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-100/50 group transition-all">
+          <div class="w-10 h-10 rounded-full bg-black/5 text-gray-900 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i class="fa-brands fa-x-twitter text-base"></i>
+          </div>
+          <span class="text-[11px] font-medium text-gray-700 mt-1.5 group-hover:text-gray-900">X (Twitter)</span>
+        </a>
+      </div>
+    </div>
+
+    {{-- Copy Link Box --}}
+    <div>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Or copy direct link</p>
+      <div class="flex items-center gap-2 p-1.5 pl-3 bg-gray-50 border border-gray-200 rounded-xl focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+        <input
+          id="fn-share-url-input"
+          type="text"
+          readonly
+          value="{{ url()->current() }}"
+          onclick="this.select()"
+          class="w-full bg-transparent text-xs text-gray-600 focus:outline-none select-all truncate"
+        >
+        <button
+          id="fn-share-copy-btn"
+          type="button"
+          onclick="window.fnCopyProductShareLink && window.fnCopyProductShareLink(this)"
+          class="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <span>Copy</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 @endsection

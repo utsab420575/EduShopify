@@ -1,4 +1,5 @@
-<form method="POST" action="{{ route('buyer.saved-items.toggle') }}" class="inline">
+<form method="POST" action="{{ route('buyer.saved-items.toggle') }}" class="inline"
+      onsubmit="return confirmSwal(this, 'Remove from Saved Items?', 'Are you sure you want to remove this item from your saved list?', 'warning', 'Yes, Remove')">
     @csrf
     <input type="hidden" name="type" value="{{ $type }}">
     <input type="hidden" name="id" value="{{ $item->id }}">

@@ -2,12 +2,14 @@
 
 namespace App\Services\Account;
 
+use App\Models\Account;
 use App\Models\Rfq;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Services\BuyerOnboardingStateService;
 use App\Services\SupplierOnboardingStateService;
 use App\Services\Catalog\PublicListingQuery;
+use App\Services\MessagingService;
 
 /**
  * Resolves a public frontend CTA intent into a real dashboard destination
@@ -38,6 +40,10 @@ class PublicHandoffResolver
             }
         }
 
+        if ($action === 'contact_supplier') {
+            return $this->contactSupplier($user, $account, $params);
+        }
+
         return match ($action) {
             'post_rfq' => route('buyer.rfqs.create'),
             'request_quote_listing' => $this->requestQuoteListing($params),
@@ -48,6 +54,38 @@ class PublicHandoffResolver
             'save_supplier' => $this->saveSupplier($params),
             default => route('home'),
         };
+    }
+
+    /**
+     * "Contact Supplier" — branches to whichever messaging rule the viewer's
+     * account already follows: an active Buyer messages through
+     * buyer.suppliers.message's flow (same MessagingService call,
+     * landing on buyer.messages.show); an active Supplier lands on
+     * supplier.messages.show instead. Neither capability active yet →
+     * buyer onboarding, since messaging a supplier is a buyer action here
+     * and this mirrors every other buyer-gated CTA in this resolver.
+     */
+    private function contactSupplier(User $user, ?Account $account, array $params): string
+    {
+        $supplierAccount = SupplierProfile::where('slug', $params['slug'] ?? null)->first()?->account;
+
+        if (! $supplierAccount || ($account && $account->id === $supplierAccount->id)) {
+            return route('home');
+        }
+
+        if ($account && $account->hasActiveCapability('buyer')) {
+            $conversation = app(MessagingService::class)->startOrGetConversation($account, $user, $supplierAccount, 'general');
+
+            return route('buyer.messages.show', $conversation);
+        }
+
+        if ($account && $account->hasActiveCapability('supplier')) {
+            $conversation = app(MessagingService::class)->startOrGetConversation($account, $user, $supplierAccount, 'general');
+
+            return route('supplier.messages.show', $conversation);
+        }
+
+        return app(BuyerOnboardingStateService::class)->resolve($user);
     }
 
     private function requestQuoteListing(array $params): string

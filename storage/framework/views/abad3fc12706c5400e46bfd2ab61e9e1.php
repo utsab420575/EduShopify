@@ -28,6 +28,10 @@
     <a href="<?php echo e(route('v2.suppliers.index')); ?>" class="px-3 py-2.5 rounded-md text-sm font-medium <?php echo e(request()->routeIs('v2.suppliers.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'); ?>">Suppliers</a>
     <a href="<?php echo e(route('v2.blogs.index')); ?>" class="px-3 py-2.5 rounded-md text-sm font-medium <?php echo e(request()->routeIs('v2.blogs.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'); ?>">Blog</a>
     <a href="<?php echo e(route('v2.resources.index')); ?>" class="px-3 py-2.5 rounded-md text-sm font-medium <?php echo e(request()->routeIs('v2.resources.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'); ?>">Resources</a>
+    <a href="<?php echo e(route('v2.compare.index')); ?>" class="flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium <?php echo e(request()->routeIs('v2.compare.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'); ?>">
+      <span><i class="fa-solid fa-arrow-right-arrow-left mr-1.5"></i> Compare</span>
+      <span data-compare-badge class="hidden text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">0</span>
+    </a>
   </nav>
 
   <div class="px-4 py-4 border-t border-gray-100 space-y-2">

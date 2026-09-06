@@ -5,6 +5,7 @@ namespace App\Http\Controllers\FrontendNew;
 use App\Http\Controllers\Controller;
 use App\Models\BlogPost;
 use App\Models\Category;
+use App\Models\SavedItem;
 use App\Services\Account\PublicSupplierQuery;
 use App\Services\Catalog\PublicListingQuery;
 use App\Support\FrontendNewDemo;
@@ -23,18 +24,22 @@ class HomeController extends Controller
             ->limit(5)
             ->get();
 
-        $featuredSuppliers = $this->applyBadgePattern(
-            PublicSupplierQuery::base()
-                ->with(['country', 'account.supplierTypes'])
-                ->orderByDesc('rating')
-                ->limit(12)
-                ->get()
-                ->unique('id')
-                ->values()
+        $featuredSuppliers = $this->attachSavesData(
+            $this->applyBadgePattern(
+                PublicSupplierQuery::base()
+                    ->with(['country', 'account.supplierTypes'])
+                    ->orderByDesc('rating')
+                    ->limit(12)
+                    ->get()
+                    ->unique('id')
+                    ->values()
+            )
         );
 
-        $allSuppliers = $this->applyBadgePattern(
-            $this->allSuppliersByCategory($topCategories)
+        $allSuppliers = $this->attachSavesData(
+            $this->applyBadgePattern(
+                $this->allSuppliersByCategory($topCategories)
+            )
         );
 
         // Computed independently of $allSuppliers' per-supplier category
@@ -149,5 +154,45 @@ class HomeController extends Controller
 
             return $supplier;
         });
+    }
+
+    /**
+     * Batch attach saves_count and is_saved to a collection of suppliers.
+     */
+    private function attachSavesData(Collection $suppliers): Collection
+    {
+        $accountIds = $suppliers->pluck('account_id')->filter()->unique()->all();
+        if (empty($accountIds)) {
+            return $suppliers;
+        }
+
+        $savesCounts = SavedItem::where('item_type', 'supplier')
+            ->whereIn('item_id', $accountIds)
+            ->selectRaw('item_id, count(*) as total')
+            ->groupBy('item_id')
+            ->pluck('total', 'item_id')
+            ->all();
+
+        $currentUserSavedIds = [];
+        if (auth()->check()) {
+            $user = auth()->user();
+            $currentAccount = $user->activateTeamContext()
+                ?? $user->accountMember?->account
+                ?? $user->account;
+            if ($currentAccount) {
+                $currentUserSavedIds = SavedItem::where('account_id', $currentAccount->id)
+                    ->where('item_type', 'supplier')
+                    ->whereIn('item_id', $accountIds)
+                    ->pluck('item_id')
+                    ->all();
+            }
+        }
+
+        foreach ($suppliers as $supplier) {
+            $supplier->saves_count = (int) ($savesCounts[$supplier->account_id] ?? 0);
+            $supplier->is_saved = in_array($supplier->account_id, $currentUserSavedIds, true);
+        }
+
+        return $suppliers;
     }
 }

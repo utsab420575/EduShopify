@@ -153,12 +153,8 @@
 .badge-bett { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; border-radius: 99px; font-size: 11px; font-weight: 600; padding: 3px 10px; display: inline-block; }
 
 .hero-wrap { border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 8px rgba(0,0,0,.06); margin-bottom: 16px; }
-/* SupplierProfileService::handleFileUpload() already crops every banner
-   upload to a fixed 1200x400 (3:1) via Intervention. Fixing the container to
-   that same ratio (instead of an unrelated 280px height) means the browser
-   never re-crops on top of what was already cropped at upload time. */
-.hero-banner { position: relative; aspect-ratio: 3 / 1; max-height: 340px; }
-.hero-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center center; }
+.hero-banner { position: relative; width: 100%; height: 280px; overflow: hidden; }
+.hero-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 .hero-save-btn { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; background: rgba(255,255,255,.92); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(0,0,0,.08); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
 .hero-save-btn:hover { background: #fff; }
 .profile-bar { position: absolute; bottom: 0; left: 0; right: 0; padding: 18px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; background: linear-gradient(to top,rgba(0,0,0,.65) 0%,rgba(0,0,0,.2) 55%,rgba(0,0,0,0) 100%); }
@@ -239,3 +235,174 @@
 .detail-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; }
 .info-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
 .info-row:last-child { border-bottom: none; }
+
+/* ── Product Compare & Badges ── */
+.badge-verified {
+  background: #e8f5ee;
+  color: #1a7f45;
+  border: 1px solid #b6e0c6;
+}
+
+/* Floating Compare Button (icon style) */
+.fn-compare-btn[data-style="icon"] {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.95);
+  color: #64748b;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  backdrop-filter: blur(4px);
+}
+
+.fn-compare-btn[data-style="icon"]:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.fn-compare-btn[data-style="icon"]:hover i {
+  transform: rotate(180deg);
+}
+
+.fn-compare-btn[data-style="icon"].active,
+.fn-compare-btn[data-style="icon"].compare-active {
+  background: #059669 !important;
+  color: #ffffff !important;
+  border-color: #059669 !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.fn-compare-btn[data-style="icon"].active:hover,
+.fn-compare-btn[data-style="icon"].compare-active:hover {
+  background: #e11d48 !important;
+  border-color: #e11d48 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25);
+}
+
+/* Text Compare Button (e.g. above PDP image) */
+.fn-compare-btn[data-style="text"] {
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease-in-out;
+}
+
+.fn-compare-btn[data-style="text"]:hover {
+  background: #f0fdf4;
+  color: #059669;
+  border-color: #a7f3d0;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.1);
+}
+
+.fn-compare-btn[data-style="text"].active,
+.fn-compare-btn[data-style="text"].compare-active {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(5, 150, 105, 0.1);
+}
+
+.fn-compare-btn[data-style="text"].active:hover,
+.fn-compare-btn[data-style="text"].compare-active:hover {
+  background: #fff1f2 !important;
+  color: #be123c !important;
+  border-color: #fca5a5 !important;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.15);
+}
+
+/* Toast Animations */
+@keyframes fnToastIn {
+  0% { opacity: 0; transform: translateY(-12px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fnToastOut {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.95); }
+}
+
+.fn-toast-item {
+  animation: fnToastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.fn-toast-item.fn-toast-hiding {
+  animation: fnToastOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Supplier & Product Save / Favorite Button ── */
+.fn-supplier-save-btn,
+.fn-listing-save-btn {
+  user-select: none;
+  touch-action: manipulation;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fn-supplier-save-btn,
+.fn-listing-save-btn:not(.text-sm) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.fn-supplier-save-btn:active,
+.fn-listing-save-btn:active {
+  transform: scale(0.94);
+}
+
+.fn-supplier-save-btn .fn-fav-icon,
+.fn-listing-save-btn .fn-fav-icon {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+}
+
+.fn-supplier-save-btn:hover .fn-fav-icon,
+.fn-listing-save-btn:hover .fn-fav-icon {
+  transform: scale(1.15);
+}
+
+.fn-supplier-save-btn.is-saved,
+.fn-listing-save-btn.is-saved {
+  background-color: #fff1f2 !important; /* rose-50 */
+  border-color: #fecdd3 !important; /* rose-200 */
+  color: #e11d48 !important; /* rose-600 */
+  box-shadow: 0 1px 4px rgba(244, 63, 94, 0.15);
+}
+
+.fn-supplier-save-btn.is-saved:hover,
+.fn-listing-save-btn.is-saved:hover {
+  background-color: #ffe4e6 !important; /* rose-100 */
+  border-color: #fda4af !important; /* rose-300 */
+}
+
+.fn-supplier-save-btn.is-saved .fn-fav-icon,
+.fn-listing-save-btn.is-saved .fn-fav-icon {
+  color: #f43f5e !important; /* rose-500 */
+}
+
+@keyframes favHeartPop {
+  0% { transform: scale(0.75); }
+  50% { transform: scale(1.4); }
+  75% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+.animate-fav-pop {
+  animation: favHeartPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+

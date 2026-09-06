@@ -47,9 +47,7 @@
     @endif
 
     {{-- Favorite Heart Button --}}
-    <button type="button" onclick="event.preventDefault(); event.stopPropagation();" class="absolute top-2.5 right-2.5 z-10 w-7 h-7 bg-white/80 hover:bg-white backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors shadow-sm">
-      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-    </button>
+    @include('frontend_new.components.supplier-save-btn', ['supplier' => $supplier, 'class' => 'absolute top-2.5 right-2.5 z-20'])
   </div>
 
   <div class="p-4">

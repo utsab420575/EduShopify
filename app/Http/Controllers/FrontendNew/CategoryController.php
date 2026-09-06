@@ -4,6 +4,7 @@ namespace App\Http\Controllers\FrontendNew;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\SavedItem;
 use App\Services\Catalog\PublicListingQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class CategoryController extends Controller
         $listingQuery = PublicListingQuery::products()
             ->with([
                 'mainCategory',
-                'supplierAccount',
+                'supplierAccount.supplierProfile',
                 'brand',
                 'primaryImage',
                 'unit',
@@ -73,6 +74,34 @@ class CategoryController extends Controller
 
         $listings = $listingQuery->paginate(12)->withQueryString();
 
+        $listingIds = $listings->pluck('id')->filter()->all();
+        $savesCounts = SavedItem::where('item_type', 'listing')
+            ->whereIn('item_id', $listingIds)
+            ->selectRaw('item_id, count(*) as total')
+            ->groupBy('item_id')
+            ->pluck('total', 'item_id')
+            ->all();
+
+        $currentUserSavedListingIds = [];
+        if (auth()->check()) {
+            $user = auth()->user();
+            $currentAccount = $user->activateTeamContext()
+                ?? $user->accountMember?->account
+                ?? $user->account;
+            if ($currentAccount) {
+                $currentUserSavedListingIds = SavedItem::where('account_id', $currentAccount->id)
+                    ->where('item_type', 'listing')
+                    ->whereIn('item_id', $listingIds)
+                    ->pluck('item_id')
+                    ->all();
+            }
+        }
+
+        foreach ($listings as $listing) {
+            $listing->saves_count = (int) ($savesCounts[$listing->id] ?? 0);
+            $listing->is_saved = in_array($listing->id, $currentUserSavedListingIds, true);
+        }
+
         // AJAX live-search & tab filtering → return JSON
         if ($request->expectsJson() || $request->ajax()) {
             $activeCategoryName = 'All Categories';
@@ -86,10 +115,11 @@ class CategoryController extends Controller
                 'active_category'      => $categorySlug,
                 'active_category_name' => $activeCategoryName,
                 'search'               => $search,
-                'products'             => $listings->map(function ($listing) {
+                'products'             => $listings->map(function ($listing) use ($savesCounts, $currentUserSavedListingIds) {
                     $img = $listing->primaryImage?->getUrl()
                         ?? $listing->getFirstMediaUrl('gallery')
                         ?? null;
+                    $supplierProfile = $listing->supplierAccount?->supplierProfile;
                     return [
                         'id'          => $listing->id,
                         'name'        => $listing->name,
@@ -101,6 +131,9 @@ class CategoryController extends Controller
                         'currency'    => $listing->currency_code ?? 'USD',
                         'unit'        => $listing->unit?->abbreviation ?? $listing->unit?->symbol ?? '',
                         'is_featured' => (bool)$listing->is_featured,
+                        'is_verified' => (bool)$supplierProfile,
+                        'saves_count' => (int) ($savesCounts[$listing->id] ?? 0),
+                        'is_saved'    => in_array($listing->id, $currentUserSavedListingIds, true),
                         'url'         => route('v2.products.show', $listing->slug),
                     ];
                 }),

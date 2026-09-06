@@ -5,7 +5,9 @@ namespace App\Http\Controllers\FrontendNew;
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
 use App\Models\Review;
+use App\Models\SavedItem;
 use App\Services\Catalog\PublicListingQuery;
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
@@ -62,9 +64,12 @@ class ProductController extends Controller
         $relatedProducts = PublicListingQuery::products()
             ->where('main_category_id', $listing->main_category_id)
             ->where('id', '!=', $listing->id)
-            ->with(['brand', 'primaryImage'])
+            ->with(['brand', 'primaryImage', 'supplierAccount.supplierProfile', 'mainCategory', 'unit'])
             ->limit(4)
             ->get();
+
+        $this->attachSingleListingSavesData($listing);
+        $this->attachSavesData($relatedProducts);
 
         return view('frontend_new.products.show', [
             'listing' => $listing,
@@ -76,5 +81,140 @@ class ProductController extends Controller
             'yearsActive' => $yearsActive,
             'relatedProducts' => $relatedProducts,
         ]);
+    }
+
+    /**
+     * Toggle saving/favoriting a product (listing) for the authenticated user/account.
+     */
+    public function toggleSave(Request $request, Listing $listing)
+    {
+        $user = $request->user();
+        if (! $user) {
+            session()->forget('frontend_intent');
+            $returnUrl = url()->previous() ?: route('v2.products.show', $listing->slug);
+            session(['url.intended' => $returnUrl]);
+
+            return response()->json([
+                'success'       => false,
+                'authenticated' => false,
+                'message'       => 'Please sign in to save products to your favorites.',
+                'redirect'      => route('login', ['redirect' => $returnUrl]),
+            ], 401);
+        }
+
+        $account = $user->activateTeamContext()
+            ?? $user->accountMember?->account
+            ?? $user->account
+            ?? \App\Models\Account::where('is_system_account', true)->first()
+            ?? \App\Models\Account::first();
+
+        if (! $account) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active account found for your profile.',
+            ], 403);
+        }
+
+        $existing = SavedItem::where('account_id', $account->id)
+            ->where('item_type', 'listing')
+            ->where('item_id', $listing->id)
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+            $saved = false;
+            $message = 'Product removed from saved items.';
+        } else {
+            SavedItem::create([
+                'account_id'       => $account->id,
+                'saved_by_user_id' => $user->id,
+                'visibility'       => 'account',
+                'item_type'        => 'listing',
+                'item_id'          => $listing->id,
+            ]);
+            $saved = true;
+            $message = 'Product saved to your favorites!';
+        }
+
+        $savesCount = SavedItem::where('item_type', 'listing')
+            ->where('item_id', $listing->id)
+            ->count();
+
+        return response()->json([
+            'success'     => true,
+            'saved'       => $saved,
+            'saves_count' => $savesCount,
+            'message'     => $message,
+        ]);
+    }
+
+    /**
+     * Batch attach saves_count and is_saved to a collection of listings.
+     */
+    public function attachSavesData($listings)
+    {
+        $items = $listings instanceof \Illuminate\Contracts\Pagination\Paginator
+            ? $listings->items()
+            : $listings;
+
+        $listingIds = collect($items)->pluck('id')->filter()->all();
+        if (empty($listingIds)) {
+            return $listings;
+        }
+
+        $savesCounts = SavedItem::where('item_type', 'listing')
+            ->whereIn('item_id', $listingIds)
+            ->selectRaw('item_id, count(*) as total')
+            ->groupBy('item_id')
+            ->pluck('total', 'item_id')
+            ->all();
+
+        $currentUserSavedIds = [];
+        if (auth()->check()) {
+            $user = auth()->user();
+            $currentAccount = $user->activateTeamContext()
+                ?? $user->accountMember?->account
+                ?? $user->account;
+            if ($currentAccount) {
+                $currentUserSavedIds = SavedItem::where('account_id', $currentAccount->id)
+                    ->where('item_type', 'listing')
+                    ->whereIn('item_id', $listingIds)
+                    ->pluck('item_id')
+                    ->all();
+            }
+        }
+
+        foreach ($items as $listing) {
+            $listing->saves_count = (int) ($savesCounts[$listing->id] ?? 0);
+            $listing->is_saved = in_array($listing->id, $currentUserSavedIds, true);
+        }
+
+        return $listings;
+    }
+
+    /**
+     * Attach saves_count and is_saved to a single listing.
+     */
+    public function attachSingleListingSavesData(Listing $listing): Listing
+    {
+        $listing->saves_count = (int) SavedItem::where('item_type', 'listing')
+            ->where('item_id', $listing->id)
+            ->count();
+
+        $listing->is_saved = false;
+        if (auth()->check()) {
+            $user = auth()->user();
+            $currentAccount = $user->activateTeamContext()
+                ?? $user->accountMember?->account
+                ?? $user->account;
+            if ($currentAccount) {
+                $listing->is_saved = SavedItem::where('account_id', $currentAccount->id)
+                    ->where('item_type', 'listing')
+                    ->where('item_id', $listing->id)
+                    ->exists();
+            }
+        }
+
+        return $listing;
     }
 }

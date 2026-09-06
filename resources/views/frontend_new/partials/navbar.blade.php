@@ -31,15 +31,13 @@
     <!-- Right icons & actions -->
     <div class="ml-auto flex items-center gap-2 sm:gap-3 lg:gap-4">
       <div class="flex items-center gap-1 sm:gap-1.5">
-        <button type="button" class="hidden sm:flex items-center justify-center p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition" aria-label="Favorites">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </button>
-        <button type="button" class="hidden sm:flex items-center justify-center p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition" aria-label="Messages">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </button>
-        <button type="button" class="hidden sm:flex items-center justify-center p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition" aria-label="Notifications">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </button>
+        <a href="{{ route('v2.compare.index') }}"
+           class="group relative inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/80 transition-all duration-200 ease-in-out"
+           aria-label="Product comparison" title="View product comparison">
+          <i class="fa-solid fa-arrow-right-arrow-left text-xs text-gray-400 group-hover:text-emerald-600 transition-transform duration-200 group-hover:rotate-180"></i>
+          <span class="hidden xl:inline">Compare</span>
+          <span data-compare-badge class="hidden inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-xs transition-transform duration-200 group-hover:scale-110">0</span>
+        </a>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3 pl-1 sm:pl-2">

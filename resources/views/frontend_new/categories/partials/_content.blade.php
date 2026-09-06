@@ -99,68 +99,10 @@
   {{-- ── Product Grid ── --}}
   <div id="cat-products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
     @forelse($listings as $listing)
-      @php
-        $productUrl = route('v2.products.show', $listing->slug);
-        $img        = $listing->primaryImage?->getUrl()
-                   ?? $listing->getFirstMediaUrl('gallery');
-        $brand      = $listing->brand?->name
-                   ?? $listing->supplierAccount?->display_name
-                   ?? '—';
-        $catName    = $listing->mainCategory?->name ?? 'Other';
-        $price      = $listing->base_price;
-        $currency   = $listing->currency_code ?? 'USD';
-        $unit       = $listing->unit?->abbreviation ?? $listing->unit?->symbol ?? '';
-      @endphp
-      <a
-        href="{{ $productUrl }}"
-        class="group block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-emerald-200 transition-all duration-200 product-card-fade-up"
-        style="animation-delay: {{ $loop->index * 55 }}ms"
-      >
-        {{-- Image --}}
-        <div class="relative h-48 bg-gray-100 overflow-hidden">
-          @if($img)
-            <img
-              src="{{ $img }}"
-              alt="{{ $listing->name }}"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          @else
-            <div class="w-full h-full flex flex-col items-center justify-center text-gray-300">
-              <svg class="w-12 h-12 mb-1" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <path d="M3 9l4.5-4.5 4.5 4.5 4.5-4.5 4.5 4.5"/>
-                <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor"/>
-              </svg>
-              <span class="text-xs">No image</span>
-            </div>
-          @endif
-
-          @if($listing->is_featured)
-            <span class="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Featured</span>
-          @endif
-        </div>
-
-        {{-- Info --}}
-        <div class="p-3.5">
-          <p class="text-[10px] font-semibold text-emerald-600 uppercase tracking-widest mb-1 truncate">{{ $catName }}</p>
-          <h3 class="text-sm font-semibold text-gray-900 leading-snug mb-0.5 line-clamp-2 group-hover:text-emerald-700 transition-colors">{{ $listing->name }}</h3>
-          <p class="text-xs text-gray-500 mb-3 truncate">{{ $brand }}</p>
-
-          <div class="flex items-center justify-between">
-            <div>
-              @if($price)
-                <p class="text-sm font-bold text-emerald-600">
-                  {{ $currency }} {{ number_format($price, 0) }}
-                  @if($unit) <span class="text-xs font-normal text-gray-400">/ {{ $unit }}</span> @endif
-                </p>
-              @else
-                <p class="text-xs text-gray-400 italic">Price on request</p>
-              @endif
-            </div>
-            <span class="text-xs text-emerald-600 font-semibold group-hover:underline">View →</span>
-          </div>
-        </div>
-      </a>
+      @include('frontend_new.components.product-card', [
+        'listing' => $listing,
+        'animationDelay' => $loop->index * 55,
+      ])
     @empty
       <div class="col-span-full flex flex-col items-center justify-center py-20 text-center product-card-fade-up">
         <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 text-gray-400">
@@ -227,27 +169,75 @@
            <span class="text-xs">No image</span>
          </div>`;
 
-    const featuredHtml = p.is_featured
-      ? `<span class="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Featured</span>`
+    const verifiedHtml = p.is_verified
+      ? `<span class="badge-verified text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-xs inline-flex items-center gap-1">
+           <i class="fa-solid fa-circle-check text-[10px] text-emerald-600"></i> Verified
+         </span>`
       : '';
+
+    const featuredHtml = p.is_featured
+      ? `<span class="bg-amber-400 text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs inline-flex items-center gap-1 uppercase tracking-wide">
+           <i class="fa-solid fa-star text-[9px]"></i> Featured
+         </span>`
+      : '';
+
+    const isSaved = Boolean(p.is_saved);
+    const savesCount = Number(p.saves_count) || 0;
+    const saveHtml = `
+      <div class="absolute top-2.5 right-2.5 z-10">
+        <button
+          type="button"
+          id="fn-listing-save-${Number(p.id)}"
+          class="fn-listing-save-btn group/fav flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all duration-200 text-xs font-semibold backdrop-blur-sm select-none border cursor-pointer ${isSaved ? 'is-saved bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 shadow-xs' : (savesCount > 0 ? 'bg-white/90 hover:bg-white text-gray-700 hover:text-rose-600 border-gray-200 shadow-xs' : 'bg-white/90 hover:bg-white text-gray-400 hover:text-rose-600 border-gray-200 shadow-xs')}"
+          data-listing-slug="${escapeHtml(p.slug)}"
+          data-listing-id="${Number(p.id)}"
+          data-saved="${isSaved ? '1' : '0'}"
+          data-saves-count="${savesCount}"
+          data-save-url="/v2/product/${encodeURIComponent(p.slug)}/save"
+          aria-label="${isSaved ? 'Remove from favorites' : 'Save to favorites'}"
+          title="${isSaved ? `Saved to your favorites (${savesCount})` : `Save product (${savesCount})`}"
+          onclick="event.preventDefault(); event.stopPropagation(); window.fnToggleListingSave && window.fnToggleListingSave(this);"
+        >
+          <i class="fn-fav-icon fa-${isSaved ? 'solid text-rose-500' : 'regular text-gray-400 group-hover/fav:text-rose-500'} fa-heart text-xs transition-transform duration-200"></i>
+          <span id="fav-count-listing-${Number(p.id)}" class="fn-fav-count text-xs font-semibold leading-none ${isSaved ? 'text-rose-600' : 'text-gray-700 group-hover/fav:text-rose-600'} ${(savesCount > 0 || isSaved) ? '' : 'hidden'}">${savesCount}</span>
+        </button>
+      </div>
+    `;
 
     return `
       <a
         href="${escapeHtml(p.url)}"
-        class="group block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-emerald-200 transition-all duration-200 product-card-fade-up"
+        class="group block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-emerald-200 transition-all duration-200 product-card-fade-up relative flex flex-col h-full"
         style="animation-delay: ${index * 55}ms"
       >
-        <div class="relative h-48 bg-gray-100 overflow-hidden">
+        <div class="relative h-48 bg-gray-100 overflow-hidden shrink-0">
           ${imgHtml}
-          ${featuredHtml}
+          <div class="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 z-10 pointer-events-none">
+            ${verifiedHtml}
+            ${featuredHtml}
+          </div>
+          ${saveHtml}
+          <div class="absolute bottom-2.5 right-2.5 z-10">
+            <button
+              type="button"
+              onclick="event.preventDefault(); event.stopPropagation(); fnToggleCompare(${Number(p.id)});"
+              data-compare-id="${Number(p.id)}"
+              data-style="icon"
+              title="Add to compare"
+              aria-label="Add to compare"
+              class="fn-compare-btn w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out shrink-0 cursor-pointer shadow-sm bg-white/95 text-slate-500 border border-slate-200/90 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 hover:scale-110 hover:shadow-md backdrop-blur-xs"
+            >
+              <i class="fa-solid fa-arrow-right-arrow-left text-xs transition-transform duration-200"></i>
+            </button>
+          </div>
         </div>
-        <div class="p-3.5">
+        <div class="p-3.5 flex flex-col flex-1">
           <p class="text-[10px] font-semibold text-emerald-600 uppercase tracking-widest mb-1 truncate">${escapeHtml(p.category || 'Other')}</p>
           <h3 class="text-sm font-semibold text-gray-900 leading-snug mb-0.5 line-clamp-2 group-hover:text-emerald-700 transition-colors">${escapeHtml(p.name)}</h3>
           <p class="text-xs text-gray-500 mb-3 truncate">${escapeHtml(p.brand || '—')}</p>
-          <div class="flex items-center justify-between">
+          <div class="mt-auto pt-2 flex items-center justify-between border-t border-gray-100">
             <div>${priceHtml}</div>
-            <span class="text-xs text-emerald-600 font-semibold group-hover:underline">View &rarr;</span>
+            <span class="text-xs text-emerald-600 font-semibold group-hover:underline flex items-center gap-0.5">View &rarr;</span>
           </div>
         </div>
       </a>
@@ -279,19 +269,27 @@
   }
 
   function updateResultsHeader(total) {
-    if (countNum) countNum.textContent = Number(total).toLocaleString();
-    if (countLabel) countLabel.textContent = (total === 1 ? 'product' : 'products') + ' found';
+    if (countNum)   countNum.textContent   = total.toLocaleString();
+    if (countLabel) countLabel.textContent = total === 1 ? 'product' : 'products';
 
     if (searchPart) {
-      searchPart.innerHTML = currentSearch
-        ? ` for "<span class="text-emerald-600 font-medium">${escapeHtml(currentSearch)}</span>"`
-        : '';
+      if (currentSearch) {
+        searchPart.textContent = `for "${currentSearch}"`;
+        searchPart.classList.remove('hidden');
+      } else {
+        searchPart.textContent = '';
+        searchPart.classList.add('hidden');
+      }
     }
 
     if (catPart) {
-      catPart.innerHTML = (currentCategory && currentCategory !== 'all' && currentCategoryName)
-        ? ` in <span class="text-emerald-600 font-medium">${escapeHtml(currentCategoryName)}</span>`
-        : '';
+      if (currentCategory && currentCategory !== 'all' && currentCategoryName) {
+        catPart.textContent = `in ${currentCategoryName}`;
+        catPart.classList.remove('hidden');
+      } else {
+        catPart.textContent = '';
+        catPart.classList.add('hidden');
+      }
     }
   }
 
@@ -348,6 +346,9 @@
             html += renderProductCard(products[i], i);
           }
           productsGrid.innerHTML = html;
+          if (typeof window.fnSyncAllCompareButtons === 'function') {
+            window.fnSyncAllCompareButtons();
+          }
         }
       }
 

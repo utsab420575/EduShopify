@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Quotation;
 use App\Models\Review;
+use App\Models\SavedItem;
 use App\Models\SupplierProfile;
 use App\Services\Account\PublicSupplierQuery;
 use App\Services\Catalog\PublicListingQuery;
@@ -66,6 +67,8 @@ class SupplierController extends Controller
 
             return $supplier;
         });
+
+        $this->attachSavesData($suppliers);
 
         $data = [
             'categories' => $categories,
@@ -193,6 +196,9 @@ class SupplierController extends Controller
 
         $badges = FrontendNewDemo::supplierBadges($supplier->id);
 
+        $this->attachSingleSupplierSavesData($supplier);
+        $this->attachSavesData($similarSuppliers);
+
         return view('frontend_new.suppliers.show', [
             'supplier' => $supplier,
             'featuredProducts' => $featuredProducts,
@@ -211,5 +217,140 @@ class SupplierController extends Controller
             'certifications' => $certifications,
             'achievements' => $achievements,
         ]);
+    }
+
+    /**
+     * Toggle saving/favoriting a supplier for the authenticated user/account.
+     */
+    public function toggleSave(Request $request, SupplierProfile $supplier)
+    {
+        $user = $request->user();
+        if (! $user) {
+            session()->forget('frontend_intent');
+            $returnUrl = url()->previous() ?: route('v2.suppliers.show', $supplier->slug);
+            session(['url.intended' => $returnUrl]);
+
+            return response()->json([
+                'success'       => false,
+                'authenticated' => false,
+                'message'       => 'Please sign in to save suppliers to your favorites.',
+                'redirect'      => route('login', ['redirect' => $returnUrl]),
+            ], 401);
+        }
+
+        $account = $user->activateTeamContext()
+            ?? $user->accountMember?->account
+            ?? $user->account
+            ?? \App\Models\Account::where('is_system_account', true)->first()
+            ?? \App\Models\Account::first();
+
+        if (! $account) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active account found for your profile.',
+            ], 403);
+        }
+
+        $existing = SavedItem::where('account_id', $account->id)
+            ->where('item_type', 'supplier')
+            ->where('item_id', $supplier->account_id)
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+            $saved = false;
+            $message = 'Supplier removed from favorites.';
+        } else {
+            SavedItem::create([
+                'account_id'       => $account->id,
+                'saved_by_user_id' => $user->id,
+                'visibility'       => 'account',
+                'item_type'        => 'supplier',
+                'item_id'          => $supplier->account_id,
+            ]);
+            $saved = true;
+            $message = 'Supplier saved to your favorites!';
+        }
+
+        $savesCount = SavedItem::where('item_type', 'supplier')
+            ->where('item_id', $supplier->account_id)
+            ->count();
+
+        return response()->json([
+            'success'     => true,
+            'saved'       => $saved,
+            'saves_count' => $savesCount,
+            'message'     => $message,
+        ]);
+    }
+
+    /**
+     * Batch attach saves_count and is_saved to a collection or paginator of suppliers.
+     */
+    public function attachSavesData($suppliers)
+    {
+        $items = $suppliers instanceof \Illuminate\Contracts\Pagination\Paginator
+            ? $suppliers->items()
+            : $suppliers;
+
+        $accountIds = collect($items)->pluck('account_id')->filter()->unique()->all();
+        if (empty($accountIds)) {
+            return $suppliers;
+        }
+
+        $savesCounts = SavedItem::where('item_type', 'supplier')
+            ->whereIn('item_id', $accountIds)
+            ->selectRaw('item_id, count(*) as total')
+            ->groupBy('item_id')
+            ->pluck('total', 'item_id')
+            ->all();
+
+        $currentUserSavedIds = [];
+        if (auth()->check()) {
+            $user = auth()->user();
+            $currentAccount = $user->activateTeamContext()
+                ?? $user->accountMember?->account
+                ?? $user->account;
+            if ($currentAccount) {
+                $currentUserSavedIds = SavedItem::where('account_id', $currentAccount->id)
+                    ->where('item_type', 'supplier')
+                    ->whereIn('item_id', $accountIds)
+                    ->pluck('item_id')
+                    ->all();
+            }
+        }
+
+        foreach ($items as $supplier) {
+            $supplier->saves_count = (int) ($savesCounts[$supplier->account_id] ?? 0);
+            $supplier->is_saved = in_array($supplier->account_id, $currentUserSavedIds, true);
+        }
+
+        return $suppliers;
+    }
+
+    /**
+     * Attach saves_count and is_saved to a single supplier profile.
+     */
+    public function attachSingleSupplierSavesData(SupplierProfile $supplier): SupplierProfile
+    {
+        $supplier->saves_count = (int) SavedItem::where('item_type', 'supplier')
+            ->where('item_id', $supplier->account_id)
+            ->count();
+
+        $supplier->is_saved = false;
+        if (auth()->check()) {
+            $user = auth()->user();
+            $currentAccount = $user->activateTeamContext()
+                ?? $user->accountMember?->account
+                ?? $user->account;
+            if ($currentAccount) {
+                $supplier->is_saved = SavedItem::where('account_id', $currentAccount->id)
+                    ->where('item_type', 'supplier')
+                    ->where('item_id', $supplier->account_id)
+                    ->exists();
+            }
+        }
+
+        return $supplier;
     }
 }

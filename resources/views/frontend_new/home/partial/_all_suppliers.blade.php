@@ -130,9 +130,7 @@
                   @endif
                 </div>
               </div>
-              <button type="button" onclick="event.preventDefault(); event.stopPropagation();" class="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-0.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              </button>
+              @include('frontend_new.components.supplier-save-btn', ['supplier' => $supplier, 'class' => 'shrink-0'])
             </div>
 
             {{-- Badges --}}
