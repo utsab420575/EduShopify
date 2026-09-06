@@ -62,10 +62,20 @@ class ListingController extends Controller
             ->limit(4)
             ->get();
 
+        $isSaved = false;
+        if (auth()->check()) {
+            $user = auth()->user();
+            $account = $user->activateTeamContext() ?? $user->accountMember?->account;
+            if ($account) {
+                $isSaved = app(\App\Services\SavedItemService::class)->isSaved($account, 'listing', $listing->id);
+            }
+        }
+
         return view('frontend.catalog.show', [
             'listing'               => $listing,
             'groupedSpecifications' => $groupedSpecifications,
             'related'               => $related,
+            'isSaved'               => $isSaved,
         ]);
     }
 }

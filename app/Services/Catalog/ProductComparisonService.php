@@ -74,6 +74,7 @@ class ProductComparisonService
                 'primaryImage',
                 'media',
                 'supplierAccount.supplierProfile',
+                'productDetail',
                 'attributeValues.attribute.attributeGroup',
                 'attributeValues.attribute.unit',
                 'attributeValues.attributeValue',
@@ -129,6 +130,7 @@ class ProductComparisonService
             $currency = $variant?->currency_code ?? $listing->currency_code;
             $moq = $variant?->min_order_quantity ?? $listing->min_order_quantity;
             $unit = $variant?->unit ?? $listing->unit;
+            $stockStatus = $variant?->stock_status ?? $listing->productDetail?->stock_status;
 
             // Same fallback order as listing-card.blade.php: prefer the explicit
             // primary image, else the first already-eager-loaded media item —
@@ -154,12 +156,22 @@ class ProductComparisonService
                 'supplier_id' => $listing->supplier_account_id,
                 'supplier_name' => $supplierProfile?->display_name,
                 'supplier_slug' => $supplierProfile?->slug,
+                // Two independent ratings: the supplier's own (aggregated
+                // from review_type=supplier reviews, via supplier_profiles)
+                // and this specific listing's (review_type=product reviews,
+                // aggregated onto the listing itself) — never mixed.
+                'supplier_rating' => $supplierProfile?->rating !== null ? (float) $supplierProfile->rating : null,
+                'supplier_reviews_count' => $supplierProfile?->reviews_count ?? 0,
+                'product_rating' => (float) $listing->product_rating,
+                'product_reviews_count' => $listing->product_reviews_count ?? 0,
                 'pricing_type' => $listing->pricing_type,
                 'price' => $price !== null ? (float) $price : null,
                 'compare_at_price' => ($compareAt !== null && $price !== null && (float) $compareAt > (float) $price) ? (float) $compareAt : null,
                 'currency_code' => $currency,
                 'unit' => $unit?->symbol ?? $unit?->name,
                 'moq' => $moq !== null ? rtrim(rtrim(number_format((float) $moq, 2), '0'), '.') : null,
+                'is_product' => $listing->isProduct(),
+                'stock_status' => $stockStatus,
                 'variants' => $listing->variants->map(fn ($v) => [
                     'id' => $v->id,
                     'label' => $v->name ?: ($v->sku ?: ('Variant #'.$v->id)),

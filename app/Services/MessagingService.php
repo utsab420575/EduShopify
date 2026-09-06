@@ -225,7 +225,11 @@ class MessagingService
         // committed — a slow/unreachable broadcast target must never be able to
         // roll back (and silently discard) a message the sender already sent.
         $this->markConversationSeen($conversation, $senderUser);
-        MessageSent::dispatch($message, $recipientUserIds);
+        try {
+            MessageSent::dispatch($message, $recipientUserIds);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('MessageSent broadcast dispatch failed: ' . $e->getMessage());
+        }
 
         return $message;
     }

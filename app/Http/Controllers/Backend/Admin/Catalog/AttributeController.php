@@ -105,7 +105,7 @@ class AttributeController extends Controller
                 'is_filterable'      => $request->boolean('is_filterable'),
                 'is_variant'         => $request->boolean('is_variant'),
                 'is_required'        => $request->boolean('is_required'),
-                'is_active'          => $request->boolean('is_active', true),
+                'is_active'          => $request->boolean('is_active'),
                 'sort_order'         => $request->integer('sort_order', 0),
             ]);
 
@@ -182,7 +182,7 @@ class AttributeController extends Controller
                 'is_filterable'      => $request->boolean('is_filterable'),
                 'is_variant'         => $request->boolean('is_variant'),
                 'is_required'        => $request->boolean('is_required'),
-                'is_active'          => $request->boolean('is_active', true),
+                'is_active'          => $request->boolean('is_active'),
                 'sort_order'         => $request->integer('sort_order', 0),
             ]);
 
@@ -206,6 +206,31 @@ class AttributeController extends Controller
         $attribute->delete();
 
         return back()->with('success', 'Attribute deleted.');
+    }
+
+    /**
+     * Quick active/inactive flip without opening the full edit form — used
+     * from the Attribute Groups builder's "N attributes" modal so an admin
+     * doesn't have to leave that screen. $request->input('reopen_group_id'),
+     * when present, flashes which group modal to reopen after the redirect.
+     */
+    public function toggleActive(Request $request, Attribute $attribute)
+    {
+        $this->authorize('platform.attributes.manage');
+
+        $attribute->update(['is_active' => ! $attribute->is_active]);
+
+        $status = $attribute->is_active ? 'activated' : 'deactivated';
+
+        $redirect = $request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])
+            ? redirect($request->string('redirect_to'))
+            : back();
+
+        if ($request->filled('reopen_group_id')) {
+            $redirect->with('open_group_attributes_id', $request->integer('reopen_group_id'));
+        }
+
+        return $redirect->with('success', "Attribute {$status}.");
     }
 
     public function approveSuggestion(AttributeSuggestion $suggestion, AttributeSuggestionService $service)

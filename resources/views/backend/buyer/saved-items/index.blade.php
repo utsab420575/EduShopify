@@ -7,52 +7,104 @@
 
     <x-backend.page-header title="Saved Items" subtitle="Suppliers, products, RFQs and quotations you've bookmarked." />
 
-    <div class="flex flex-wrap items-center gap-2 mb-6">
+    <x-backend.tabs>
         @foreach(['supplier' => 'Suppliers', 'listing' => 'Products / Listings', 'rfq' => 'RFQs', 'quotation' => 'Quotations'] as $key => $label)
-            <a href="{{ route('buyer.saved-items.index', ['type' => $key]) }}"
-               class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $type === $key ? 'text-white' : 'text-gray-600 border-gray-200 hover:bg-gray-50' }}"
-               @if($type === $key) style="background:var(--theme-primary);border-color:var(--theme-primary)" @endif>
+            <x-backend.tab :href="route('buyer.saved-items.index', ['type' => $key])" :active="$type === $key">
                 {{ $label }} ({{ $counts[$key] }})
-            </a>
+            </x-backend.tab>
         @endforeach
-    </div>
+    </x-backend.tabs>
 
-    @if($items->isEmpty())
-        <x-backend.empty-state icon="fa-bookmark" title="Nothing saved here yet" description="Items you save from the marketplace will appear here." />
-    @else
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            @foreach($items as $item)
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <x-backend.table>
+        @if($items->isEmpty())
+            <x-slot:empty>
+                <x-backend.empty-state icon="fa-bookmark" title="Nothing saved here yet" description="Items you save from the marketplace will appear here." />
+            </x-slot:empty>
+        @else
+            <x-slot:head>
+                <tr>
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
                     @if($type === 'supplier')
-                        <p class="text-sm font-semibold text-gray-900">{{ $item->supplierProfile?->display_name }}</p>
-                        <p class="text-xs text-gray-400">{{ $item->supplierProfile?->country?->name }}</p>
-                        <a href="{{ route('buyer.suppliers.show', $item) }}" class="block text-sm font-medium mt-3 pt-3 border-t border-gray-100 text-center" style="color:var(--theme-primary)">View Profile</a>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
                     @elseif($type === 'listing')
-                        <p class="text-sm font-semibold text-gray-900 line-clamp-2">{{ $item->name }}</p>
-                        <p class="text-xs text-gray-400">{{ $item->supplierAccount?->supplierProfile?->display_name }}</p>
-                        @if($item->base_price)<p class="text-sm font-semibold text-gray-900 mt-1">{{ number_format($item->base_price, 2) }} {{ $item->currency_code }}</p>@endif
-                        <a href="{{ $item->isProduct() ? route('buyer.marketplace.products.show', $item) : route('buyer.marketplace.services.show', $item) }}" class="block text-sm font-medium mt-3 pt-3 border-t border-gray-100 text-center" style="color:var(--theme-primary)">View Listing</a>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Price</th>
                     @elseif($type === 'rfq')
-                        <p class="text-sm font-semibold text-gray-900">{{ $item->title }}</p>
-                        <p class="text-xs text-gray-400">{{ $item->rfq_number }}</p>
-                        <x-backend.status-badge :status="$item->status" class="mt-2" />
-                        <a href="{{ route('buyer.rfqs.show', $item) }}" class="block text-sm font-medium mt-3 pt-3 border-t border-gray-100 text-center" style="color:var(--theme-primary)">View RFQ</a>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">RFQ</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     @else
-                        <p class="text-sm font-semibold text-gray-900">{{ $item->supplierAccount?->supplierProfile?->display_name }}</p>
-                        <p class="text-xs text-gray-400">{{ $item->rfq?->title }}</p>
-                        <p class="text-sm font-semibold text-gray-900 mt-1">{{ number_format($item->grand_total, 2) }} {{ $item->currency_code }}</p>
-                        <a href="{{ route('buyer.quotations.show', $item) }}" class="block text-sm font-medium mt-3 pt-3 border-t border-gray-100 text-center" style="color:var(--theme-primary)">View Quotation</a>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">RFQ</th>
+                        <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total</th>
                     @endif
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                </tr>
+            </x-slot:head>
 
-                    <form method="POST" action="{{ route('buyer.saved-items.toggle') }}" class="mt-2">
-                        @csrf
-                        <input type="hidden" name="type" value="{{ $type }}">
-                        <input type="hidden" name="id" value="{{ $item->id }}">
-                        <button type="submit" class="w-full text-xs font-medium text-red-600 hover:text-red-700">Remove from saved</button>
-                    </form>
-                </div>
+            @foreach($items as $item)
+                <tr class="hover:bg-gray-50">
+                    <td class="px-5 py-3.5 text-sm text-gray-500">{{ $paginator->firstItem() + $loop->index }}</td>
+
+                    @if($type === 'supplier')
+                        <td class="px-5 py-3.5">
+                            <p class="text-sm font-medium text-gray-900">{{ $item->supplierProfile?->display_name }}</p>
+                            <p class="text-xs text-gray-400">{{ $item->supplierProfile?->country?->name }}</p>
+                        </td>
+                        <td class="px-5 py-3.5 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <a href="{{ route('buyer.suppliers.show', $item) }}" title="View Profile" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100"><i class="fa-regular fa-eye"></i></a>
+                                @include('backend.buyer.saved-items.partials._remove-button', ['type' => $type, 'item' => $item])
+                            </div>
+                        </td>
+                    @elseif($type === 'listing')
+                        <td class="px-5 py-3.5">
+                            <a href="{{ $item->isProduct() ? route('buyer.marketplace.products.show', $item) : route('buyer.marketplace.services.show', $item) }}" class="text-sm font-medium text-gray-900 hover:underline line-clamp-2">{{ $item->name }}</a>
+                        </td>
+                        <td class="px-5 py-3.5 text-sm text-gray-600">{{ $item->supplierAccount?->supplierProfile?->display_name }}</td>
+                        <td class="px-5 py-3.5 text-sm text-gray-900 text-right font-medium">
+                            @if($item->base_price)
+                                {{ number_format($item->base_price, 2) }} {{ $item->currency_code }}
+                            @else
+                                <span class="text-gray-400 font-normal">Quote only</span>
+                            @endif
+                        </td>
+                        <td class="px-5 py-3.5 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <a href="{{ $item->isProduct() ? route('buyer.marketplace.products.show', $item) : route('buyer.marketplace.services.show', $item) }}" title="View" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100"><i class="fa-regular fa-eye"></i></a>
+                                @include('backend.buyer.saved-items.partials._remove-button', ['type' => $type, 'item' => $item])
+                            </div>
+                        </td>
+                    @elseif($type === 'rfq')
+                        <td class="px-5 py-3.5">
+                            <p class="text-sm font-medium text-gray-900">{{ $item->title }}</p>
+                            <p class="text-xs text-gray-400">{{ $item->rfq_number }}</p>
+                        </td>
+                        <td class="px-5 py-3.5"><x-backend.status-badge :status="$item->status" /></td>
+                        <td class="px-5 py-3.5 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <a href="{{ route('buyer.rfqs.show', $item) }}" title="View" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100"><i class="fa-regular fa-eye"></i></a>
+                                @include('backend.buyer.saved-items.partials._remove-button', ['type' => $type, 'item' => $item])
+                            </div>
+                        </td>
+                    @else
+                        <td class="px-5 py-3.5 text-sm text-gray-900 font-medium">{{ $item->supplierAccount?->supplierProfile?->display_name }}</td>
+                        <td class="px-5 py-3.5 text-sm text-gray-600">{{ $item->rfq?->title }}</td>
+                        <td class="px-5 py-3.5 text-sm text-gray-900 text-right font-medium">{{ number_format($item->grand_total, 2) }} {{ $item->currency_code }}</td>
+                        <td class="px-5 py-3.5 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <a href="{{ route('buyer.quotations.show', $item) }}" title="View" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100"><i class="fa-regular fa-eye"></i></a>
+                                @include('backend.buyer.saved-items.partials._remove-button', ['type' => $type, 'item' => $item])
+                            </div>
+                        </td>
+                    @endif
+                </tr>
             @endforeach
-        </div>
-    @endif
+        @endif
+
+        <x-slot:pagination>
+            <x-backend.pagination :paginator="$paginator" />
+        </x-slot:pagination>
+    </x-backend.table>
 
 @endsection

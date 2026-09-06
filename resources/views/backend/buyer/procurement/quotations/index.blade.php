@@ -23,21 +23,40 @@
         <p class="text-xs text-gray-500 -mt-4 mb-6">Check "Add to Compare" on 2–5 quotations below, then use "Compare Quotations" to view them side by side. Selections only apply to this RFQ.</p>
     @endif
 
-    <x-backend.form-card class="mb-6">
-        <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <x-backend.select name="rfq" label="RFQ" placeholder="All RFQs">
-                @foreach($rfqOptions as $option)
-                    <option value="{{ $option->id }}" @selected($rfq === $option->id)>{{ $option->title }} ({{ $option->rfq_number }})</option>
-                @endforeach
-            </x-backend.select>
-            <x-backend.select name="status" label="Status" :options="$statusOptions" placeholder="All Statuses" :selected="$status" />
-            <div class="flex items-end">
-                <button type="submit" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg w-full">Filter</button>
-            </div>
-        </form>
-    </x-backend.form-card>
-
     <x-backend.table>
+        <x-slot:toolbar>
+            <x-backend.table-search
+                title="Quotations" :count="$quotations->total()"
+                search-param="search" page-param="page"
+                :current-search="$search" placeholder="Search quote # or supplier..."
+                :filter-params="['rfq', 'status']" :has-active-filter="$rfq || $status !== ''">
+                <x-slot:filters>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 mb-1">RFQ</label>
+                        <select name="rfq" onchange="this.form.submit()" class="focus-accent w-52 text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                            <option value="">All RFQs</option>
+                            @foreach($rfqOptions as $option)
+                                <option value="{{ $option->id }}" @selected($rfq === $option->id)>{{ $option->title }} ({{ $option->rfq_number }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Status</label>
+                        <select name="status" onchange="this.form.submit()" class="focus-accent w-40 text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                            <option value="">All Statuses</option>
+                            @foreach($statusOptions as $value => $label)
+                                <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @if($rfq || $status !== '')
+                        <a href="{{ request()->fullUrlWithQuery(['rfq' => null, 'status' => null, 'page' => null]) }}"
+                           class="text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-2">Clear</a>
+                    @endif
+                </x-slot:filters>
+            </x-backend.table-search>
+        </x-slot:toolbar>
+
         @if($quotations->isEmpty())
             <x-slot:empty>
                 <x-backend.empty-state icon="fa-inbox" title="No quotations found" description="There are no quotations matching the selected filters." />
@@ -45,19 +64,21 @@
         @else
             <x-slot:head>
                 <tr>
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
                     @if($compareRfqId)
                         <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Compare</th>
                     @endif
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">RFQ</th>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quote #</th>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total</th>
+                    <x-backend.sortable-th column="quotation_number" label="Quote #" />
+                    <x-backend.sortable-th column="grand_total" label="Total" align="right" />
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
             </x-slot:head>
             @foreach($quotations as $quotation)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-5 py-3.5 text-sm text-gray-500">{{ $quotations->firstItem() + $loop->index }}</td>
                     @if($compareRfqId)
                         <td class="px-5 py-3.5">
                             @if((int) $quotation->rfq_id === $compareRfqId && in_array($quotation->status, $compareEligibleStatuses, true))

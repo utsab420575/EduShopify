@@ -35,7 +35,7 @@ class ReviewController extends Controller
     {
         $this->authorize('platform.reviews.moderate');
 
-        $review->load(['buyerAccount', 'supplierAccount.supplierProfile', 'reply', 'reports.reportedByAccount']);
+        $review->load(['buyerAccount', 'supplierAccount.supplierProfile', 'listing', 'reply', 'reports.reportedByAccount']);
 
         return view('backend.admin.reviews.show', ['review' => $review]);
     }

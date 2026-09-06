@@ -8,9 +8,11 @@ use App\Models\Role;
 use App\Services\RbacAuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route as RouteInstance;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use ReflectionMethod;
 use Spatie\Permission\PermissionRegistrar;
 
 class RoutePermissionSyncController extends Controller
@@ -76,9 +78,18 @@ class RoutePermissionSyncController extends Controller
             $httpMethod = implode('|', $methods);
             $uri = $route->uri();
 
-            // Derive Group Name and Suggested Permission
+            // Derive Group Name and Suggested Permission. Prefer the
+            // permission the controller action actually enforces (read via
+            // reflection from its own `$this->authorize('...')` call) over
+            // the name-based guess — many actions use a business-specific
+            // verb (review, moderate, verify, approve, manage...) instead
+            // of the generic CRUD verbs (view/create/edit/delete) implied
+            // by a route name like `.index`, and guessing from the name
+            // alone produces a permission slug nothing in the app actually
+            // uses (see admin.capabilities.index below).
             $group = $this->deriveGroupName($name);
-            $suggestedPermission = $this->deriveSuggestedPermission($name, $scope);
+            $actualPermission = $this->resolveActualPermissionFromController($route);
+            $suggestedPermission = $actualPermission ?? $this->deriveSuggestedPermission($name, $scope);
             $displayName = $this->deriveDisplayName($name, $suggestedPermission);
 
             // Check existence in DB
@@ -146,6 +157,13 @@ class RoutePermissionSyncController extends Controller
      */
     public function createPermissions(Request $request): RedirectResponse
     {
+        if ($request->filled('permissions_json')) {
+            $decoded = json_decode($request->input('permissions_json'), true);
+            if (is_array($decoded)) {
+                $request->merge(['permissions' => $decoded]);
+            }
+        }
+
         $validated = $request->validate([
             'permissions' => ['required', 'array', 'min:1'],
             'permissions.*.name' => ['required', 'string', 'max:120'],
@@ -182,6 +200,13 @@ class RoutePermissionSyncController extends Controller
      */
     public function assignToRole(Request $request): RedirectResponse
     {
+        if ($request->filled('permissions_json')) {
+            $decoded = json_decode($request->input('permissions_json'), true);
+            if (is_array($decoded)) {
+                $request->merge(['permissions' => $decoded]);
+            }
+        }
+
         $validated = $request->validate([
             'role_id'     => ['required', 'exists:roles,id'],
             'permissions' => ['nullable', 'array'],
@@ -247,6 +272,54 @@ class RoutePermissionSyncController extends Controller
             'ownership' => 'Ownership',
             default => ucwords(str_replace(['-', '_'], ' ', $section)),
         };
+    }
+
+    /**
+     * Resolve the exact permission a route's controller action enforces, by
+     * reading its `$this->authorize('permission.string')` call straight out
+     * of the method's own source. Returns null for anything this can't
+     * resolve (closures, Livewire component routes, methods with no such
+     * call) so the caller falls back to the name-based guess.
+     */
+    private function resolveActualPermissionFromController(RouteInstance $route): ?string
+    {
+        $action = $route->getActionName();
+
+        if (! is_string($action) || ! str_contains($action, '@')) {
+            return null;
+        }
+
+        [$class, $method] = explode('@', $action, 2);
+
+        if (! class_exists($class) || ! method_exists($class, $method)) {
+            return null;
+        }
+
+        try {
+            $reflection = new ReflectionMethod($class, $method);
+        } catch (\ReflectionException) {
+            return null;
+        }
+
+        $file = $reflection->getFileName();
+        if (! $file) {
+            return null;
+        }
+
+        $lines = @file($file);
+        if (! $lines) {
+            return null;
+        }
+
+        $start = max(0, $reflection->getStartLine() - 1);
+        $end = min(count($lines), $reflection->getEndLine());
+        $source = implode('', array_slice($lines, $start, $end - $start));
+
+        if (preg_match("/->authorize\\(\\s*['\"]([a-zA-Z0-9_.\\-]+)['\"]/", $source, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     /**

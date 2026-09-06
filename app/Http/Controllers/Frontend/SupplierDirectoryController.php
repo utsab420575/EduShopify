@@ -48,11 +48,21 @@ class SupplierDirectoryController extends Controller
 
         $suppliers = $query->paginate(24)->withQueryString();
 
+        $savedSupplierIds = [];
+        if (auth()->check()) {
+            $user = auth()->user();
+            $account = $user->activateTeamContext() ?? $user->accountMember?->account;
+            if ($account) {
+                $savedSupplierIds = $account->savedItems()->ofType('supplier')->pluck('item_id')->all();
+            }
+        }
+
         return view('frontend.suppliers.index', [
             'suppliers' => $suppliers,
             'supplierTypes' => SupplierType::orderBy('name')->get(),
             'sort' => $sort ?: 'rating',
             'filters' => $request->only(['q', 'type', 'country', 'state', 'category']),
+            'savedSupplierIds' => $savedSupplierIds,
         ]);
     }
 
@@ -63,14 +73,11 @@ class SupplierDirectoryController extends Controller
         $supplier->load([
             'country', 'state', 'city',
             'account.supplierTypes',
-            'account.exhibitions',
-            'gallery',
-            'videos',
-            'businessHours',
+            'badges' => fn ($q) => $q->active(),
+            'certifications' => fn ($q) => $q->active(),
         ]);
 
-        $tab = in_array(request('tab'), ['all', 'products', 'services'], true) ? request('tab') : 'all';
-
+        $tab = request()->string('tab', 'all')->toString();
         $listingsQuery = PublicListingQuery::forSupplierAccount($supplier->account_id)
             ->with(['mainCategory', 'brand']);
 
@@ -86,6 +93,15 @@ class SupplierDirectoryController extends Controller
             ->latest('published_at')
             ->paginate(10, ['*'], 'reviews_page');
 
+        $isSaved = false;
+        if (auth()->check()) {
+            $user = auth()->user();
+            $account = $user->activateTeamContext() ?? $user->accountMember?->account;
+            if ($account) {
+                $isSaved = app(\App\Services\SavedItemService::class)->isSaved($account, 'supplier', $supplier->account_id);
+            }
+        }
+
         return view('frontend.suppliers.show', [
             'supplier' => $supplier,
             'listings' => $listings,
@@ -93,6 +109,7 @@ class SupplierDirectoryController extends Controller
             'tab' => $tab,
             'productCount' => PublicListingQuery::forSupplierAccount($supplier->account_id)->where('listing_type', 'product')->count(),
             'serviceCount' => PublicListingQuery::forSupplierAccount($supplier->account_id)->where('listing_type', 'service')->count(),
+            'isSaved' => $isSaved,
         ]);
     }
 }

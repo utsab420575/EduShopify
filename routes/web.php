@@ -36,7 +36,32 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', fn () => redirect()->route('register'));
 
     // Login page
-    Route::view('/login', 'auth.login')->name('login');
+    Route::get('/login', function (Request $request) {
+        if ($request->filled('redirect')) {
+            session()->put('url.intended', $request->input('redirect'));
+        } elseif ($request->filled('return_url')) {
+            session()->put('url.intended', $request->input('return_url'));
+        } elseif (! session()->has('url.intended')) {
+            $previous = url()->previous();
+            if ($previous && $previous !== url()->current()) {
+                $parsedPrevious = parse_url($previous, PHP_URL_PATH);
+                $ignored = ['/login', '/register', '/logout', '/password', '/email'];
+                $isIgnored = false;
+                foreach ($ignored as $ig) {
+                    if (str_starts_with($parsedPrevious ?? '', $ig)) {
+                        $isIgnored = true;
+                        break;
+                    }
+                }
+                $previousHost = parse_url($previous, PHP_URL_HOST);
+                if (! $isIgnored && ($previousHost === null || $previousHost === $request->getHost())) {
+                    session()->put('url.intended', $previous);
+                }
+            }
+        }
+
+        return view('auth.login');
+    })->name('login');
 
     // Login handler
     Route::post('/login', function (Request $request) {
@@ -48,6 +73,14 @@ Route::middleware('guest')->group(function () {
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
             $user = Auth::user();
+
+            if ($request->filled('redirect')) {
+                $request->session()->forget('frontend_intent');
+                $request->session()->put('url.intended', $request->input('redirect'));
+            } elseif ($request->filled('return_url')) {
+                $request->session()->forget('frontend_intent');
+                $request->session()->put('url.intended', $request->input('return_url'));
+            }
 
             // User has not verified email yet — redirect to verification notice
             if (! $user->hasVerifiedEmail()) {

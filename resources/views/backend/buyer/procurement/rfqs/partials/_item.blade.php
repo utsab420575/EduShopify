@@ -13,7 +13,7 @@
                   :class="item.listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200'"
                   x-text="sourceTypeLabel(item)"></span>
         </div>
-        <button type="button" @click="removeItem(index)" x-show="items.length > 1" class="text-red-500 hover:text-red-700 text-xs">
+        <button type="button" @click="removeItem(index)" title="Remove this item" class="text-red-500 hover:text-red-700 text-xs">
             <i class="fa-solid fa-trash"></i> Remove
         </button>
     </div>

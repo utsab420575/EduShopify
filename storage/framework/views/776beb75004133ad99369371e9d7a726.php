@@ -1,0 +1,2 @@
+<?php echo $__env->make('backend.communication.messages.index', ['layout' => 'backend.layouts.supplier'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+<?php /**PATH C:\laragon\www\edushopify\resources\views\backend\supplier\messages\show.blade.php ENDPATH**/ ?>

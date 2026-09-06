@@ -119,22 +119,26 @@ class Listing extends Model implements HasMedia
         'is_active',
         'is_featured',
         'published_at',
+        'product_rating',
+        'product_reviews_count',
     ];
 
     protected function casts(): array
     {
         return [
-            'base_price'         => 'decimal:2',
-            'compare_at_price'   => 'decimal:2',
-            'min_order_quantity' => 'decimal:3',
-            'extra_specs'        => 'array',
-            'setup_step'         => 'integer',
-            'setup_completed_at' => 'datetime',
-            'last_autosaved_at'  => 'datetime',
-            'approved_at'        => 'datetime',
-            'is_active'          => 'boolean',
-            'is_featured'        => 'boolean',
-            'published_at'       => 'datetime',
+            'base_price'             => 'decimal:2',
+            'compare_at_price'       => 'decimal:2',
+            'min_order_quantity'     => 'decimal:3',
+            'extra_specs'            => 'array',
+            'setup_step'             => 'integer',
+            'setup_completed_at'     => 'datetime',
+            'last_autosaved_at'      => 'datetime',
+            'approved_at'            => 'datetime',
+            'is_active'              => 'boolean',
+            'is_featured'            => 'boolean',
+            'published_at'           => 'datetime',
+            'product_rating'         => 'decimal:2',
+            'product_reviews_count'  => 'integer',
         ];
     }
 
@@ -223,6 +227,16 @@ class Listing extends Model implements HasMedia
     public function attributeValues(): HasMany
     {
         return $this->hasMany(ListingAttributeValue::class, 'listing_id');
+    }
+
+    /**
+     * Product-level reviews (review_type=product) — distinct from
+     * supplierAccount's own reviews, which rate the supplier account, not
+     * this specific listing. See Review::scopeProduct().
+     */
+    public function productReviews(): HasMany
+    {
+        return $this->hasMany(Review::class, 'listing_id')->product();
     }
 
     public function variants(): HasMany

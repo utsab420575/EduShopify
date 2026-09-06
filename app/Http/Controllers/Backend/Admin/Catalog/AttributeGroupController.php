@@ -60,7 +60,8 @@ class AttributeGroupController extends Controller
             'slug'        => $slug,
             'description' => $request->input('description'),
             'sort_order'  => $request->integer('sort_order', 0),
-            'is_active'   => $request->boolean('is_active', true),
+            'is_active'   => $request->boolean('is_active'),
+            'created_by_user_id' => $this->admin()->id,
         ]);
 
         if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
@@ -91,7 +92,7 @@ class AttributeGroupController extends Controller
             'slug'        => $slug,
             'description' => $request->input('description'),
             'sort_order'  => $request->integer('sort_order', 0),
-            'is_active'   => $request->boolean('is_active', true),
+            'is_active'   => $request->boolean('is_active'),
         ]);
 
         if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {

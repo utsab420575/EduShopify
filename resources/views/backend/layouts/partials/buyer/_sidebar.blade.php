@@ -10,7 +10,7 @@
        :class="mobileSidebar ? 'translate-x-0' : '-translate-x-full'">
 
     <div class="h-20 flex items-center px-4 border-b shrink-0" style="border-color:var(--sidebar-border)">
-        <a href="{{ route('buyer.dashboard') }}" class="flex items-center min-w-0">
+        <a href="{{ route('home') }}" class="flex items-center min-w-0">
             <div class="w-9 h-9 rounded-lg btn-primary flex items-center justify-center font-bold text-sm shrink-0">ES</div>
             <div class="ml-3 leading-tight min-w-0">
                 <p class="text-sm font-bold text-gray-900 truncate">EduShopify</p>
@@ -97,22 +97,11 @@
         @endcanany
 
         {{-- Buyer Profile --}}
-        @canany(['buyer.profile.view', 'buyer.profile.update', 'locations.view', 'locations.manage', 'buyer.profile.edit', 'account.view', 'account.update'])
-        <div x-data="{ open: {{ $groupActive(['buyer.profile.*', 'buyer.locations.*']) ? 'true' : 'false' }} }">
-            <button @click="open = !open" class="sidebar-menu-item {{ $groupActive(['buyer.profile.*', 'buyer.locations.*']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['buyer.profile.*', 'buyer.locations.*']) ? '' : 'border-transparent' }}">
-                <i class="fa-solid fa-building sidebar-menu-icon w-5 text-center"></i>
-                <span class="ml-3 flex-1 text-sm font-medium text-left">Buyer Profile</span>
-                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
-            </button>
-            <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                @canany(['buyer.profile.view', 'buyer.profile.update', 'buyer.profile.edit', 'account.view'])
-                    <a href="{{ route('buyer.profile.edit') }}" class="sidebar-submenu-item {{ $isActive('buyer.profile.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Profile Information</a>
-                @endcanany
-                @canany(['locations.view', 'locations.manage', 'buyer.locations.index'])
-                    <a href="{{ route('buyer.locations.index') }}" class="sidebar-submenu-item {{ $isActive('buyer.locations.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Locations</a>
-                @endcanany
-            </div>
-        </div>
+        @canany(['buyer.profile.view', 'buyer.profile.update', 'buyer.profile.edit', 'account.view', 'account.update', 'locations.view', 'locations.manage'])
+        <a href="{{ route('buyer.profile.edit') }}" class="sidebar-menu-item {{ $isActive('buyer.profile.*') ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $isActive('buyer.profile.*') ? '' : 'border-transparent' }}">
+            <i class="fa-solid fa-building sidebar-menu-icon w-5 text-center"></i>
+            <span class="ml-3 flex-1 text-sm font-medium">Buyer Profile</span>
+        </a>
         @endcanany
 
         {{-- Organization (only for organization accounts) --}}

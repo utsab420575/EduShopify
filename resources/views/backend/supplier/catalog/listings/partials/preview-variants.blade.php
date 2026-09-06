@@ -1,4 +1,14 @@
-{{-- Product Variants card, with each variant's own photo. See listing-preview.blade.php for the expected variables. --}}
+{{--
+    Product Variants card, with each variant's own photo and — right below
+    its row — its own quantity-break tier pricing, if any. Uses two
+    deliberately JS-free interaction patterns so this partial keeps working
+    whether it's rendered directly or injected into the Step 4 wizard's
+    preview modal via x-html (injected <script> tags never execute there,
+    but <style> tags and native browser elements like <details> still work):
+      - a CSS-only :target lightbox for the variant photo gallery
+      - a native <details>/<summary> disclosure for per-variant tier pricing
+    See listing-preview.blade.php for the expected variables.
+--}}
 @if($listing->isProduct())
     <x-backend.form-card title="Product Variants" description="{{ $listing->variants->isNotEmpty() ? $listing->variants->count() . ' variant(s). To add, edit, or remove variants, use Edit Listing above.' : '' }}">
         @if($listing->variants->isEmpty())
@@ -92,6 +102,36 @@
                                     </span>
                                 </td>
                             </tr>
+                            @if($variant->tierPrices->isNotEmpty())
+                                <tr>
+                                    <td colspan="6" class="px-5 pb-3 pt-0 bg-gray-50/40">
+                                        <details class="text-xs">
+                                            <summary class="cursor-pointer font-semibold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1.5 py-1">
+                                                <i class="fa-solid fa-layer-group"></i>
+                                                {{ $variant->tierPrices->count() }} quantity-break tier{{ $variant->tierPrices->count() === 1 ? '' : 's' }} for this variant
+                                            </summary>
+                                            <div class="overflow-x-auto rounded-lg border border-gray-200 mt-2">
+                                                <table class="w-full text-xs text-left">
+                                                    <thead class="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-[10px]">
+                                                        <tr>
+                                                            <th class="px-4 py-2 font-semibold">Quantity Range</th>
+                                                            <th class="px-4 py-2 font-semibold">Unit Price</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                                        @foreach($variant->tierPrices as $tp)
+                                                            <tr>
+                                                                <td class="px-4 py-2 font-medium text-gray-800">{{ number_format($tp->min_quantity, 0) }} &ndash; {{ $tp->max_quantity ? number_format($tp->max_quantity, 0) : '∞' }} units</td>
+                                                                <td class="px-4 py-2 font-bold text-indigo-700">{{ $tp->currency_code }} {{ number_format($tp->unit_price, 2) }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </details>
+                                    </td>
+                                </tr>
+                            @endif
                         @endforeach
                     </tbody>
                 </table>

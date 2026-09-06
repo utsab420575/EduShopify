@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Services\Account\PublicHandoffResolver;
 use App\Support\FrontendIntent;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -17,6 +18,22 @@ class HandoffController extends Controller
     public function postRfq()
     {
         return $this->handle('post_rfq', []);
+    }
+
+    /**
+     * "Send RFQ to All Suppliers" from the /compare page. Slugs, not ids —
+     * every other handoff action re-resolves its target fresh by slug after
+     * login rather than trusting anything captured before authentication.
+     */
+    public function compareRfq(Request $request)
+    {
+        $slugs = collect(explode(',', (string) $request->query('listings')))
+            ->map(fn ($slug) => trim($slug))
+            ->filter()
+            ->values()
+            ->all();
+
+        return $this->handle('compare_rfq', ['slugs' => $slugs]);
     }
 
     public function requestQuoteListing(string $listing)

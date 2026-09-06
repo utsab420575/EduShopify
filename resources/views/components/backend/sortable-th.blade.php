@@ -6,8 +6,19 @@
     <th> tags in the caller. Resets the table's own page back to 1 on any
     sort change, without disturbing another table sharing the page.
 --}}
-@props(['column', 'label', 'sortParam', 'directionParam', 'currentSort', 'currentDirection', 'pageParam', 'align' => 'left'])
+@props([
+    'column',
+    'label',
+    'sortParam' => 'sort',
+    'directionParam' => 'direction',
+    'currentSort' => request('sort'),
+    'currentDirection' => request('direction', 'desc'),
+    'pageParam' => 'page',
+    'align' => 'left',
+])
 @php
+    $currentSort = $currentSort ?? request($sortParam);
+    $currentDirection = $currentDirection ?? request($directionParam, 'desc');
     $isActive = $currentSort === $column;
     $nextDirection = $isActive && $currentDirection === 'asc' ? 'desc' : 'asc';
     $url = request()->fullUrlWithQuery([$sortParam => $column, $directionParam => $nextDirection, $pageParam => null]);

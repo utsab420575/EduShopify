@@ -40,16 +40,27 @@ class CategoryController extends Controller
     {
         $this->authorize('platform.categories.manage');
 
+        $categories = Category::with('parent')->orderBy('name')->get();
+
         return view('backend.admin.catalog.categories.create', [
             'category' => new Category(),
-            'parents' => Category::orderBy('name')->get(),
+            'parents' => $categories,
+            'existingCategories' => $categories->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'parent_id' => $c->parent_id,
+                'parent_name' => $c->parent?->name,
+            ]),
         ]);
     }
 
     public function store(CategoryRequest $request)
     {
+        $parentId = $request->filled('parent_id') ? (int) $request->input('parent_id') : null;
+
         $category = Category::create($request->validated() + [
-            'slug' => $this->uniqueSlug($request->string('name')),
+            'slug' => Category::generateUniqueSlug($request->string('name')),
+            'level' => Category::levelForParent($parentId),
             'approval_status' => 'approved',
             'created_by_user_id' => $this->admin()->id,
             'reviewed_by_user_id' => $this->admin()->id,
@@ -69,17 +80,37 @@ class CategoryController extends Controller
     {
         $this->authorize('platform.categories.manage');
 
+        $categories = Category::with('parent')->where('id', '!=', $category->id)->orderBy('name')->get();
+
         return view('backend.admin.catalog.categories.edit', [
             'category' => $category,
-            'parents' => Category::where('id', '!=', $category->id)->orderBy('name')->get(),
+            'parents' => $categories,
+            'existingCategories' => $categories->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'parent_id' => $c->parent_id,
+                'parent_name' => $c->parent?->name,
+            ]),
         ]);
     }
 
     public function update(CategoryRequest $request, Category $category)
     {
+        $newParentId = $request->filled('parent_id') ? (int) $request->input('parent_id') : null;
+        $parentChanged = $newParentId !== $category->parent_id;
+
         $category->update($request->validated() + [
             'is_active' => $request->boolean('is_active', true),
+            'level' => $parentChanged ? Category::levelForParent($newParentId) : $category->level,
         ]);
+
+        // A category's level is only ever set once, at creation — moving it
+        // to a different parent here is the one path that can make it (and
+        // everything nested under it) stale, so bring the whole subtree
+        // back in sync straight away rather than leaving it wrong.
+        if ($parentChanged) {
+            $category->realignDescendantLevels();
+        }
 
         if ($request->filled('redirect_to') && Str::startsWith($request->string('redirect_to'), [url('/'), '/'])) {
             return redirect($request->string('redirect_to'))->with('success', "'{$category->name}' updated.");
@@ -131,17 +162,4 @@ class CategoryController extends Controller
         return back()->with('success', 'Category suggestion rejected.');
     }
 
-    private function uniqueSlug(string $name): string
-    {
-        $base = Str::slug($name);
-        $slug = $base;
-        $i = 2;
-
-        while (Category::where('slug', $slug)->exists()) {
-            $slug = "{$base}-{$i}";
-            $i++;
-        }
-
-        return $slug;
-    }
 }

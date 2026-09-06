@@ -80,6 +80,13 @@ class SaveRfqRequest extends FormRequest
             'target_filter.country_id' => ['nullable', 'integer', 'exists:countries,id'],
             'target_filter.state_id' => ['nullable', 'integer', 'exists:states,id'],
             'target_filter.city_id' => ['nullable', 'integer', 'exists:cities,id'],
+
+            // Delivery locations beyond the primary delivery_* columns above.
+            'additional_addresses' => ['nullable', 'array'],
+            'additional_addresses.*.country_id' => ['nullable', 'integer', 'exists:countries,id'],
+            'additional_addresses.*.state_id' => ['nullable', 'integer', 'exists:states,id'],
+            'additional_addresses.*.city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'additional_addresses.*.address' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
@@ -125,5 +132,46 @@ class SaveRfqRequest extends FormRequest
             'allow_alternative_products' => $this->boolean('allow_alternative_products', true),
             'items' => array_values($this->input('items', [])),
         ]);
+
+        // The delivery/target-filter location selects use 0 as their
+        // "Select country/state/city" placeholder value (so their Alpine
+        // state stays numeric), which otherwise submits as a real 0 and
+        // fails `exists:...` — these fields are genuinely optional, so
+        // normalize the placeholder sentinel to null before validation.
+        $locationFields = ['delivery_country_id', 'delivery_state_id', 'delivery_city_id'];
+        $normalized = [];
+        foreach ($locationFields as $field) {
+            if ((int) $this->input($field) === 0) {
+                $normalized[$field] = null;
+            }
+        }
+        if ($normalized) {
+            $this->merge($normalized);
+        }
+
+        $targetFilter = $this->input('target_filter', []);
+        if (is_array($targetFilter)) {
+            foreach (['country_id', 'state_id', 'city_id'] as $key) {
+                if ((int) ($targetFilter[$key] ?? 0) === 0) {
+                    $targetFilter[$key] = null;
+                }
+            }
+            $this->merge(['target_filter' => $targetFilter]);
+        }
+
+        $additionalAddresses = $this->input('additional_addresses', []);
+        if (is_array($additionalAddresses)) {
+            foreach ($additionalAddresses as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                foreach (['country_id', 'state_id', 'city_id'] as $key) {
+                    if ((int) ($row[$key] ?? 0) === 0) {
+                        $additionalAddresses[$i][$key] = null;
+                    }
+                }
+            }
+            $this->merge(['additional_addresses' => array_values($additionalAddresses)]);
+        }
     }
 }

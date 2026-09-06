@@ -3,11 +3,51 @@
      isn't on Blade's auto-discovered component path). --}}
 <a href="{{ route('v2.suppliers.show', $supplier->slug) }}" class="group block bg-white rounded-2xl border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all duration-200 overflow-hidden">
 
-  <div class="relative h-32 bg-emerald-50 overflow-hidden">
-    @if($supplier->banner)
-      <img src="{{ \Illuminate\Support\Facades\Storage::url($supplier->banner) }}" alt="{{ $supplier->display_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+  <div class="relative h-32 bg-emerald-50">
+    {{-- Banner Image with hover zoom --}}
+    <div class="absolute inset-0 overflow-hidden">
+      @if($supplier->banner)
+        <img src="{{ \Illuminate\Support\Facades\Storage::url($supplier->banner) }}" alt="{{ $supplier->display_name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+      @else
+        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100/50 text-emerald-600 font-bold text-2xl">
+          {{ strtoupper(substr($supplier->display_name, 0, 1)) }}
+        </div>
+      @endif
+    </div>
+
+    {{-- Top-Left Supplier Type Badge with Hover Tooltip --}}
+    @php
+      $supplierTypes = $supplier->account?->supplierTypes;
+      $primaryType = $supplierTypes?->first()?->name;
+      $totalTypes = $supplierTypes ? $supplierTypes->count() : 0;
+      $extraTypesCount = max(0, $totalTypes - 1);
+    @endphp
+
+    @if($primaryType)
+      <div class="absolute top-2.5 left-2.5 z-20 group/type">
+        <span class="inline-flex items-center gap-1 bg-gray-900/85 hover:bg-gray-950 backdrop-blur-sm text-white text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded shadow-sm cursor-help transition-all duration-150 border border-white/10" title="{{ $supplierTypes->pluck('name')->implode(' · ') }}">
+          <span>{{ Str::limit($primaryType, 16) }}</span>
+          @if($extraTypesCount > 0)
+            <span class="bg-emerald-500 text-white text-[9px] font-bold px-1 rounded-full leading-none">+{{ $extraTypesCount }}</span>
+          @endif
+        </span>
+
+        @if($totalTypes > 1)
+          <div class="absolute left-0 top-full mt-1.5 hidden group-hover/type:flex flex-col gap-1 z-30 bg-gray-950/95 backdrop-blur-md text-white text-[11px] rounded-lg p-2.5 shadow-xl whitespace-nowrap pointer-events-none border border-white/10 min-w-[130px]">
+            <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-800 pb-1 mb-0.5">Supplier Types</span>
+            @foreach($supplierTypes as $type)
+              <span class="flex items-center gap-1.5 text-gray-200 font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                {{ $type->name }}
+              </span>
+            @endforeach
+          </div>
+        @endif
+      </div>
     @endif
-    <button type="button" onclick="event.preventDefault(); event.stopPropagation();" class="absolute top-3 right-3 z-10 w-7 h-7 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors shadow-sm">
+
+    {{-- Favorite Heart Button --}}
+    <button type="button" onclick="event.preventDefault(); event.stopPropagation();" class="absolute top-2.5 right-2.5 z-10 w-7 h-7 bg-white/80 hover:bg-white backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors shadow-sm">
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
     </button>
   </div>

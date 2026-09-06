@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -21,6 +22,7 @@ class AttributeGroup extends Model
         'description',
         'sort_order',
         'is_active',
+        'created_by_user_id',
     ];
 
     protected function casts(): array
@@ -34,6 +36,11 @@ class AttributeGroup extends Model
     public function attributes(): HasMany
     {
         return $this->hasMany(Attribute::class, 'attribute_group_id')->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
     public function scopeActive(Builder $query): Builder

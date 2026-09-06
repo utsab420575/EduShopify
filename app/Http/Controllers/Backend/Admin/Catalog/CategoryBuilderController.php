@@ -26,7 +26,7 @@ class CategoryBuilderController extends Controller
     {
         $this->authorize('platform.categories.manage');
 
-        $categories = Category::withCount(['children', 'mainCategoryListings'])
+        $categories = Category::with('parent')->withCount(['children', 'mainCategoryListings'])
             ->orderBy('sort_order')->orderBy('name')->get();
 
         return view('backend.admin.catalog.builder.categories', [
@@ -41,6 +41,7 @@ class CategoryBuilderController extends Controller
         $this->authorize('platform.attributes.manage');
 
         $groups = AttributeGroup::withCount('attributes')
+            ->with('attributes')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -140,6 +141,8 @@ class CategoryBuilderController extends Controller
                 $options[] = [
                     'id'               => $cat->id,
                     'name'             => $cat->name,
+                    'parent_id'        => $cat->parent_id,
+                    'parent_name'      => $cat->parent?->name,
                     'depth'            => $depth,
                     'is_active'        => (bool) $cat->is_active,
                     'attributes_count' => $includeAttributeCount ? $cat->attributes_count : null,

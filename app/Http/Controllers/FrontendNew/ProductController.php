@@ -25,6 +25,21 @@ class ProductController extends Controller
             'productReviews' => fn ($q) => $q->published()->with('buyerAccount.buyerProfile')->latest('published_at'),
         ]);
 
+        // If cached aggregates on the listing are zero but published reviews exist, auto-sync.
+        if ((int) ($listing->product_reviews_count ?? 0) === 0 && $listing->productReviews->isNotEmpty()) {
+            $stats = Review::where('listing_id', $listing->id)
+                ->product()
+                ->published()
+                ->selectRaw('COUNT(*) as cnt, AVG(rating) as avg_rating')
+                ->first();
+
+            if ($stats && $stats->cnt > 0) {
+                $listing->product_rating = round((float) $stats->avg_rating, 2);
+                $listing->product_reviews_count = (int) $stats->cnt;
+                $listing->saveQuietly();
+            }
+        }
+
         $images = $listing->getMedia('gallery');
         if ($images->isEmpty() && $listing->primaryImage) {
             $images = collect([$listing->primaryImage]);

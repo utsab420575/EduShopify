@@ -18,6 +18,11 @@ class ProductController extends Controller
     {
         $account = $this->currentAccount();
 
+        $sort = in_array($request->string('sort')->toString(), ['name', 'base_price', 'published_at'], true)
+            ? $request->string('sort')->toString()
+            : null;
+        $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
+
         $listings = Listing::published()->products()
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->string('search');
@@ -29,8 +34,9 @@ class ProductController extends Controller
             ->when($request->filled('min_price'), fn ($q) => $q->where('base_price', '>=', $request->float('min_price')))
             ->when($request->filled('max_price'), fn ($q) => $q->where('base_price', '<=', $request->float('max_price')))
             ->with(['supplierAccount.supplierProfile', 'mainCategory', 'brand'])
-            ->orderByDesc('is_featured')
-            ->latest('published_at')
+            ->when($sort, fn ($q) => $q->orderBy($sort, $direction), function ($q) {
+                $q->orderByDesc('is_featured')->latest('published_at');
+            })
             ->paginate(12)
             ->withQueryString();
 
@@ -54,7 +60,8 @@ class ProductController extends Controller
         $listing->load([
             'productDetail', 'supplierAccount.supplierProfile', 'mainCategory', 'categories', 'brand', 'unit',
             'attributeValues.attribute', 'attributeValues.attributeValue',
-            'variants.attributeValues', 'tierPrices',
+            'variants.variantAttributes.attribute', 'variants.variantAttributes.attributeValue', 'variants.tierPrices',
+            'tierPrices',
         ]);
 
         return view('backend.buyer.marketplace.products.show', [

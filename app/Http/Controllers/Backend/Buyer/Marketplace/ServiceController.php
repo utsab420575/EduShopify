@@ -16,6 +16,11 @@ class ServiceController extends Controller
     {
         $account = $this->currentAccount();
 
+        $sort = in_array($request->string('sort')->toString(), ['name', 'published_at'], true)
+            ? $request->string('sort')->toString()
+            : null;
+        $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
+
         $listings = Listing::published()->services()
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->string('search');
@@ -24,8 +29,9 @@ class ServiceController extends Controller
             ->when($request->filled('category'), fn ($q) => $q->whereHas('categories', fn ($q2) => $q2->where('categories.id', $request->integer('category'))))
             ->when($request->filled('supplier'), fn ($q) => $q->where('supplier_account_id', $request->integer('supplier')))
             ->with(['supplierAccount.supplierProfile', 'mainCategory', 'serviceDetail'])
-            ->orderByDesc('is_featured')
-            ->latest('published_at')
+            ->when($sort, fn ($q) => $q->orderBy($sort, $direction), function ($q) {
+                $q->orderByDesc('is_featured')->latest('published_at');
+            })
             ->paginate(12)
             ->withQueryString();
 

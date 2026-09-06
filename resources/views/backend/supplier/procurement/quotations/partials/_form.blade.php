@@ -240,7 +240,15 @@
             fetchItemAttributes(item, categoryId) {
                 if (!categoryId) { item._attrGroups = []; return; }
                 item._attrLoading = true;
-                fetch(config.categoryAttributesUrl + '/' + categoryId + '/attributes')
+                // Editing/revising an existing quotation that already has a
+                // value for an attribute since deactivated — keep it visible
+                // instead of silently dropping it.
+                let url = config.categoryAttributesUrl + '/' + categoryId + '/attributes';
+                const keepIds = Object.keys(item.attribute_values || {});
+                if (keepIds.length > 0) {
+                    url += '?keep_attribute_ids=' + keepIds.join(',');
+                }
+                fetch(url)
                     .then(r => r.json())
                     .then(data => { item._attrGroups = data.groups || []; })
                     .finally(() => { item._attrLoading = false; });

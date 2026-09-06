@@ -164,4 +164,25 @@ class AdminAccessControlTest extends TestCase
         $auditResponse->assertOk();
         $auditResponse->assertSee('Role request approved');
     }
+
+    /**
+     * admin.capabilities.index actually enforces platform.capabilities.review
+     * (a custom business verb, not one of the generic CRUD verbs the Route
+     * Permission Discovery tool's name-based heuristic understands) — it
+     * used to guess platform.capabilities.view from the route name alone,
+     * which doesn't exist anywhere, showing a false "Missing in DB" /
+     * "Unassigned" row. The tool must now read the controller's own
+     * ->authorize() call and use that instead.
+     */
+    public function test_route_permission_discovery_resolves_the_real_authorize_call_not_a_name_guess(): void
+    {
+        $this->seedBase();
+        $admin = $this->makeAdmin('route-perm-discovery@example.com');
+
+        $response = $this->actingAs($admin)->get(route('admin.access-control.route-permissions.index', ['scope' => 'platform']));
+
+        $response->assertOk();
+        $response->assertSee('platform.capabilities.review');
+        $response->assertDontSee('platform.capabilities.view');
+    }
 }

@@ -183,6 +183,7 @@ Examples:
 Table shell
 Table toolbar
 Pagination
+Tab navigation (segmented control — see §6.1)
 Page header
 Breadcrumb
 Status badge
@@ -1136,6 +1137,117 @@ Standard header format placed at the top of the `<main>` area:
     </div>
 </div>
 ```
+
+---
+
+## 6.1 Tab Navigation (Segmented Control)
+
+When a listing page needs a status/type switcher above a table (e.g. "All / Draft / Submitted" or "Products / Suppliers / RFQs"), use the segmented-control tab pattern — a small-radius rectangular container holding small-radius rectangular tab buttons. This replaced an earlier ad-hoc `rounded-full` pill pattern; do not reintroduce pills for this purpose.
+
+```blade
+<x-backend.tabs>
+    <x-backend.tab :href="route('buyer.rfqs.index')" :active="$status === ''">All</x-backend.tab>
+    <x-backend.tab :href="route('buyer.rfqs.index', ['status' => 'draft'])" :active="$status === 'draft'">Draft</x-backend.tab>
+    <x-backend.tab :href="route('buyer.rfqs.index', ['status' => 'submitted'])" :active="$status === 'submitted'">
+        Submitted ({{ $counts['submitted'] }})
+    </x-backend.tab>
+</x-backend.tabs>
+```
+
+Implementation (`resources/views/components/backend/tabs.blade.php` / `tab.blade.php`):
+
+```html
+<!-- tabs.blade.php: the outer small-radius rectangle -->
+<div class="inline-flex flex-wrap items-center gap-1 bg-gray-100 rounded-lg p-1 mb-4">
+    {{ $slot }}
+</div>
+
+<!-- tab.blade.php: each small-radius rectangular tab -->
+<a href="{{ $href }}"
+   class="text-sm font-medium px-4 py-2 rounded-md transition-colors {{ $active ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-900' }}">
+    {{ $slot }}
+</a>
+```
+
+A count badge (e.g. `Submitted (4)`) is plain text inside the tab label — no separate badge markup is needed for this pattern.
+
+---
+
+## 6.2 Multi-Step Form Wizard
+
+Use this pattern when a single-submit form has grown into several logically distinct sections and users find it hard to fill out as one long page (e.g. the buyer RFQ creation form). It is a lighter-weight alternative to the full per-step-autosave wizard in §6.2.1 below — reach for it when the whole form is still one POST at the end; reach for the heavier pattern when losing browser state mid-edit over a multi-day session would actually cost the user something (e.g. a supplier building out a full product listing with photos).
+
+Core idea: **one Alpine data object holds every field for the whole form, regardless of which step is currently visible.** Nothing is submitted per step — only a `currentStep` integer controls which section is shown via `x-show`. This means:
+
+- Fields that used to be plain `:value="old(...)"` inputs need `x-model` added (with the same `old()`/model value passed into the Alpine `x-data` config at the top) so their values are readable from Alpine state for both step-gating and an optional Review step.
+- The stepper header (numbered circles, checkmark once a step's own gate is satisfied, connecting `border-b-2`, active tab in `text-indigo-600`) is copied from `wizard.blade.php`'s existing tab-style stepper — don't invent a new stepper visual.
+- **Stepper tabs are always clickable** — free navigation, since all form data lives in the one Alpine object no matter which step is on screen.
+- **"Next" gates forward only** — each step's own "Next" button runs a `stepValid(n)` check before advancing; on failure it shows an inline warning and does not advance. **"Back" is never gated.**
+- Gate checks mirror the FormRequest's actual `required` rules for the fields in that step — never rely on native HTML `required` attributes to block cross-step navigation, since a required field hidden by `x-show="currentStep === N"` (`display:none`) can silently block submission with no visible browser error once the user reaches a later step.
+- The final step is a read-only **Review** summary built from the same Alpine state, followed by the real submit button(s) — unchanged from whatever the non-wizard form's submit bar already was.
+
+Reference implementation: `resources/views/backend/buyer/procurement/rfqs/partials/_form.blade.php`.
+
+```blade
+<div class="flex items-center gap-2 border-b border-gray-200 mb-6 overflow-x-auto">
+    <template x-for="step in stepDefs" :key="step.num">
+        <button type="button" @click="currentStep = step.num"
+                class="py-3 text-sm font-semibold border-b-2 whitespace-nowrap flex items-center gap-2 transition-colors"
+                :class="currentStep === step.num ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                  :class="stepValid(step.num) ? 'bg-emerald-500 text-white' : (currentStep === step.num ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400')">
+                <i class="fa-solid fa-check" x-show="stepValid(step.num)" x-cloak></i>
+                <span x-show="!stepValid(step.num)" x-text="step.num"></span>
+            </span>
+            <span x-text="step.label"></span>
+        </button>
+    </template>
+</div>
+
+<div x-show="currentStep === 1" x-cloak class="max-w-4xl mx-auto space-y-6">
+    <!-- step 1 fields -->
+    <div class="flex justify-end">
+        <button type="button" @click="goNext(1)" class="btn-primary text-sm font-medium px-5 py-2 rounded-lg">Next <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+</div>
+```
+
+### 6.2.1 Per-Step Autosave Wizard (heavier pattern)
+
+`resources/views/backend/supplier/catalog/listings/wizard.blade.php` uses a different, heavier pattern for the same "several sections" problem: each step submits to its own endpoint (`step1Url`..`step4Url`) as soon as the user advances, with a "Draft saved at …" indicator and a `maxCompletedStep`/`completionPercent` gate that blocks jumping ahead of what's actually been saved. Only reach for this when the form represents a resource that benefits from being persisted incrementally (a listing a supplier might build out over several sessions) — it requires a real per-step backend endpoint, unlike §6.2's client-only pattern.
+
+---
+
+## 6.3 Detail Page: Hero Gallery + Tabs + Sidebar
+
+The read-only detail-page shell used by both the supplier's own listing page and the buyer's product page — reach for it whenever a page's job is "show one record's full detail, plus a few contextual actions," with any real photos to show.
+
+**Layout**: `xl:grid-cols-12` — left column (`xl:col-span-8`) holds a hero image panel (click-to-swap thumbnail strip when there's more than one photo, sharing a `heroUrl` Alpine value with the tab nav below it) followed by a tab shell (`Overview` + `Specifications` always; a contextual tab like `Variants` only rendered `@if` it actually applies — don't show an empty tab). Right column (`xl:col-span-4`) holds stacked sidebar cards: a primary buy-box/status card first, a compact key-value "Quick Info" card second, then whatever context-specific cards make sense (a timeline, a linked supplier card, etc).
+
+**Split into partials, not one file.** This shell always ends up with enough markup (hero + several tabs + several sidebar cards) to risk the Blade-compiler size issue this session already hit once on an oversized single form file — split into `_hero`, one partial per tab, and `_sidebar` (or one partial per sidebar card), the same way `resources/views/backend/supplier/catalog/listings/partials/` and `resources/views/backend/buyer/marketplace/products/partials/` do it.
+
+```blade
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6" x-data="{ tab: 'overview', heroUrl: '{{ $firstMedia?->getUrl() }}' }">
+    <div class="xl:col-span-8 space-y-5">
+        @include('....partials._hero')
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <nav class="flex gap-0 border-b border-gray-100 px-1 overflow-x-auto">
+                <button type="button" @click="tab = 'overview'" :class="tab === 'overview' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent'" class="px-5 py-3.5 text-sm font-semibold border-b-2">Overview</button>
+                <!-- more tabs -->
+            </nav>
+            <div class="p-5">
+                <div x-show="tab === 'overview'">@include('....partials._overview')</div>
+                <!-- more tab content -->
+            </div>
+        </div>
+    </div>
+    <div class="xl:col-span-4 space-y-4">
+        @include('....partials._sidebar')
+    </div>
+</div>
+```
+
+Reference implementations: `resources/views/backend/supplier/catalog/listings/partials/listing-preview-tabbed.blade.php` (+ `preview-sidebar.blade.php`) for the owner-facing version; `resources/views/backend/buyer/marketplace/products/show.blade.php` (+ its `partials/`) for the viewer-facing version — the same shell, different sidebar content (buy-box with a "Request Quotation" action instead of a status/edit card) and no approval-status banners.
 
 ---
 
@@ -3343,7 +3455,52 @@ Do not:
 
 ---
 
-# 43. Final Visual Contract
+# 43. Consolidated Profile & Expandable View Pattern
+
+### Example Reference: `http://edushopify.test/buyer/profile`
+
+Profile and account configuration pages (such as **Buyer Profile** and **Supplier Profile**) must use a **consolidated, multi-section expandable view (accordion)** pattern rather than scattering related settings across disconnected submenus.
+
+#### 43.1 Sidebar & Navigation Rules
+- Profile items in the sidebar must be **single, direct links** (e.g. `Buyer Profile` → `route('buyer.profile.edit')`).
+- **Do not create separate submenus** for sub-sections that belong to the profile (e.g. do **not** add a separate `Locations` or `Media` submenu in the sidebar). All related sub-domains are managed within the consolidated profile page.
+
+#### 43.2 Profile Summary Header Card
+- **Background**: Clean, solid white surface (`bg-white border border-gray-200 rounded-2xl shadow-sm p-5`). **Do not use heavy or dark gradients**.
+- **Avatar / Logo**: Rounded square/circle with a subtle border + optional secondary badge (e.g. profile photo overlay).
+- **Identity Details**: Display name (`text-lg font-bold text-gray-900`), contact email (`text-sm text-gray-500`), location pin with City, Country (`text-xs text-gray-400`).
+- **Quick Counters / Stats**: Right-aligned stat numbers with subtle labels (e.g. Gallery count, Saved Locations count).
+- **Status Indicator**: Clean pill badge showing profile state (e.g. `Profile Complete` with green dot/check or `Draft` with amber clock).
+
+#### 43.3 Accordion / Expandable Section Architecture
+- **Instant Client-Side Alpine.js State**:
+  - Expand/collapse must be handled entirely in the browser using Alpine.js (`x-data="{ open: true/false }"` with `@click="open = !open"` and `x-show="open"` with `x-transition`).
+  - **Zero Server Latency (0ms)**: Never make server-side network roundtrips just to toggle visual expansion.
+- **Independent Multi-Section Expansion**:
+  - Multiple sections must be able to stay open at the same time.
+  - Opening one section must **never** automatically collapse other sections.
+- **Section Card Anatomy**:
+  - **Container**: `bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden`.
+  - **Header Toggle Button**:
+    - Full-width button with `px-6 py-4 hover:bg-gray-50/80 transition-colors cursor-pointer`.
+    - Distinct colored category icon badge (e.g. Indigo for Company, Sky for Contact, Violet for Media, Pink for Social, Emerald for Locations).
+    - Section Title (`text-sm font-semibold text-gray-900`) + dynamic contextual subtitle preview (`text-xs text-gray-400` showing current summary data).
+    - Chevron icon rotating smoothly with CSS transition (`:class="open && 'rotate-180'"`).
+  - **Expanded Body**:
+    - Clean border separator (`border-t border-gray-100 px-6 py-6`).
+    - Inputs with clear labels, validation error feedback, and bottom right-aligned Save button.
+    - Saves should execute cleanly without forcefully collapsing the active section.
+
+#### 43.4 Form & Repeatable Sub-Section Patterns
+- **Pill Checkbox Selectors**: For multi-option tagging (e.g. Buyer Types), use rounded-full pill buttons with active border/background highlight on selection (`wire:model.live` or reactive Alpine state).
+- **Media & Gallery Management**: Live upload preview, grid-based gallery image cards with hover delete overlays, and batch additive file selection.
+- **Repeatable Item Lists (Locations, Social Links)**:
+  - List existing items as clean cards with primary status badge, edit toggle, and remove button.
+  - Inline sub-forms for adding new records with cascading dropdowns (Country → State → City) and primary toggle options.
+
+---
+
+# 44. Final Visual Contract
 
 EduShopify backend should consistently look like:
 

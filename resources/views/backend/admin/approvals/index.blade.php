@@ -28,6 +28,7 @@
                         <thead class="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-[10px]">
                             @if($tab === 'listings')
                                 <tr>
+                                    <th class="px-4 py-3 font-semibold w-10 text-center">#</th>
                                     <th class="px-5 py-3 font-semibold">Listing / Product</th>
                                     <th class="px-4 py-3 font-semibold">Category</th>
                                     <th class="px-4 py-3 font-semibold">Supplier</th>
@@ -60,6 +61,9 @@
                                     @switch($tab)
                                         @case('listings')
                                             @php($firstImg = $item->getMedia('gallery')->first())
+                                            <td class="px-4 py-3.5 text-center text-xs text-gray-400 font-medium">
+                                                {{ $loop->iteration }}
+                                            </td>
                                             <td class="px-5 py-3.5">
                                                 <div class="flex items-center gap-3">
                                                     <div class="w-11 h-11 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center">
@@ -103,9 +107,19 @@
                                             <td class="px-4 py-3.5 font-bold text-indigo-700">
                                                 {{ $item->base_price ? $item->currency_code . ' ' . number_format($item->base_price, 2) : 'Negotiable' }}
                                             </td>
-                                            <td class="px-4 py-3.5 text-gray-500 text-[11px]">
-                                                {{ $item->created_at->format('d M Y') }}
-                                                <span class="block text-gray-400 text-[10px]">{{ $item->created_at->diffForHumans() }}</span>
+                                            <td class="px-4 py-3.5 text-[11px]">
+                                                @php($hoursWaiting = $item->created_at->diffInHours(now()))
+                                                <span class="font-medium text-gray-700">{{ $item->created_at->format('d M Y') }}</span>
+                                                <span class="block text-gray-400 text-[10px] mt-0.5">{{ $item->created_at->diffForHumans() }}</span>
+                                                @if($hoursWaiting >= 72)
+                                                    <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                                                        <i class="fa-solid fa-triangle-exclamation text-[8px]"></i> Urgent
+                                                    </span>
+                                                @elseif($hoursWaiting >= 24)
+                                                    <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                                        <i class="fa-solid fa-clock text-[8px]"></i> Overdue
+                                                    </span>
+                                                @endif
                                             </td>
                                             <td class="px-5 py-3.5 text-right">
                                                 <div class="flex items-center justify-end gap-2">

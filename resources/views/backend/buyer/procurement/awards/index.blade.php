@@ -7,12 +7,12 @@
 
     <x-backend.page-header title="Awards" subtitle="Track awards you've issued to suppliers." />
 
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-        <a href="{{ route('buyer.awards.index') }}" class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $status === '' ? 'text-white' : 'text-gray-600 border-gray-200 hover:bg-gray-50' }}" @if($status === '') style="background:var(--theme-primary);border-color:var(--theme-primary)" @endif>All</a>
+    <x-backend.tabs>
+        <x-backend.tab :href="route('buyer.awards.index')" :active="$status === ''">All</x-backend.tab>
         @foreach($statusOptions as $value => $label)
-            <a href="{{ route('buyer.awards.index', ['status' => $value]) }}" class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $status === $value ? 'text-white' : 'text-gray-600 border-gray-200 hover:bg-gray-50' }}" @if($status === $value) style="background:var(--theme-primary);border-color:var(--theme-primary)" @endif>{{ $label }}</a>
+            <x-backend.tab :href="route('buyer.awards.index', ['status' => $value])" :active="$status === $value">{{ $label }}</x-backend.tab>
         @endforeach
-    </div>
+    </x-backend.tabs>
 
     <x-backend.table>
         @if($awards->isEmpty())
@@ -22,16 +22,18 @@
         @else
             <x-slot:head>
                 <tr>
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">RFQ</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Award #</th>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Awarded</th>
+                    <x-backend.sortable-th column="award_number" label="Award #" />
+                    <x-backend.sortable-th column="awarded_at" label="Awarded" />
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
             </x-slot:head>
             @foreach($awards as $award)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-5 py-3.5 text-sm text-gray-500">{{ $awards->firstItem() + $loop->index }}</td>
                     <td class="px-5 py-3.5 text-sm text-gray-900 font-medium">{{ $award->rfq->title }}</td>
                     <td class="px-5 py-3.5 text-sm text-gray-600">{{ $award->supplierAccount?->supplierProfile?->display_name }}</td>
                     <td class="px-5 py-3.5 text-sm text-gray-600">{{ $award->award_number }}</td>

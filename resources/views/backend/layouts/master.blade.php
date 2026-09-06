@@ -9,8 +9,13 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+{{-- Alpine.js is NOT loaded here on purpose: Livewire v3 bundles and boots its
+     own Alpine instance automatically. A second standalone copy alongside it
+     causes "Detected multiple instances of Alpine running" and corrupts
+     wire:model diffing (stale values, duplicate submits) across every
+     Livewire component on the page. --}}
 
 @include('backend.layouts.partials.shared._theme', ['theme' => $themeSettings ?? []])
 <style>

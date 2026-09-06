@@ -19,12 +19,23 @@ class SupplierDirectoryController extends Controller
     {
         $account = $this->currentAccount();
 
+        $sort = in_array($request->string('sort')->toString(), ['name', 'rating'], true)
+            ? $request->string('sort')->toString()
+            : null;
+        $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
+
         $suppliers = Account::marketplace()
             ->whereHas('capabilities', fn ($q) => $q->where('status', 'active')->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'supplier')))
             ->when($request->filled('search'), fn ($q) => $q->whereHas('supplierProfile', fn ($q2) => $q2->where('display_name', 'like', '%'.$request->string('search').'%')))
             ->when($request->filled('type'), fn ($q) => $q->whereHas('supplierTypes', fn ($q2) => $q2->where('supplier_types.id', $request->integer('type'))))
             ->when($request->filled('country'), fn ($q) => $q->whereHas('supplierProfile', fn ($q2) => $q2->where('country_id', $request->integer('country'))))
             ->with(['supplierProfile.country', 'supplierTypes'])
+            ->when($sort, function ($q) use ($sort, $direction) {
+                $column = $sort === 'name' ? 'display_name' : 'rating';
+                $q->select('accounts.*')
+                    ->leftJoin('supplier_profiles', 'supplier_profiles.account_id', '=', 'accounts.id')
+                    ->orderBy('supplier_profiles.'.$column, $direction);
+            }, fn ($q) => $q->latest('accounts.created_at'))
             ->paginate(12)
             ->withQueryString();
 

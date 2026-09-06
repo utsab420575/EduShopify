@@ -64,6 +64,7 @@ Route::get('/privacy', [PageController::class, 'privacy'])->name('frontend.pages
 /* ── Protected-action handoff (frontend_workflow.md Parts 50-53) ── */
 Route::prefix('handoff')->name('frontend.handoff.')->group(function () {
     Route::get('/post-rfq', [HandoffController::class, 'postRfq'])->name('post-rfq');
+    Route::get('/compare-rfq', [HandoffController::class, 'compareRfq'])->name('compare-rfq');
     Route::get('/request-quote/{listing:slug}', [HandoffController::class, 'requestQuoteListing'])->name('request-quote-listing');
     Route::get('/request-quote/supplier/{supplier:slug}', [HandoffController::class, 'requestQuoteSupplier'])->name('request-quote-supplier');
     Route::get('/submit-quotation/{rfq_number}', [HandoffController::class, 'submitQuotation'])->name('submit-quotation');

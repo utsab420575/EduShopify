@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edushopify – LEGO Education – Supplier Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+
+    /* ── Navbar ── */
+    .nav-link { font-size:14px; font-weight:500; color:#374151; padding:4px 10px; }
+    .nav-link:hover { color:#111; }
+
+    /* ── Stars ── */
+    .star-filled { color:#f59e0b; }
+    .star-empty  { color:#d1d5db; }
+
+    /* ── Badges ── */
+    .badge-verified { background:#e8f5ee; color:#1a7f45; border:1px solid #b6e0c6; border-radius:99px; font-size:11px; font-weight:600; padding:3px 10px; display:inline-flex; align-items:center; gap:4px; }
+    .badge-bett     { background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; border-radius:99px; font-size:11px; font-weight:600; padding:3px 10px; display:inline-block; }
+    .badge-founding { background:#fff8e6; color:#a16207; border:1px solid #fde68a; border-radius:99px; font-size:10px; font-weight:600; padding:2px 8px; }
+    .badge-ise      { background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:99px; font-size:10px; font-weight:600; padding:2px 8px; }
+
+    /* ── Hero + Stats wrapper ── */
+    .hero-wrap { border-radius:12px; overflow:hidden; border:1px solid #e5e7eb; box-shadow:0 1px 8px rgba(0,0,0,.06); margin-bottom:16px; }
+    .hero-banner { position:relative; height:280px; }
+    .hero-banner img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+    .hero-save-btn { position:absolute; top:14px; right:14px; width:34px; height:34px; background:rgba(255,255,255,.92); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid rgba(0,0,0,.08); box-shadow:0 1px 4px rgba(0,0,0,.15); }
+    .hero-save-btn:hover { background:#fff; }
+    .profile-bar { position:absolute; bottom:0; left:0; right:0; padding:18px 24px; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; background:linear-gradient(to top,rgba(0,0,0,.65) 0%,rgba(0,0,0,.2) 55%,rgba(0,0,0,0) 100%); }
+    .supplier-avatar { width:60px; height:60px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; color:#374151; flex-shrink:0; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+
+    /* ── Stats bar (merged with hero) ── */
+    .stats-bar { background:#fff; border-top:1px solid #e5e7eb; }
+    .stat-col { text-align:center; padding:14px 8px; }
+    .stat-col:not(:last-child) { border-right:1px solid #f3f4f6; }
+    .stat-col .val { font-size:20px; font-weight:800; color:#111827; line-height:1; }
+    .stat-col .lbl { font-size:11px; color:#9ca3af; margin-top:4px; }
+
+    /* ── Tab bar ── */
+    .tab-bar { background:#fff; border:1px solid #e5e7eb; border-radius:10px; display:flex; overflow-x:auto; scrollbar-width:none; }
+    .tab-bar::-webkit-scrollbar { display:none; }
+    .tab-btn { flex:none; padding:14px 22px; font-size:14px; font-weight:500; color:#6b7280; cursor:pointer; white-space:nowrap; border-bottom:2px solid transparent; transition:color .15s,border-color .15s; }
+    .tab-btn:hover { color:#111827; }
+    .tab-btn.active { color:#10b981; border-bottom-color:#10b981; font-weight:600; }
+
+    /* ── Tab panels: JS controls via inline style ── */
+    .tab-panel { display:none; }
+
+    /* ── Section card ── */
+    .sec-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:20px 22px; }
+
+    /* ── Featured product card ── */
+    .fp-card { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; cursor:pointer; transition:box-shadow .15s; }
+    .fp-card:hover { box-shadow:0 3px 12px rgba(0,0,0,.08); }
+
+    /* ── Products tab card ── */
+    .pt-card { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:#fff; transition:box-shadow .15s; }
+    .pt-card:hover { box-shadow:0 4px 14px rgba(0,0,0,.08); }
+    .pt-card.hovered { border-color:#10b981; }
+
+    /* ── Service icon wrap (About compact + Services tab full) ── */
+    .svc-icon { width:38px; height:38px; border-radius:8px; background:#f0fdf4; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .svc-tag { border:1px solid #d1d5db; border-radius:4px; font-size:11px; font-weight:500; color:#374151; padding:2px 8px; display:inline-block; }
+
+    /* ── Cert pills ── */
+    .cert-pill { border:1px solid #d1d5db; border-radius:6px; padding:7px 16px; font-size:13px; font-weight:500; color:#374151; background:#fff; }
+
+    /* ── Cert card (Certifications tab) ── */
+    .cert-card { border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; display:flex; gap:12px; align-items:flex-start; }
+    .cert-icon { width:36px; height:36px; border-radius:8px; background:#f0fdf4; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+    /* ── Video card ── */
+    .vid-card { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; transition:box-shadow .15s; cursor:pointer; }
+    .vid-card:hover { box-shadow:0 3px 12px rgba(0,0,0,.08); }
+
+    /* ── Review card ── */
+    .rev-card { border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; }
+    .rev-av { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; flex-shrink:0; }
+
+    /* ── Contact info tile ── */
+    .contact-tile { border:1px solid #e5e7eb; border-radius:8px; padding:14px 16px; display:flex; align-items:center; gap:12px; background:#fff; }
+    .contact-icon { width:36px; height:36px; border-radius:8px; background:#f0fdf4; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+    /* ── Social icon button ── */
+    .soc-icon { width:34px; height:34px; border:1px solid #e5e7eb; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#6b7280; cursor:pointer; background:#fff; transition:border-color .15s,color .15s; }
+    .soc-icon:hover { border-color:#10b981; color:#10b981; }
+
+    /* ── Share icon (sidebar) ── */
+    .share-btn { width:32px; height:32px; border:1px solid #e5e7eb; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#6b7280; cursor:pointer; background:#f9fafb; transition:border-color .15s,color .15s; }
+    .share-btn:hover { border-color:#10b981; color:#10b981; background:#f0fdf4; }
+
+    /* ── Sidebar card ── */
+    .side-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:16px; }
+
+    /* ── Supp card (You May Also Like) ── */
+    .supp-card { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:#fff; transition:box-shadow .2s; }
+    .supp-card:hover { box-shadow:0 4px 18px rgba(0,0,0,.09); }
+    .supp-av { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+
+    /* ── Hours row ── */
+    .h-row { display:flex; justify-content:space-between; font-size:13px; padding:4px 0; }
+    .h-row .closed { color:#ef4444; font-weight:500; }
+  </style>
+</head>
+<body class="bg-gray-50 antialiased">
+
+<!-- ════════════════════ NAVBAR ════════════════════ -->
+<header class="sticky top-0 z-50 bg-white border-b border-gray-200">
+  <div class="max-w-7xl mx-auto px-4 flex items-center gap-4 h-14">
+    <a href="#" class="flex items-center gap-2 shrink-0">
+      <svg width="30" height="30" viewBox="0 0 36 36" fill="none">
+        <rect x="0"  y="0"  width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="13" y="0"  width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="26" y="0"  width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="0"  y="13" width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="13" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="26" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="0"  y="26" width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="13" y="26" width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="26" y="26" width="9" height="9" rx="2" fill="#10b981"/>
+      </svg>
+      <div class="flex flex-col leading-tight">
+        <span class="font-bold text-gray-900 text-[17px] tracking-tight">Edu<span class="text-emerald-500">shopify</span></span>
+        <span class="text-[9px] text-gray-400 hidden sm:block">Connecting Education</span>
+      </div>
+    </a>
+    <div class="flex-1 max-w-md relative hidden sm:flex">
+      <input type="text" placeholder="Search suppliers, products, categories..." class="w-full border border-gray-200 rounded-l-md text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+      <button class="px-3 bg-emerald-500 hover:bg-emerald-600 rounded-r-md flex items-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
+    </div>
+    <nav class="hidden lg:flex items-center gap-1 ml-1">
+      <a href="#" class="nav-link">Categories</a>
+      <a href="#" class="nav-link">RFQ</a>
+      <a href="#" class="nav-link font-semibold text-gray-900">Suppliers</a>
+      <a href="#" class="nav-link">Resources</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-3">
+      <button class="hidden sm:block text-gray-400 hover:text-gray-700"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+      <button class="hidden sm:block text-gray-400 hover:text-gray-700"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+      <button class="hidden sm:block text-gray-400 hover:text-gray-700"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+      <a href="#" class="text-sm font-medium text-gray-700 hidden sm:inline">Sign In</a>
+      <a href="#" class="text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-md">Register</a>
+    </div>
+  </div>
+</header>
+
+<!-- ════════════════════ MAIN ════════════════════ -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+  <!-- Hero + Stats (merged into one rounded box) -->
+  <div class="hero-wrap">
+    <div class="hero-banner">
+      <img src="https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=1600&q=85" alt="LEGO Education" />
+      <div class="hero-save-btn">
+        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </div>
+      <div class="profile-bar">
+        <div class="flex items-end gap-3">
+          <div class="supplier-avatar">L</div>
+          <div>
+            <h1 class="text-white font-bold text-2xl leading-tight mb-1.5">LEGO Education</h1>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span class="badge-verified"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Verified Supplier</span>
+              <span class="badge-bett">BETT Exhibitor</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-[12px] text-white/85">
+              <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Denmark</span>
+              <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Since 1980</span>
+              <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>120 Products</span>
+              <span class="flex items-center gap-1.5"><span class="star-filled">★</span>4.9 <span class="text-white/70">(58 Reviews)</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="hidden sm:flex flex-col gap-2 shrink-0">
+          <button class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-5 py-2.5 rounded-md flex items-center gap-2 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Request Quotation
+          </button>
+          <button class="bg-white/90 hover:bg-white text-gray-800 text-sm font-medium px-5 py-2.5 rounded-md flex items-center gap-2 border border-white/40 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="stats-bar">
+      <div class="grid grid-cols-5 divide-x divide-gray-100">
+        <div class="stat-col"><p class="val">88%</p><p class="lbl">Response Rate</p></div>
+        <div class="stat-col"><p class="val">4 hrs</p><p class="lbl">Avg Response Time</p></div>
+        <div class="stat-col"><p class="val">57+</p><p class="lbl">RFQs Completed</p></div>
+        <div class="stat-col"><p class="val">35+</p><p class="lbl">Countries Served</p></div>
+        <div class="stat-col"><p class="val">46+</p><p class="lbl">Years in Business</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar mb-5">
+    <button class="tab-btn active" onclick="switchTab(this,'about')">About Us</button>
+    <button class="tab-btn" onclick="switchTab(this,'products')">Products</button>
+    <button class="tab-btn" onclick="switchTab(this,'services')">Services</button>
+    <button class="tab-btn" onclick="switchTab(this,'videos')">Videos</button>
+    <button class="tab-btn" onclick="switchTab(this,'certifications')">Certifications</button>
+    <button class="tab-btn" onclick="switchTab(this,'reviews')">Reviews</button>
+    <button class="tab-btn" onclick="switchTab(this,'contact')">Contact</button>
+  </div>
+
+  <!-- Two-column layout: LEFT smaller, RIGHT sidebar bigger -->
+  <div class="flex flex-col lg:flex-row gap-5 items-start">
+
+    <!-- ═══════════════════ LEFT ═══════════════════ -->
+    <div class="w-full lg:flex-1 lg:max-w-[calc(100%-335px)] min-w-0 flex flex-col gap-4">
+
+      <!-- ══ ABOUT TAB: About + Featured Products + Our Services + Certifications & Partners ══ -->
+      <div id="tab-about" class="tab-panel flex flex-col gap-4" style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- About Us card -->
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-3">About Us</h2>
+          <div class="flex gap-4">
+            <div class="flex-1">
+              <p class="text-sm text-gray-600 leading-relaxed mb-2">
+                <span class="text-emerald-600 font-medium">LEGO Education</span> provides hands-on STEAM learning solutions that make learning playful and engaging. Our robotics and coding kits are used in 100,000+ classrooms worldwide.
+              </p>
+              <a href="#" class="text-sm text-emerald-600 font-medium hover:underline">Read More</a>
+            </div>
+            <!-- Company intro video thumbnail -->
+            <div class="shrink-0 w-36 h-24 relative rounded-lg overflow-hidden cursor-pointer group">
+              <img src="https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=300&q=80" class="w-full h-full object-cover opacity-80" />
+              <div class="absolute inset-0 bg-black/30 flex items-end justify-center pb-2">
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="w-9 h-9 bg-white/90 rounded-full flex items-center justify-center group-hover:bg-white transition-colors shadow">
+                    <svg class="w-4 h-4 text-emerald-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                </div>
+                <span class="text-white text-[10px] font-medium relative z-10 bg-black/40 px-1.5 py-0.5 rounded">Company Introduction Video</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Featured Products -->
+        <div class="sec-card">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-[15px] font-bold text-gray-900">Featured Products</h2>
+            <a href="#" class="text-sm text-emerald-600 font-medium hover:underline">View all products →</a>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="fp-card">
+              <img src="https://images.unsplash.com/photo-1561144257-e32e8efc6c4f?w=300&q=80" class="w-full h-24 object-cover" />
+              <div class="p-2.5">
+                <p class="text-sm font-semibold text-gray-900 leading-snug mb-0.5">Advanced Robotics Kit</p>
+                <p class="text-[11px] text-emerald-600 font-medium mb-1.5">EduTech</p>
+                <a href="#" class="text-[11px] text-emerald-600 font-medium hover:underline">View Details →</a>
+              </div>
+            </div>
+            <div class="fp-card">
+              <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&q=80" class="w-full h-24 object-cover" />
+              <div class="p-2.5">
+                <p class="text-sm font-semibold text-gray-900 leading-snug mb-0.5">AI Learning Kit</p>
+                <p class="text-[11px] text-emerald-600 font-medium mb-1.5">EduTech</p>
+                <a href="#" class="text-[11px] text-emerald-600 font-medium hover:underline">View Details →</a>
+              </div>
+            </div>
+            <div class="fp-card">
+              <img src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=300&q=80" class="w-full h-24 object-cover" />
+              <div class="p-2.5">
+                <p class="text-sm font-semibold text-gray-900 leading-snug mb-0.5">STEM Education Set</p>
+                <p class="text-[11px] text-emerald-600 font-medium mb-1.5">EduTech</p>
+                <a href="#" class="text-[11px] text-emerald-600 font-medium hover:underline">View Details →</a>
+              </div>
+            </div>
+            <div class="fp-card">
+              <img src="https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=300&q=80" class="w-full h-24 object-cover" />
+              <div class="p-2.5">
+                <p class="text-sm font-semibold text-gray-900 leading-snug mb-0.5">Robotics Competition Set</p>
+                <p class="text-[11px] text-emerald-600 font-medium mb-1.5">EduTech</p>
+                <a href="#" class="text-[11px] text-emerald-600 font-medium hover:underline">View Details →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Our Services (compact 4-col) -->
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Our Services</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+              <div class="svc-icon mb-2"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+              <p class="text-sm font-semibold text-gray-900 mb-1">Installation &amp; Setup</p>
+              <p class="text-[11px] text-gray-500 leading-snug">Professional installation and commissioning</p>
+            </div>
+            <div class="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+              <div class="svc-icon mb-2"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+              <p class="text-sm font-semibold text-gray-900 mb-1">Teacher Training</p>
+              <p class="text-[11px] text-gray-500 leading-snug">Hands-on training for educators</p>
+            </div>
+            <div class="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+              <div class="svc-icon mb-2"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></div>
+              <p class="text-sm font-semibold text-gray-900 mb-1">Technical Support</p>
+              <p class="text-[11px] text-gray-500 leading-snug">24/7 technical assistance</p>
+            </div>
+            <div class="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+              <div class="svc-icon mb-2"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+              <p class="text-sm font-semibold text-gray-900 mb-1">Curriculum Integration</p>
+              <p class="text-[11px] text-gray-500 leading-snug">STEM curriculum consulting</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Certifications & Partners (compact pills) -->
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Certifications &amp; Partners</h2>
+          <div class="flex flex-wrap gap-2">
+            <span class="cert-pill">ISO</span>
+            <span class="cert-pill">Microsoft</span>
+            <span class="cert-pill">Google for Education</span>
+            <span class="cert-pill">BETT Partner</span>
+            <span class="cert-pill">GESS Partner</span>
+            <span class="cert-pill">ISTE Member</span>
+          </div>
+        </div>
+
+      </div><!-- /tab-about -->
+
+      <!-- ══ PRODUCTS TAB: Products (120+) — 3-col grid, 2 rows ══ -->
+      <div id="tab-products" class="tab-panel">
+        <div class="sec-card">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-[15px] font-bold text-gray-900">Products (120+)</h2>
+            <a href="#" class="text-sm text-emerald-600 font-medium hover:underline">View in Marketplace →</a>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+            <!-- Row 1 -->
+            <div class="pt-card">
+              <img src="https://images.unsplash.com/photo-1561144257-e32e8efc6c4f?w=400&q=80" class="w-full h-40 object-cover" />
+              <div class="p-3.5">
+                <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide mb-1">EDUTECH</p>
+                <p class="text-[15px] font-bold text-gray-900 mb-2">Advanced Robotics Kit</p>
+                <div class="flex items-center gap-1 mb-1.5 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="text-xs text-gray-400">(12)</span></div>
+                <div class="flex items-center gap-1.5 text-xs text-emerald-600 mb-3"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>LEGO Education</div>
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span class="text-xs text-gray-400 italic">Request price</span>
+                  <a href="#" class="text-sm text-emerald-600 font-semibold hover:underline flex items-center gap-1">View <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-card">
+              <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80" class="w-full h-40 object-cover" />
+              <div class="p-3.5">
+                <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide mb-1">EDUTECH</p>
+                <p class="text-[15px] font-bold text-emerald-600 mb-2">AI Learning Kit</p>
+                <div class="flex items-center gap-1 mb-1.5 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="text-xs text-gray-400">(12)</span></div>
+                <div class="flex items-center gap-1.5 text-xs text-emerald-600 mb-3"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>LEGO Education</div>
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span class="text-xs text-gray-400 italic">Request price</span>
+                  <a href="#" class="text-sm text-emerald-600 font-semibold hover:underline flex items-center gap-1">View <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-card">
+              <img src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&q=80" class="w-full h-40 object-cover" />
+              <div class="p-3.5">
+                <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide mb-1">EDUTECH</p>
+                <p class="text-[15px] font-bold text-gray-900 mb-2">STEM Education Set</p>
+                <div class="flex items-center gap-1 mb-1.5 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="text-xs text-gray-400">(12)</span></div>
+                <div class="flex items-center gap-1.5 text-xs text-emerald-600 mb-3"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>LEGO Education</div>
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span class="text-xs text-gray-400 italic">Request price</span>
+                  <a href="#" class="text-sm text-emerald-600 font-semibold hover:underline flex items-center gap-1">View <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="pt-card">
+              <img src="https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=400&q=80" class="w-full h-40 object-cover" />
+              <div class="p-3.5">
+                <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide mb-1">EDUTECH</p>
+                <p class="text-[15px] font-bold text-gray-900 mb-2">Robotics Competition Set</p>
+                <div class="flex items-center gap-1 mb-1.5 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="text-xs text-gray-400">(12)</span></div>
+                <div class="flex items-center gap-1.5 text-xs text-emerald-600 mb-3"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>LEGO Education</div>
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span class="text-xs text-gray-400 italic">Request price</span>
+                  <a href="#" class="text-sm text-emerald-600 font-semibold hover:underline flex items-center gap-1">View <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-card">
+              <img src="https://images.unsplash.com/photo-1561144257-e32e8efc6c4f?w=400&q=81" class="w-full h-40 object-cover" />
+              <div class="p-3.5">
+                <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide mb-1">EDUTECH</p>
+                <p class="text-[15px] font-bold text-gray-900 mb-2">Drone Programming Kit</p>
+                <div class="flex items-center gap-1 mb-1.5 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="text-xs text-gray-400">(12)</span></div>
+                <div class="flex items-center gap-1.5 text-xs text-emerald-600 mb-3"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>LEGO Education</div>
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span class="text-xs text-gray-400 italic">Request price</span>
+                  <a href="#" class="text-sm text-emerald-600 font-semibold hover:underline flex items-center gap-1">View <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-card">
+              <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=81" class="w-full h-40 object-cover" />
+              <div class="p-3.5">
+                <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide mb-1">EDUTECH</p>
+                <p class="text-[15px] font-bold text-gray-900 mb-2">Circuit Builder Pro</p>
+                <div class="flex items-center gap-1 mb-1.5 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="text-xs text-gray-400">(12)</span></div>
+                <div class="flex items-center gap-1.5 text-xs text-emerald-600 mb-3"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>LEGO Education</div>
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span class="text-xs text-gray-400 italic">Request price</span>
+                  <a href="#" class="text-sm text-emerald-600 font-semibold hover:underline flex items-center gap-1">View <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SERVICES TAB: Our Services (2-col with full tags) ══ -->
+      <div id="tab-services" class="tab-panel">
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-1">Our Services</h2>
+          <p class="text-sm text-gray-500 mb-5">We offer comprehensive support to ensure your institution gets the most from our solutions.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <div class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                <div><p class="text-sm font-bold text-gray-900 mb-1">Installation &amp; Setup</p><p class="text-xs text-gray-500 leading-relaxed">Professional on-site installation and commissioning of all equipment, ensuring everything is <span class="text-emerald-600">configured</span> and ready to use from day one.</p></div>
+              </div>
+              <div class="flex flex-wrap gap-1.5"><span class="svc-tag">On-site</span><span class="svc-tag">Hardware</span><span class="svc-tag">Software</span></div>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+                <div><p class="text-sm font-bold text-gray-900 mb-1">Teacher Training</p><p class="text-xs text-gray-500 leading-relaxed">Comprehensive hands-on training programs for educators covering product usage, <span class="text-emerald-600">curriculum integration</span>, and best practices.</p></div>
+              </div>
+              <div class="flex flex-wrap gap-1.5"><span class="svc-tag">Workshops</span><span class="svc-tag">Certification</span><span class="svc-tag">Online</span></div>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></div>
+                <div><p class="text-sm font-bold text-gray-900 mb-1">Technical Support</p><p class="text-xs text-gray-500 leading-relaxed">24/7 technical assistance via phone, email, and live chat. Dedicated account managers for <span class="text-emerald-600">premium clients</span>.</p></div>
+              </div>
+              <div class="flex flex-wrap gap-1.5"><span class="svc-tag">24/7</span><span class="svc-tag">Remote</span><span class="svc-tag">On-site</span></div>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+                <div><p class="text-sm font-bold text-gray-900 mb-1">Curriculum Integration</p><p class="text-xs text-gray-500 leading-relaxed">Expert STEM curriculum consulting to seamlessly integrate our products into your existing teaching frameworks and <span class="text-emerald-600">lesson plans</span>.</p></div>
+              </div>
+              <div class="flex flex-wrap gap-1.5"><span class="svc-tag">STEM</span><span class="svc-tag">K-12</span><span class="svc-tag">Higher Ed</span></div>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                <div><p class="text-sm font-bold text-gray-900 mb-1">Maintenance &amp; Repair</p><p class="text-xs text-gray-500 leading-relaxed">Regular preventive maintenance schedules and fast-turnaround repair services to minimize downtime in your <span class="text-emerald-600">labs</span>.</p></div>
+              </div>
+              <div class="flex flex-wrap gap-1.5"><span class="svc-tag">Annual</span><span class="svc-tag">Parts &amp; Labour</span><span class="svc-tag">Warranty</span></div>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></div>
+                <div><p class="text-sm font-bold text-gray-900 mb-1">Custom Solutions</p><p class="text-xs text-gray-500 leading-relaxed">Tailored product bundles and bespoke solutions designed around your school's specific <span class="text-emerald-600">curriculum goals</span> and budget.</p></div>
+              </div>
+              <div class="flex flex-wrap gap-1.5"><span class="svc-tag">Bespoke</span><span class="svc-tag">Budget-friendly</span><span class="svc-tag">Scalable</span></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ VIDEOS TAB: YouTube embed iframes ══ -->
+      <div id="tab-videos" class="tab-panel">
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-1">Videos</h2>
+          <p class="text-sm text-gray-500 mb-5">Watch our product demos, company overview, and classroom showcase videos.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <div class="vid-card">
+              <div class="relative" style="padding-bottom:56.25%; height:0; overflow:hidden;">
+                <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen title="Company Overview"></iframe>
+              </div>
+              <div class="p-3"><p class="text-sm font-semibold text-emerald-600">Company Overview &amp; Vision 2025</p></div>
+            </div>
+
+            <div class="vid-card">
+              <div class="relative" style="padding-bottom:56.25%; height:0; overflow:hidden;">
+                <iframe src="https://www.youtube.com/embed/BpPL6M9gYMQ" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen title="Product Demo"></iframe>
+              </div>
+              <div class="p-3"><p class="text-sm font-semibold text-emerald-600">Robotics Kit — Product Demo</p></div>
+            </div>
+
+            <div class="vid-card">
+              <div class="relative" style="padding-bottom:56.25%; height:0; overflow:hidden;">
+                <iframe src="https://www.youtube.com/embed/DHjqpvDnNGE" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen title="Classroom Setup"></iframe>
+              </div>
+              <div class="p-3"><p class="text-sm font-semibold text-emerald-600">Classroom Setup &amp; Installation Guide</p></div>
+            </div>
+
+            <div class="vid-card">
+              <div class="relative" style="padding-bottom:56.25%; height:0; overflow:hidden;">
+                <iframe src="https://www.youtube.com/embed/tgbNymZ7vqY" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen title="Teacher Training"></iframe>
+              </div>
+              <div class="p-3"><p class="text-sm font-semibold text-emerald-600">Teacher Training Workshop Highlights</p></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CERTIFICATIONS TAB: Certifications & Accreditations + Industry Partnerships ══ -->
+      <div id="tab-certifications" class="tab-panel" style="display:none;flex-direction:column;gap:16px;">
+
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-1">Certifications &amp; Accreditations</h2>
+          <p class="text-sm text-emerald-600 mb-5">Our products and operations are certified by leading global bodies in education and quality management.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <div class="cert-card">
+              <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div>
+                <p class="text-sm font-bold text-gray-900 mb-0.5">ISO 9001:2015</p>
+                <p class="text-[11px] text-emerald-600 mb-1.5">International Organization for Standardization · Since 2019</p>
+                <p class="text-xs text-gray-500 leading-relaxed">Quality Management Systems certification ensuring consistent product and service quality.</p>
+              </div>
+            </div>
+
+            <div class="cert-card">
+              <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div>
+                <p class="text-sm font-bold text-gray-900 mb-0.5">CE Marking</p>
+                <p class="text-[11px] text-emerald-600 mb-1.5">European Conformity · Since 2020</p>
+                <p class="text-xs text-gray-500 leading-relaxed">Compliance with EU safety, health, and environmental protection standards.</p>
+              </div>
+            </div>
+
+            <div class="cert-card">
+              <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div>
+                <p class="text-sm font-bold text-gray-900 mb-0.5">Google for Education Partner</p>
+                <p class="text-[11px] text-emerald-600 mb-1.5">Google LLC · Since 2021</p>
+                <p class="text-xs text-gray-500 leading-relaxed">Certified partner for integrating Google Workspace tools into educational environments.</p>
+              </div>
+            </div>
+
+            <div class="cert-card">
+              <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div>
+                <p class="text-sm font-bold text-gray-900 mb-0.5">Microsoft Education Partner</p>
+                <p class="text-[11px] text-emerald-600 mb-1.5">Microsoft Corporation · Since 2021</p>
+                <p class="text-xs text-gray-500 leading-relaxed">Authorized partner for deploying Microsoft 365 Education and Azure solutions in schools.</p>
+              </div>
+            </div>
+
+            <div class="cert-card">
+              <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div>
+                <p class="text-sm font-bold text-gray-900 mb-0.5">BETT Show Exhibitor</p>
+                <p class="text-[11px] text-emerald-600 mb-1.5">Hyve Group · Since 2022</p>
+                <p class="text-xs text-gray-500 leading-relaxed">Official exhibitor at BETT London, the world's leading EdTech event.</p>
+              </div>
+            </div>
+
+            <div class="cert-card">
+              <div class="cert-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div>
+                <p class="text-sm font-bold text-gray-900 mb-0.5">ISTE Member</p>
+                <p class="text-[11px] text-emerald-600 mb-1.5">International Society for Technology in Education · Since 2020</p>
+                <p class="text-xs text-gray-500 leading-relaxed">Active member committed to accelerating education transformation globally.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Industry Partnerships -->
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Industry Partnerships</h2>
+          <div class="flex flex-wrap gap-2">
+            <span class="cert-pill">GESS Partner</span>
+            <span class="cert-pill">BETT Exhibitor</span>
+            <span class="cert-pill">ISE Exhibitor</span>
+            <span class="cert-pill">STEM.org Certified</span>
+            <span class="cert-pill">UNESCO Partner</span>
+            <span class="cert-pill">UNICEF Supplier</span>
+          </div>
+        </div>
+
+      </div><!-- /tab-certifications -->
+
+      <!-- ══ REVIEWS TAB: Rating summary + Customer Reviews ══ -->
+      <div id="tab-reviews" class="tab-panel">
+        <div class="sec-card">
+
+          <!-- Rating summary box -->
+          <div class="flex flex-col sm:flex-row items-center gap-5 p-5 border border-gray-200 rounded-lg mb-6 bg-white">
+            <div class="text-center shrink-0">
+              <p class="text-5xl font-extrabold text-gray-900 leading-none">4.9</p>
+              <div class="flex gap-0.5 justify-center mt-2 text-xl"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></div>
+              <p class="text-xs text-gray-400 mt-1">24 Reviews</p>
+            </div>
+            <div class="flex-1 w-full flex flex-col gap-2.5">
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500 w-24 shrink-0">Quality</span>
+                <div style="flex:1;background:#e5e7eb;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#f59e0b;height:100%;width:98%"></div></div>
+                <span class="text-xs font-semibold text-gray-700 w-6 text-right">4.9</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500 w-24 shrink-0">Delivery</span>
+                <div style="flex:1;background:#e5e7eb;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#f59e0b;height:100%;width:94%"></div></div>
+                <span class="text-xs font-semibold text-gray-700 w-6 text-right">4.7</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500 w-24 shrink-0">Communication</span>
+                <div style="flex:1;background:#e5e7eb;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#f59e0b;height:100%;width:96%"></div></div>
+                <span class="text-xs font-semibold text-gray-700 w-6 text-right">4.8</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500 w-24 shrink-0">Support</span>
+                <div style="flex:1;background:#e5e7eb;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#f59e0b;height:100%;width:98%"></div></div>
+                <span class="text-xs font-semibold text-gray-700 w-6 text-right">4.9</span>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Customer Reviews</h2>
+
+          <!-- Review 1 -->
+          <div class="rev-card mb-3">
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex items-center gap-2.5">
+                <div class="rev-av bg-emerald-100 text-emerald-700">S</div>
+                <div><p class="text-sm font-semibold text-gray-900">Sarah M.</p><p class="text-xs text-gray-400">Lincoln Elementary School</p></div>
+              </div>
+              <span class="text-xs text-gray-400">March 2025</span>
+            </div>
+            <div class="flex gap-0.5 mb-2 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></div>
+            <p class="text-sm text-gray-700 leading-relaxed mb-2">Exceptional quality products and outstanding <span class="text-emerald-600">after-sales support</span>. The robotics kits arrived perfectly packaged and the teacher training sessions were incredibly informative. Highly recommended!</p>
+            <div class="bg-gray-50 rounded-md p-2.5 border-l-2 border-emerald-400">
+              <p class="text-xs text-emerald-600 font-semibold mb-0.5">Supplier Reply:</p>
+              <p class="text-xs text-gray-500">Thank you, Sarah! We are <span class="text-emerald-600">thrilled to support Lincoln Elementary</span> on their STEM journey.</p>
+            </div>
+          </div>
+
+          <!-- Review 2 -->
+          <div class="rev-card mb-3">
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex items-center gap-2.5">
+                <div class="rev-av bg-amber-100 text-amber-700">A</div>
+                <div><p class="text-sm font-semibold text-gray-900">Ahmed K.</p><p class="text-xs text-gray-400">Dubai Knowledge Village</p></div>
+              </div>
+              <span class="text-xs text-gray-400">February 2025</span>
+            </div>
+            <div class="flex gap-0.5 mb-2 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></div>
+            <p class="text-sm text-gray-700 leading-relaxed">We have purchased from multiple suppliers and <span class="text-emerald-600">this company stands out</span> for their responsiveness and product quality. Delivery was faster than expected and technical support is always available.</p>
+          </div>
+
+          <!-- Review 3 -->
+          <div class="rev-card mb-3">
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex items-center gap-2.5">
+                <div class="rev-av bg-purple-100 text-purple-700">P</div>
+                <div><p class="text-sm font-semibold text-gray-900">Priya S.</p><p class="text-xs text-gray-400">Bangalore International School</p></div>
+              </div>
+              <span class="text-xs text-gray-400">January 2025</span>
+            </div>
+            <div class="flex gap-0.5 mb-2 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-empty">★</span></div>
+            <p class="text-sm text-gray-700 leading-relaxed">Great range of STEM products. The curriculum integration guide was very helpful. Would have given 5 stars but delivery took slightly longer than quoted.</p>
+          </div>
+
+          <!-- Review 4 -->
+          <div class="rev-card">
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex items-center gap-2.5">
+                <div class="rev-av bg-blue-100 text-blue-700">J</div>
+                <div><p class="text-sm font-semibold text-gray-900">James T.</p><p class="text-xs text-gray-400">New York City Department of Education</p></div>
+              </div>
+              <span class="text-xs text-gray-400">December 2024</span>
+            </div>
+            <div class="flex gap-0.5 mb-2 text-sm"><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span><span class="star-filled">★</span></div>
+            <p class="text-sm text-gray-700 leading-relaxed">We ordered 200 units of the robotics kit for our <span class="text-emerald-600">district-wide STEM initiative</span>. The team was professional throughout and provided excellent on-site training for all our teachers.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ CONTACT TAB: Send a Message + Contact Details ══ -->
+      <div id="tab-contact" class="tab-panel" style="display:none;flex-direction:column;gap:16px;">
+
+        <!-- Send a Message -->
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-1">Send a Message</h2>
+          <p class="text-sm text-emerald-600 mb-5">Fill in the form and our team will get back to you within 24 hours.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1.5">Full Name</label>
+              <input type="text" value="John Smith" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1.5">Email Address</label>
+              <input type="email" value="john@school.edu" class="w-full border border-emerald-400 rounded-md px-3 py-2.5 text-sm text-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1.5">Organization</label>
+              <input type="text" value="Springfield School District" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1.5">Subject</label>
+              <input type="text" value="Product Inquiry — Robotics Kit" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+          </div>
+          <div class="mb-5">
+            <label class="block text-xs font-medium text-gray-700 mb-1.5">Message</label>
+            <textarea rows="4" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none">Hello, I am interested in your STEM robotics kits for our school. Could you please provide pricing, availability, and training options?</textarea>
+          </div>
+          <button class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold py-3 rounded-md flex items-center justify-center gap-2 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Send Message
+          </button>
+        </div>
+
+        <!-- Contact Details -->
+        <div class="sec-card">
+          <h2 class="text-[15px] font-bold text-gray-900 mb-4">Contact Details</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div class="contact-tile">
+              <div class="contact-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.27 2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div><p class="text-[10px] text-gray-400 mb-0.5">Phone</p><p class="text-sm text-gray-800 font-medium">+1 (800) 555-0182</p></div>
+            </div>
+            <div class="contact-tile">
+              <div class="contact-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+              <div><p class="text-[10px] text-gray-400 mb-0.5">Email</p><p class="text-sm text-gray-800 font-medium">sales@lego.com</p></div>
+            </div>
+            <div class="contact-tile">
+              <div class="contact-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+              <div><p class="text-[10px] text-gray-400 mb-0.5">Website</p><p class="text-sm text-gray-800 font-medium">education.lego.com</p></div>
+            </div>
+            <div class="contact-tile">
+              <div class="contact-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+              <div><p class="text-[10px] text-gray-400 mb-0.5">Head Office</p><p class="text-sm text-gray-800 font-medium">Billund, Denmark</p></div>
+            </div>
+          </div>
+          <!-- Social icons -->
+          <div class="flex items-center gap-2">
+            <button class="soc-icon" style="color:#0a66c2;border-color:#bfdbfe;">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+            </button>
+            <button class="soc-icon" style="color:#1877f2;border-color:#bfdbfe;">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </button>
+            <button class="soc-icon" style="color:#ff0000;border-color:#fecaca;">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.54C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#fff"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /tab-contact -->
+
+    </div><!-- /LEFT -->
+
+    <!-- ═══════════════════ RIGHT SIDEBAR (bigger) ═══════════════════ -->
+    <div class="w-full lg:w-[310px] xl:w-[330px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-20">
+
+      <!-- CTA -->
+      <div class="side-card">
+        <button class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-md flex items-center justify-center gap-2 mb-2.5 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Request Quotation
+        </button>
+        <button class="w-full border border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
+        </button>
+      </div>
+
+      <!-- Contact Info -->
+      <div class="side-card">
+        <p class="text-sm font-semibold text-gray-900 mb-3">Contact Information</p>
+        <div class="flex flex-col gap-2.5">
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            sales@lego.com
+          </div>
+          <div class="flex items-center gap-2 text-sm text-emerald-600">
+            <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <a href="#" class="hover:underline">education.lego.com</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Business Hours -->
+      <div class="side-card">
+        <p class="text-sm font-semibold text-gray-900 mb-3">Business Hours</p>
+        <div class="h-row"><span class="text-gray-700">Mon – Fri</span><span class="text-gray-500">9:00 AM – 6:00 PM</span></div>
+        <div class="h-row"><span class="text-gray-700">Saturday</span><span class="text-gray-500">10:00 AM – 2:00 PM</span></div>
+        <div class="h-row"><span class="text-gray-700">Sunday</span><span class="closed">Closed</span></div>
+      </div>
+
+      <!-- Head Office -->
+      <div class="side-card">
+        <p class="text-sm font-semibold text-gray-900 mb-2">Head Office</p>
+        <p class="text-sm text-gray-600 mb-1">Billund, Denmark</p>
+        <a href="#" class="text-sm text-emerald-600 hover:underline font-medium">View on Map</a>
+      </div>
+
+      <!-- Share Profile -->
+      <div class="side-card">
+        <p class="text-sm font-semibold text-gray-900 mb-3">Share Profile</p>
+        <div class="flex items-center gap-2">
+          <button class="share-btn" title="Facebook"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></button>
+          <button class="share-btn" title="LinkedIn"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></button>
+          <button class="share-btn" title="Email"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></button>
+          <button class="share-btn" title="Copy link"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+        </div>
+      </div>
+
+    </div><!-- /RIGHT SIDEBAR -->
+
+  </div><!-- /two-col -->
+
+  <!-- ════════ YOU MAY ALSO LIKE (appears below every tab) ════════ -->
+  <div class="mt-10">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-[17px] font-bold text-gray-900">You May Also Like</h2>
+      <a href="#" class="text-sm text-emerald-600 hover:text-emerald-700 font-medium">See all →</a>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+      <div class="supp-card">
+        <div class="relative">
+          <img src="https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=500&q=80" class="w-full h-36 object-cover" />
+          <button class="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow-sm hover:bg-white"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="absolute bottom-2 left-2 flex items-center gap-1.5">
+            <div class="supp-av bg-white text-blue-700 border border-gray-100">V</div>
+            <span class="text-white text-xs font-semibold drop-shadow">ViewSonic Education</span>
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex flex-wrap gap-1 mb-2">
+            <span class="badge-verified text-[10px] px-1.5 py-0.5">✓ Verified</span>
+            <span class="badge-founding text-[10px] px-1.5 py-0.5">Founding Supplier</span>
+            <span class="badge-ise text-[10px] px-1.5 py-0.5">ISE Exhibitor</span>
+          </div>
+          <p class="text-xs text-gray-500 mb-2">Manufacturer · OEM</p>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="text-gray-600"><span class="star-filled">★</span> 4.8 <span class="text-gray-400">(24)</span></span>
+            <span class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>United States</span>
+          </div>
+          <div class="flex items-center justify-between text-xs"><span class="text-gray-400">🛍 120+ Products</span><a href="#" class="text-emerald-600 font-semibold hover:underline">View Profile →</a></div>
+        </div>
+      </div>
+
+      <div class="supp-card">
+        <div class="relative">
+          <img src="https://images.unsplash.com/photo-1555532538-dcdbd01d373d?w=500&q=80" class="w-full h-36 object-cover" />
+          <button class="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow-sm hover:bg-white"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="absolute bottom-2 left-2 flex items-center gap-1.5">
+            <div class="supp-av bg-white text-purple-700 border border-gray-100">P</div>
+            <span class="text-white text-xs font-semibold drop-shadow">Promethean World</span>
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex flex-wrap gap-1 mb-2">
+            <span class="badge-verified text-[10px] px-1.5 py-0.5">✓ Verified</span>
+            <span class="badge-ise text-[10px] px-1.5 py-0.5">ISE Exhibitor</span>
+          </div>
+          <p class="text-xs text-gray-500 mb-2">Manufacturer · Service Provider</p>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="text-gray-600"><span class="star-filled">★</span> 4.7 <span class="text-gray-400">(31)</span></span>
+            <span class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>United Kingdom</span>
+          </div>
+          <div class="flex items-center justify-between text-xs"><span class="text-gray-400">🛍 80+ Products</span><a href="#" class="text-emerald-600 font-semibold hover:underline">View Profile →</a></div>
+        </div>
+      </div>
+
+      <div class="supp-card">
+        <div class="relative">
+          <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&q=80" class="w-full h-36 object-cover" />
+          <button class="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow-sm hover:bg-white"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="absolute bottom-2 left-2 flex items-center gap-1.5">
+            <div class="supp-av bg-white text-red-700 border border-gray-100">S</div>
+            <span class="text-white text-xs font-semibold drop-shadow">SMART Technologies</span>
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex flex-wrap gap-1 mb-2">
+            <span class="badge-verified text-[10px] px-1.5 py-0.5">✓ Verified</span>
+            <span class="badge-founding text-[10px] px-1.5 py-0.5">Founding Supplier</span>
+            <span class="badge-ise text-[10px] px-1.5 py-0.5">ISE Exhibitor</span>
+          </div>
+          <p class="text-xs text-gray-500 mb-2">Manufacturer · Service Provider</p>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="text-gray-600"><span class="star-filled">★</span> 4.6 <span class="text-gray-400">(18)</span></span>
+            <span class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Canada</span>
+          </div>
+          <div class="flex items-center justify-between text-xs"><span class="text-gray-400">🛍 120+ Products</span><a href="#" class="text-emerald-600 font-semibold hover:underline">View Profile →</a></div>
+        </div>
+      </div>
+
+      <div class="supp-card">
+        <div class="relative">
+          <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=500&q=80" class="w-full h-36 object-cover" />
+          <button class="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow-sm hover:bg-white"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="absolute bottom-2 left-2 flex items-center gap-1.5">
+            <div class="supp-av bg-white text-teal-700 border border-gray-100">S</div>
+            <span class="text-white text-xs font-semibold drop-shadow">Steelcase Education</span>
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex flex-wrap gap-1 mb-2">
+            <span class="badge-verified text-[10px] px-1.5 py-0.5">✓ Verified</span>
+            <span class="badge-ise text-[10px] px-1.5 py-0.5">ISE Exhibitor</span>
+          </div>
+          <p class="text-xs text-gray-500 mb-2">Manufacturer · Distributor</p>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="text-gray-600"><span class="star-filled">★</span> 4.5 <span class="text-gray-400">(12)</span></span>
+            <span class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>United States</span>
+          </div>
+          <div class="flex items-center justify-between text-xs"><span class="text-gray-400">🛍 80+ Products</span><a href="#" class="text-emerald-600 font-semibold hover:underline">View Profile →</a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- ════════════════════ FOOTER ════════════════════ -->
+<footer class="bg-white border-t border-gray-200 pt-14 pb-8 px-4 mt-10">
+  <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+    <div>
+      <div class="flex items-center gap-2.5 mb-4">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="0" y="0" width="9" height="9" rx="2" fill="#10b981"/><rect x="13" y="0" width="9" height="9" rx="2" fill="#10b981"/><rect x="26" y="0" width="9" height="9" rx="2" fill="#6ee7b7"/><rect x="0" y="13" width="9" height="9" rx="2" fill="#10b981"/><rect x="13" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/><rect x="26" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/><rect x="0" y="26" width="9" height="9" rx="2" fill="#6ee7b7"/><rect x="13" y="26" width="9" height="9" rx="2" fill="#10b981"/><rect x="26" y="26" width="9" height="9" rx="2" fill="#10b981"/></svg>
+        <div class="flex flex-col leading-tight"><span class="font-bold text-gray-900 text-[17px] tracking-tight">Edu<span class="text-emerald-500">shopify</span></span><span class="text-[11px] text-gray-400">Connecting Education</span></div>
+      </div>
+      <p class="text-sm text-gray-500 leading-relaxed max-w-[260px]">The B2B education procurement marketplace connecting institutional buyers with verified suppliers worldwide.</p>
+    </div>
+    <div><p class="font-semibold text-[15px] text-gray-900 mb-5">Marketplace</p><ul class="space-y-4"><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Browse Suppliers</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Products</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Categories</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Request Quote</a></li></ul></div>
+    <div><p class="font-semibold text-[15px] text-gray-900 mb-5">Company</p><ul class="space-y-4"><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">About Us</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Blog</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Contact</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Careers</a></li></ul></div>
+    <div><p class="font-semibold text-[15px] text-gray-900 mb-5">Support</p><ul class="space-y-4"><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Help Center</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Pricing</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Terms of Service</a></li><li><a href="#" class="text-sm text-gray-500 hover:text-gray-900">Privacy Policy</a></li></ul></div>
+  </div>
+  <div class="max-w-7xl mx-auto border-t border-gray-200 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <p class="text-sm text-gray-400">© 2026 Edushopify. All rights reserved.</p>
+    <div class="flex gap-6 text-sm text-gray-400"><a href="#" class="hover:text-gray-700">Terms</a><a href="#" class="hover:text-gray-700">Privacy</a></div>
+  </div>
+</footer>
+
+<!-- ════════════════════ JS ════════════════════ -->
+<script>
+  function switchTab(btn, name) {
+    // Deactivate all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.remove('active');
+    });
+    // Hide all panels — use inline style to guarantee override of flex/block
+    document.querySelectorAll('.tab-panel').forEach(function(p) {
+      p.style.display = 'none';
+    });
+    // Activate clicked button
+    btn.classList.add('active');
+    // Show target panel
+    var panel = document.getElementById('tab-' + name);
+    if (panel) {
+      // About and Certifications are flex-col containers, others are block
+      if (name === 'about' || name === 'certifications' || name === 'contact') {
+        panel.style.display = 'flex';
+        panel.style.flexDirection = 'column';
+        panel.style.gap = '16px';
+      } else {
+        panel.style.display = 'block';
+      }
+    }
+  }
+
+  // Init: hide all panels first, then show the active one correctly
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.tab-panel').forEach(function(p) {
+      p.style.display = 'none';
+    });
+    var active = document.getElementById('tab-about');
+    if (active) {
+      active.style.display = 'flex';
+      active.style.flexDirection = 'column';
+      active.style.gap = '16px';
+    }
+  });
+</script>
+</body>
+</html>

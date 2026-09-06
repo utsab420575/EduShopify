@@ -6,6 +6,7 @@ use App\Http\Controllers\Backend\Buyer\Concerns\InteractsWithBuyerAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backend\Buyer\Procurement\CancelRfqRequest;
 use App\Http\Requests\Backend\Buyer\Procurement\ExtendRfqDeadlineRequest;
+use App\Http\Requests\Backend\Buyer\Procurement\RfqAutosaveRequest;
 use App\Http\Requests\Backend\Buyer\Procurement\SaveRfqRequest;
 use App\Models\Account;
 use App\Models\Category;
@@ -28,6 +29,11 @@ class RfqController extends Controller
     {
         $account = $this->currentAccount();
 
+        $sort = in_array($request->string('sort')->toString(), ['title', 'quotation_deadline', 'created_at'], true)
+            ? $request->string('sort')->toString()
+            : null;
+        $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
+
         $rfqs = $account->rfqs()
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->when($request->filled('search'), function ($q) use ($request) {
@@ -35,7 +41,7 @@ class RfqController extends Controller
                 $q->where(fn ($q2) => $q2->where('title', 'like', "%{$search}%")->orWhere('rfq_number', 'like', "%{$search}%"));
             })
             ->withCount('quotations')
-            ->latest()
+            ->when($sort, fn ($q) => $q->orderBy($sort, $direction), fn ($q) => $q->latest())
             ->paginate(10)
             ->withQueryString();
 
@@ -53,6 +59,7 @@ class RfqController extends Controller
 
         $preselectedSupplier = null;
         $itemAttributeValues = [];
+        $invitedSuppliers = collect();
 
         if ($request->filled('supplier')) {
             $preselectedSupplier = Account::with('supplierProfile')->find($request->integer('supplier'));
@@ -60,7 +67,56 @@ class RfqController extends Controller
 
         $items = collect();
 
-        if ($request->filled('listing')) {
+        if ($request->filled('listings')) {
+            // Bulk RFQ from the /compare page — one item per compared
+            // product, which may span several different suppliers.
+            $listingIds = collect(explode(',', (string) $request->query('listings')))
+                ->map(fn ($id) => (int) trim($id))
+                ->filter()
+                ->unique()
+                ->values();
+
+            $listings = Listing::published()->whereIn('id', $listingIds)->get()->keyBy('id');
+
+            $items = $listingIds
+                ->map(fn ($id) => $listings->get($id))
+                ->filter()
+                ->values();
+
+            $items->each(function (Listing $listing, int $idx) use (&$itemAttributeValues) {
+                $itemAttributeValues[$idx] = $this->listingAttributeValuesForPrefill($listing);
+            });
+
+            $items = $items->map(fn (Listing $listing) => (object) [
+                'id' => null,
+                'item_type' => $listing->listing_type,
+                'listing_id' => $listing->id,
+                'category_id' => $listing->main_category_id,
+                'item_name' => $listing->name,
+                'description' => $listing->short_description,
+                'quantity' => (string) ($listing->min_order_quantity ?: 1),
+                'unit_id' => $listing->unit_id,
+                'custom_unit' => null,
+                'estimated_unit_price' => $listing->base_price,
+            ]);
+
+            $involvedSuppliers = $listings->values()
+                ->map(fn ($listing) => $listing->supplierAccount()->with('supplierProfile')->first())
+                ->filter()
+                ->unique('id')
+                ->values();
+
+            if ($involvedSuppliers->count() === 1) {
+                // Every compared product happens to come from the same
+                // supplier — behaves exactly like the single-listing flow.
+                $preselectedSupplier = $involvedSuppliers->first();
+            } elseif ($involvedSuppliers->count() > 1) {
+                // Spans several suppliers: no single "direct" target makes
+                // sense — invite exactly the suppliers involved instead of
+                // silently excluding some of them or opening it to everyone.
+                $invitedSuppliers = $involvedSuppliers;
+            }
+        } elseif ($request->filled('listing')) {
             $listing = Listing::published()->find($request->integer('listing'));
 
             if ($listing) {
@@ -83,12 +139,20 @@ class RfqController extends Controller
             }
         }
 
+        if ($preselectedSupplier) {
+            $invitedSuppliers = collect([$preselectedSupplier]);
+        }
+
         // A product-page "Request Quotation" starts the RFQ locked to that
         // one supplier by default (spec §11) — the buyer can still switch
         // to Selected Suppliers or Open to Eligible Suppliers from the form.
-        $defaultVisibility = $preselectedSupplier
-            ? \App\Models\VisibilityType::where('code', 'direct')->first()
-            : \App\Models\VisibilityType::where('code', 'open_matching')->first();
+        // A multi-supplier bulk RFQ from /compare defaults to "Invited"
+        // instead, pre-filled with exactly the suppliers involved.
+        $defaultVisibility = match (true) {
+            (bool) $preselectedSupplier => \App\Models\VisibilityType::where('code', 'direct')->first(),
+            $invitedSuppliers->isNotEmpty() => \App\Models\VisibilityType::where('code', 'invited')->first(),
+            default => \App\Models\VisibilityType::where('code', 'open_matching')->first(),
+        };
 
         return view('backend.buyer.procurement.rfqs.create', [
             'rfq' => new Rfq([
@@ -99,7 +163,7 @@ class RfqController extends Controller
             'items' => $items,
             'itemAttributeValues' => $itemAttributeValues,
             'targetFilter' => null,
-            'invitedSuppliers' => $preselectedSupplier ? collect([$preselectedSupplier]) : collect(),
+            'invitedSuppliers' => $invitedSuppliers,
         ] + $this->lookups());
     }
 
@@ -107,10 +171,25 @@ class RfqController extends Controller
      * GET buyer/rfqs/categories/{category}/attributes — same JSON shape the
      * supplier listing wizard's equivalent endpoint returns, so the item
      * attribute form can be a near-direct reuse of that Alpine component.
+     *
+     * keep_attribute_ids: comma-separated attribute ids the item already
+     * has a saved value for (editing an existing RFQ) — so a since-
+     * deactivated attribute still shows instead of silently disappearing.
      */
-    public function categoryAttributes(Category $category)
+    public function categoryAttributes(Request $request, Category $category)
     {
-        return response()->json($category->attributesGroupedForForm());
+        $keepIds = $this->parseKeepAttributeIds($request);
+
+        return response()->json($category->attributesGroupedForForm($keepIds));
+    }
+
+    private function parseKeepAttributeIds(Request $request): array
+    {
+        return collect(explode(',', (string) $request->query('keep_attribute_ids', '')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**
@@ -147,8 +226,10 @@ class RfqController extends Controller
     {
         abort_unless($listing->approval_status === 'approved', 404);
 
+        $existingValues = $this->listingAttributeValuesForPrefill($listing);
+
         $categoryAttributes = $listing->main_category_id
-            ? $listing->mainCategory?->attributesGroupedForForm()
+            ? $listing->mainCategory?->attributesGroupedForForm(array_keys($existingValues))
             : null;
 
         return response()->json([
@@ -163,7 +244,7 @@ class RfqController extends Controller
                 'estimated_unit_price' => $listing->base_price,
             ],
             'category_attributes' => $categoryAttributes,
-            'attribute_values' => $this->listingAttributeValuesForPrefill($listing),
+            'attribute_values' => $existingValues,
         ]);
     }
 
@@ -229,7 +310,7 @@ class RfqController extends Controller
     {
         $this->authorize('update', $rfq);
 
-        $rfq->load(['items.attributeValues', 'invitedSupplierAccounts.supplierProfile', 'targetFilters']);
+        $rfq->load(['items.attributeValues', 'invitedSupplierAccounts.supplierProfile', 'targetFilters', 'visibilityType', 'deliveryAddresses']);
 
         $itemAttributeValues = $rfq->items->values()
             ->mapWithKeys(fn (RfqItem $item, int $idx) => [$idx => $this->itemAttributeValuesForPrefill($item)])
@@ -261,6 +342,38 @@ class RfqController extends Controller
         }
 
         return redirect()->route('buyer.rfqs.show', $rfq)->with('success', $wasDraft ? 'RFQ updated.' : 'RFQ updated — a new version has been recorded.');
+    }
+
+    /**
+     * Per-step wizard autosave — fired from the "Next" button on each step
+     * while the RFQ is still a draft. Reuses RfqService::saveDraft() under
+     * the looser RfqAutosaveRequest, since the buyer hasn't reached the
+     * fields later steps collect yet. Returns JSON instead of redirecting.
+     */
+    public function autosaveCreate(RfqAutosaveRequest $request, RfqService $service)
+    {
+        $this->authorize('create', Rfq::class);
+
+        try {
+            $rfq = $service->saveDraft($this->currentAccount(), $this->currentUser(), $request->validated());
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        }
+
+        return response()->json(['id' => $rfq->id, 'rfq_number' => $rfq->rfq_number]);
+    }
+
+    public function autosaveUpdate(RfqAutosaveRequest $request, Rfq $rfq, RfqService $service)
+    {
+        $this->authorize('update', $rfq);
+
+        try {
+            $service->saveDraft($this->currentAccount(), $this->currentUser(), $request->validated(), $rfq);
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function show(Rfq $rfq)

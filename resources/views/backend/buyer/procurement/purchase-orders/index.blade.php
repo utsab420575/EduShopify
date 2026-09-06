@@ -7,12 +7,12 @@
 
     <x-backend.page-header title="Purchase Orders" subtitle="Orders issued after an award is accepted by the supplier." />
 
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-        <a href="{{ route('buyer.purchase-orders.index') }}" class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $status === '' ? 'text-white' : 'text-gray-600 border-gray-200 hover:bg-gray-50' }}" @if($status === '') style="background:var(--theme-primary);border-color:var(--theme-primary)" @endif>All</a>
+    <x-backend.tabs>
+        <x-backend.tab :href="route('buyer.purchase-orders.index')" :active="$status === ''">All</x-backend.tab>
         @foreach($statusOptions as $value => $label)
-            <a href="{{ route('buyer.purchase-orders.index', ['status' => $value]) }}" class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $status === $value ? 'text-white' : 'text-gray-600 border-gray-200 hover:bg-gray-50' }}" @if($status === $value) style="background:var(--theme-primary);border-color:var(--theme-primary)" @endif>{{ $label }}</a>
+            <x-backend.tab :href="route('buyer.purchase-orders.index', ['status' => $value])" :active="$status === $value">{{ $label }}</x-backend.tab>
         @endforeach
-    </div>
+    </x-backend.tabs>
 
     <x-backend.table>
         @if($orders->isEmpty())
@@ -22,16 +22,18 @@
         @else
             <x-slot:head>
                 <tr>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">PO #</th>
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
+                    <x-backend.sortable-th column="po_number" label="PO #" />
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">RFQ</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total</th>
+                    <x-backend.sortable-th column="grand_total" label="Total" align="right" />
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
             </x-slot:head>
             @foreach($orders as $po)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-5 py-3.5 text-sm text-gray-500">{{ $orders->firstItem() + $loop->index }}</td>
                     <td class="px-5 py-3.5 text-sm font-medium text-gray-900">{{ $po->po_number }}</td>
                     <td class="px-5 py-3.5 text-sm text-gray-600">{{ $po->rfq->title }}</td>
                     <td class="px-5 py-3.5 text-sm text-gray-600">{{ $po->supplierAccount?->supplierProfile?->display_name }}</td>

@@ -84,6 +84,18 @@
                     <div class="flex justify-between"><dt class="text-gray-500">Type</dt><dd class="font-medium text-gray-900">{{ ucfirst($account->account_type) }}</dd></div>
                     <div class="flex justify-between"><dt class="text-gray-500">Primary Owner</dt><dd class="font-medium text-gray-900">{{ $account->primaryOwner?->name }}</dd></div>
                     <div class="flex justify-between"><dt class="text-gray-500">Created</dt><dd class="font-medium text-gray-900">{{ $account->created_at->format('d M Y') }}</dd></div>
+                    @if($account->approved_at)
+                        <div class="flex justify-between">
+                            <dt class="text-gray-500">Approved</dt>
+                            <dd class="font-medium text-emerald-700 font-semibold">{{ $account->approved_at->format('d M Y, h:i A') }}</dd>
+                        </div>
+                        @if($account->approvedBy)
+                            <div class="flex justify-between">
+                                <dt class="text-gray-500">Approved By</dt>
+                                <dd class="font-medium text-gray-900">{{ $account->approvedBy->name }}</dd>
+                            </div>
+                        @endif
+                    @endif
                 </dl>
             </x-backend.form-card>
 

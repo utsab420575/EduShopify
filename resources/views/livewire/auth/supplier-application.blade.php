@@ -274,7 +274,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
                     Click to add gallery images
-                    <input type="file" wire:model="gallery_files" multiple class="hidden" accept="image/*">
+                    <input type="file" wire:model="new_gallery_files" multiple class="hidden" accept="image/*">
                 </label>
                 @if($gallery_files)
                     <div class="mt-2 grid grid-cols-5 gap-2">
@@ -291,6 +291,8 @@
                 @endif
                 @error('gallery_files') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 @error('gallery_files.*') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                @error('new_gallery_files') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                @error('new_gallery_files.*') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
 
             {{-- YouTube Videos --}}

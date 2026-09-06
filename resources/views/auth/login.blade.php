@@ -14,6 +14,14 @@
     <form method="POST" action="{{ route('login') }}">
         @csrf
 
+        @if(request()->filled('redirect'))
+            <input type="hidden" name="redirect" value="{{ request('redirect') }}">
+        @elseif(request()->filled('return_url'))
+            <input type="hidden" name="redirect" value="{{ request('return_url') }}">
+        @elseif(session()->has('url.intended'))
+            <input type="hidden" name="redirect" value="{{ session('url.intended') }}">
+        @endif
+
         <div class="mb-4">
             <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
             <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
@@ -47,7 +55,7 @@
 
     <div class="mt-6 text-center text-sm text-gray-500">
         Don't have an account?
-        <a href="{{ route('register') }}" class="font-semibold text-indigo-600 hover:text-indigo-800 transition">Create account</a>
+        <a href="{{ route('register', array_filter(['redirect' => request('redirect') ?? request('return_url') ?? session('url.intended')])) }}" class="font-semibold text-indigo-600 hover:text-indigo-800 transition">Create account</a>
     </div>
 
 </x-layouts.auth>

@@ -70,6 +70,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AchievementSeeder::class,
             SupplierDemoContentSeeder::class,
+            ProductReviewSeeder::class,
+            BlogSeeder::class,
         ]);
 
         // 8. Spatie caches permissions aggressively; clear it after seeding.

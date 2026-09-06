@@ -117,7 +117,7 @@ class SupplierController extends Controller
             'videos' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
         ]);
 
-        $services = $supplier->account->services()->where('status', 'active')->latest()->get();
+        $services = $supplier->account->services()->where('status', 'active')->with('icon')->orderBy('sort_order', 'asc')->orderBy('id', 'asc')->get();
 
         $certifications = $supplier->account->certifications()->approved()->latest()->get();
 
@@ -148,6 +148,21 @@ class SupplierController extends Controller
             ->latest('published_at')
             ->limit(10)
             ->get();
+
+        // If cached aggregates on the profile are zero but published reviews exist (e.g. seeded), auto-sync.
+        if ((int) ($supplier->reviews_count ?? 0) === 0 && $reviews->isNotEmpty()) {
+            $stats = Review::where('supplier_account_id', $supplier->account_id)
+                ->supplier()
+                ->published()
+                ->selectRaw('COUNT(*) as cnt, AVG(rating) as avg_rating')
+                ->first();
+
+            if ($stats && $stats->cnt > 0) {
+                $supplier->rating = round((float) $stats->avg_rating, 2);
+                $supplier->reviews_count = (int) $stats->cnt;
+                $supplier->saveQuietly();
+            }
+        }
 
         $rfqsCompleted = Quotation::where('supplier_account_id', $supplier->account_id)
             ->where('status', 'awarded')

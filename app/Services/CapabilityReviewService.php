@@ -47,6 +47,16 @@ class CapabilityReviewService
                     'reviewed_at'         => now(),
                 ]);
 
+            // Synchronize parent account approval and status
+            if ($account = $cap->account) {
+                $accountUpdates = ['status' => 'active'];
+                if (! $account->approved_at) {
+                    $accountUpdates['approved_at'] = now();
+                    $accountUpdates['approved_by_user_id'] = $admin->id;
+                }
+                $account->update($accountUpdates);
+            }
+
             return $cap;
         });
 
@@ -147,6 +157,20 @@ class CapabilityReviewService
                     'review_comment'      => $reason ?: 'Approval undone by administrator.',
                     'reviewed_at'         => now(),
                 ]);
+
+            // If account has no other active capabilities, revert account status to pending_approval
+            if ($account = $cap->account) {
+                $hasOtherActiveCap = $account->capabilities()
+                    ->where('id', '!=', $cap->id)
+                    ->where('status', 'active')
+                    ->exists();
+
+                if (! $hasOtherActiveCap) {
+                    $account->update([
+                        'status' => 'pending_approval',
+                    ]);
+                }
+            }
         });
     }
 

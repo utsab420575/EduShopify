@@ -5,88 +5,70 @@
 
 @section('body')
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white rounded-xl border border-gray-200 p-5">
-                <div class="h-64 bg-gray-50 rounded-lg flex items-center justify-center mb-4">
-                    <i class="fa-solid fa-box text-5xl text-gray-300"></i>
-                </div>
-                <h1 class="text-xl font-bold text-gray-900">{{ $listing->name }}</h1>
-                <p class="text-sm text-gray-500 mt-1">{{ $listing->mainCategory?->name }} @if($listing->brand) &middot; {{ $listing->brand->name }} @endif</p>
-                @if($listing->short_description)
-                    <p class="text-sm text-gray-600 mt-3">{{ $listing->short_description }}</p>
-                @endif
-            </div>
+    {{-- Hero-gallery + tabs + sidebar shell — mirrors the supplier's own
+         listing detail page (design.md's "Detail Page: Hero Gallery + Tabs +
+         Sidebar" pattern), adapted for a buyer viewer: no edit links, no
+         approval-status banners, buy-box focused on Request Quotation. --}}
+    @php
+        $gallery = $listing->getMedia('gallery');
+        $primaryId = $listing->primary_image_media_id;
+        $heroFirst = $gallery->sortByDesc(fn ($m) => $m->id === $primaryId)->values();
+        $firstMedia = $heroFirst->first();
+        $hasVariants = $listing->isProduct() && $listing->variants->isNotEmpty();
+    @endphp
 
-            @if($listing->description)
-                <x-backend.form-card title="Description">
-                    <p class="text-sm text-gray-600 whitespace-pre-line">{{ $listing->description }}</p>
-                </x-backend.form-card>
-            @endif
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6" x-data="{ tab: 'overview', heroUrl: '{{ $firstMedia?->getUrl() }}' }">
 
-            @if($listing->attributeValues->isNotEmpty())
-                <x-backend.form-card title="Specifications">
-                    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        @foreach($listing->attributeValues as $value)
-                            <div class="flex justify-between border-b border-gray-100 pb-2">
-                                <dt class="text-gray-500">{{ $value->attribute?->name }}</dt>
-                                <dd class="text-gray-900 font-medium">{{ $value->resolvedValue() }}</dd>
-                            </div>
-                        @endforeach
-                    </dl>
-                </x-backend.form-card>
-            @endif
+        <div class="xl:col-span-8 space-y-5">
+            @include('backend.buyer.marketplace.products.partials._hero', ['heroFirst' => $heroFirst, 'firstMedia' => $firstMedia])
 
-            @if($listing->tierPrices->isNotEmpty())
-                <x-backend.form-card title="Tier Pricing">
-                    <table class="w-full text-sm">
-                        <thead><tr class="text-xs text-gray-500 uppercase"><th class="text-left py-2">Quantity</th><th class="text-right py-2">Unit Price</th></tr></thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @foreach($listing->tierPrices as $tier)
-                                <tr>
-                                    <td class="py-2">{{ rtrim(rtrim((string) $tier->min_quantity,'0'),'.') }}@if($tier->max_quantity) - {{ rtrim(rtrim((string) $tier->max_quantity,'0'),'.') }}@else+@endif</td>
-                                    <td class="py-2 text-right font-medium">{{ number_format($tier->unit_price, 2) }} {{ $tier->currency_code }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </x-backend.form-card>
-            @endif
-        </div>
-
-        <div class="space-y-6">
-            <x-backend.form-card>
-                @if($listing->base_price)
-                    <p class="text-2xl font-bold text-gray-900">{{ number_format($listing->base_price, 2) }} {{ $listing->currency_code }}</p>
-                @endif
-                @if($listing->min_order_quantity)
-                    <p class="text-xs text-gray-500 mt-1">MOQ: {{ rtrim(rtrim((string) $listing->min_order_quantity, '0'), '.') }} {{ $listing->unit?->symbol }}</p>
-                @endif
-
-                <div class="flex flex-col gap-2 mt-4">
-                    <a href="{{ route('buyer.rfqs.create', ['listing' => $listing->id]) }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg text-center">Request Quotation</a>
-                    <form method="POST" action="{{ route('buyer.suppliers.message', $listing->supplierAccount) }}">
-                        @csrf
-                        <button type="submit" class="w-full text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Message Supplier</button>
-                    </form>
-                    <form method="POST" action="{{ route('buyer.saved-items.toggle') }}">
-                        @csrf
-                        <input type="hidden" name="type" value="listing">
-                        <input type="hidden" name="id" value="{{ $listing->id }}">
-                        <button type="submit" class="w-full text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                            <i class="fa-solid fa-bookmark {{ $isSaved ? 'text-red-500' : 'text-gray-300' }}"></i> {{ $isSaved ? 'Saved' : 'Save' }}
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <nav class="flex gap-0 border-b border-gray-100 px-1 overflow-x-auto">
+                    <button type="button" @click="tab = 'overview'"
+                            class="px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors"
+                            :class="tab === 'overview' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'">
+                        <i class="fa-regular fa-file-lines mr-1.5 text-xs"></i>Overview
+                    </button>
+                    <button type="button" @click="tab = 'specifications'"
+                            class="px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors"
+                            :class="tab === 'specifications' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'">
+                        <i class="fa-solid fa-sliders mr-1.5 text-xs"></i>Specifications
+                        @if($listing->attributeValues->isNotEmpty())
+                            <span class="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600">{{ $listing->attributeValues->count() }}</span>
+                        @endif
+                    </button>
+                    @if($hasVariants)
+                        <button type="button" @click="tab = 'variants'"
+                                class="px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors"
+                                :class="tab === 'variants' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'">
+                            <i class="fa-solid fa-layer-group mr-1.5 text-xs"></i>Variants
+                            <span class="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600">{{ $listing->variants->count() }}</span>
                         </button>
-                    </form>
-                </div>
-            </x-backend.form-card>
+                    @endif
+                </nav>
 
-            <x-backend.form-card title="Supplier">
-                <a href="{{ route('buyer.suppliers.show', $listing->supplierAccount) }}" class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode($listing->supplierAccount?->supplierProfile?->display_name ?? 'S') }}&background=eef2ff&color=4f46e5" class="w-10 h-10 rounded-lg" alt="">
-                    <span class="text-sm font-medium text-gray-900">{{ $listing->supplierAccount?->supplierProfile?->display_name }}</span>
-                </a>
-            </x-backend.form-card>
+                <div class="p-5">
+                    <div x-show="tab === 'overview'" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                        @include('backend.buyer.marketplace.products.partials._overview')
+                    </div>
+
+                    <div x-show="tab === 'specifications'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                        @include('backend.buyer.marketplace.products.partials._specifications')
+                    </div>
+
+                    @if($hasVariants)
+                        <div x-show="tab === 'variants'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                            @include('backend.buyer.marketplace.products.partials._variants')
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
+
+        <div class="xl:col-span-4 space-y-4">
+            @include('backend.buyer.marketplace.products.partials._sidebar')
+        </div>
+
     </div>
 
 @endsection

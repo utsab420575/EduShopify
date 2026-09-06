@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FrontendNew\BlogController;
 use App\Http\Controllers\FrontendNew\CategoryController;
 use App\Http\Controllers\FrontendNew\HandoffController;
 use App\Http\Controllers\FrontendNew\HomeController;
@@ -27,6 +28,11 @@ Route::prefix('v2')->name('v2.')->group(function () {
     Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
     Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->name('suppliers.show');
     Route::get('/product/{listing:slug}', [ProductController::class, 'show'])->name('products.show');
+    Route::get('/blogs', [BlogController::class, 'index'])->name('blogs.index');
+    Route::get('/blog/{blogPost:slug}', [BlogController::class, 'show'])->name('blogs.show');
+    Route::post('/blog/{blogPost:slug}/like', [BlogController::class, 'togglePostLike'])->name('blogs.like');
+    Route::post('/blog/{blogPost:slug}/comment', [BlogController::class, 'storeComment'])->name('blogs.comment');
+    Route::post('/blog/comment/{comment}/like', [BlogController::class, 'toggleCommentLike'])->name('blogs.comment.like');
     Route::get('/resources', [ResourceController::class, 'index'])->name('resources.index');
     Route::get('/rfqs', [RfqController::class, 'index'])->name('rfqs.index');
     Route::get('/rfqs/{rfq_number}', [RfqController::class, 'show'])->name('rfqs.show');

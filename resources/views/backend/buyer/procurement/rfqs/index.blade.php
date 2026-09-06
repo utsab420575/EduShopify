@@ -15,16 +15,12 @@
         </x-slot:actions>
     </x-backend.page-header>
 
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-        <a href="{{ route('buyer.rfqs.index', array_filter(['search' => $search])) }}"
-           class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $status === '' ? 'text-white' : 'text-gray-600 border-gray-200 hover:bg-gray-50' }}"
-           @if($status === '') style="background:var(--theme-primary);border-color:var(--theme-primary)" @endif>All</a>
+    <x-backend.tabs>
+        <x-backend.tab :href="route('buyer.rfqs.index', array_filter(['search' => $search]))" :active="$status === ''">All</x-backend.tab>
         @foreach($statusOptions as $value => $label)
-            <a href="{{ route('buyer.rfqs.index', array_filter(['status' => $value, 'search' => $search])) }}"
-               class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $status === $value ? 'text-white' : 'text-gray-600 border-gray-200 hover:bg-gray-50' }}"
-               @if($status === $value) style="background:var(--theme-primary);border-color:var(--theme-primary)" @endif>{{ $label }}</a>
+            <x-backend.tab :href="route('buyer.rfqs.index', array_filter(['status' => $value, 'search' => $search]))" :active="$status === $value">{{ $label }}</x-backend.tab>
         @endforeach
-    </div>
+    </x-backend.tabs>
 
     <x-backend.table>
         <x-slot:toolbar>
@@ -32,6 +28,7 @@
                 <input type="hidden" name="status" value="{{ $status }}">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                 <input type="text" name="search" value="{{ $search }}" placeholder="Search RFQ number or title..."
+                       @input.debounce.500ms="$event.target.form.requestSubmit()"
                        class="focus-accent w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300">
             </form>
         </x-slot:toolbar>
@@ -49,10 +46,11 @@
         @else
             <x-slot:head>
                 <tr>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">RFQ</th>
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
+                    <x-backend.sortable-th column="title" label="RFQ" />
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Items</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quotes</th>
-                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Deadline</th>
+                    <x-backend.sortable-th column="quotation_deadline" label="Deadline" />
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
@@ -60,6 +58,7 @@
 
             @foreach($rfqs as $rfq)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-5 py-3.5 text-sm text-gray-500">{{ $rfqs->firstItem() + $loop->index }}</td>
                     <td class="px-5 py-3.5">
                         <p class="text-sm font-medium text-gray-900">{{ $rfq->title }}</p>
                         <p class="text-xs text-gray-400">{{ $rfq->rfq_number }} &middot; {{ $rfq->created_at->format('d M Y') }}</p>

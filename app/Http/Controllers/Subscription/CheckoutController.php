@@ -158,7 +158,7 @@ class CheckoutController extends Controller
         // this "payment successful" page.
         if ($justSubmitted && $account->buyerCapability?->status === 'draft') {
             return redirect()->route('buyer.onboarding.profile')
-                ->with('success', "Supplier application submitted! Let's finish setting up your buyer account too.");
+                ->with('success', 'Your Supplier profile is complete and has been submitted for review. Now let\'s finish setting up your Buyer profile — continue from where you left off.');
         }
 
         return view('supplier.checkout.success', compact('subscription'));

@@ -28,11 +28,21 @@ class QuotationController extends Controller
         $account = $this->currentAccount();
         $rfqIds = $account->rfqs()->pluck('id');
 
+        $sort = in_array($request->string('sort')->toString(), ['quotation_number', 'grand_total', 'submitted_at'], true)
+            ? $request->string('sort')->toString()
+            : null;
+        $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
+
         $quotations = Quotation::whereIn('rfq_id', $rfqIds)
             ->when($request->filled('rfq'), fn ($q) => $q->where('rfq_id', $request->integer('rfq')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->string('search');
+                $q->where(fn ($q2) => $q2->where('quotation_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplierAccount.supplierProfile', fn ($q3) => $q3->where('display_name', 'like', "%{$search}%")));
+            })
             ->with(['rfq', 'supplierAccount.supplierProfile'])
-            ->latest('submitted_at')
+            ->when($sort, fn ($q) => $q->orderBy($sort, $direction), fn ($q) => $q->latest('submitted_at'))
             ->paginate(10)
             ->withQueryString();
 
@@ -40,6 +50,7 @@ class QuotationController extends Controller
             'quotations' => $quotations,
             'rfq' => $request->integer('rfq'),
             'status' => $request->string('status')->toString(),
+            'search' => $request->string('search')->toString(),
             'rfqOptions' => $account->rfqs()->orderByDesc('id')->get(['id', 'title', 'rfq_number']),
             'statusOptions' => [
                 'submitted' => 'Submitted', 'under_review' => 'Under Review', 'shortlisted' => 'Shortlisted',

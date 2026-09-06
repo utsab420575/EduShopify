@@ -47,6 +47,8 @@
     currentStep: {{ $currentStep }},
     maxCompletedStep: {{ json_encode($isEdit ? $listing->setup_step : 1) }},
     listingType: {{ json_encode($isEdit ? ($listing->listing_type_id ?? '') : old('listing_type_id', '')) }},
+    productTypeId: {{ json_encode((string) ($listingTypes->firstWhere('code', 'product')?->id ?? '')) }},
+    serviceTypeId: {{ json_encode((string) ($listingTypes->firstWhere('code', 'service')?->id ?? '')) }},
     primaryImageId: {{ json_encode($isEdit ? $listing->primary_image_media_id : null) }},
     mediaItems: {{ json_encode($mediaList) }},
     pricingType: {{ json_encode($isEdit ? ($listing->pricing_type_id ?? '') : old('pricing_type_id', '')) }},
@@ -94,6 +96,14 @@ class="space-y-6">
             <span class="w-2 h-2 rounded-full" :class="isSaving ? 'bg-amber-400 animate-ping' : (lastSavedTime ? 'bg-emerald-500' : 'bg-gray-300')"></span>
             <span x-text="isSaving ? 'Saving changes...' : (lastSavedTime ? 'Draft saved at ' + formatSavedTime(lastSavedTime) : 'Draft not saved yet')"></span>
         </div>
+    </div>
+
+    {{-- Listing Completion — how far through the 4-step wizard this listing is --}}
+    <div class="flex items-center gap-3">
+        <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-300" :style="'width:' + completionPercent + '%; background:var(--theme-primary)'"></div>
+        </div>
+        <span class="text-xs font-bold text-gray-700 shrink-0" x-text="completionPercent + '% Complete'"></span>
     </div>
 
     {{-- Error Banner --}}
@@ -290,8 +300,10 @@ class="space-y-6">
             <div class="flex items-center justify-between bg-white rounded-xl border border-gray-200 p-4 shadow-xs">
                 <span class="text-xs text-gray-400">Step 1 of 4</span>
                 <div class="flex items-center gap-3">
-                    <button type="button" @click="saveDraftStep1()" class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Draft
+                    <button type="button" @click="saveDraftStep1()" :disabled="isSaving"
+                            class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition">
+                        <i class="fa-solid" :class="isSaving ? 'fa-circle-notch fa-spin' : 'fa-floppy-disk'"></i>
+                        <span x-text="isSaving ? 'Saving...' : 'Save Draft'"></span>
                     </button>
                     <button type="submit" class="btn-primary text-sm font-medium px-6 py-2.5 rounded-lg flex items-center gap-2">
                         <span>Save & Continue to Specs</span> <i class="fa-solid fa-arrow-right"></i>
@@ -420,8 +432,10 @@ class="space-y-6">
                     <i class="fa-solid fa-arrow-left"></i> Previous Step
                 </button>
                 <div class="flex items-center gap-3">
-                    <button type="button" @click="saveDraftStep2()" class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Draft
+                    <button type="button" @click="saveDraftStep2()" :disabled="isSaving"
+                            class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition">
+                        <i class="fa-solid" :class="isSaving ? 'fa-circle-notch fa-spin' : 'fa-floppy-disk'"></i>
+                        <span x-text="isSaving ? 'Saving...' : 'Save Draft'"></span>
                     </button>
                     <button type="submit" class="btn-primary text-sm font-medium px-6 py-2.5 rounded-lg flex items-center gap-2">
                         <span>Save & Continue to Pricing</span> <i class="fa-solid fa-arrow-right"></i>
@@ -520,7 +534,16 @@ class="space-y-6">
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Minimum Order Quantity (MOQ)</label>
+                        <label class="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1">
+                            Minimum Order Quantity (MOQ)
+                            <span class="relative group inline-flex">
+                                <i class="fa-solid fa-circle-info text-gray-400 hover:text-indigo-500 cursor-help text-[11px]"></i>
+                                <span class="pointer-events-none absolute z-10 left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 rounded-lg bg-gray-900 text-white text-[11px] leading-snug px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg normal-case font-normal">
+                                    <strong>MOQ</strong> = minimum quantity a buyer must purchase.<br>Example: 100 pieces
+                                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+                                </span>
+                            </span>
+                        </label>
                         <input type="number" name="min_order_quantity" min="1" value="{{ $isEdit ? $listing->min_order_quantity : '1' }}"
                                class="focus-accent w-full px-3 py-1.5 border rounded-lg text-sm text-gray-900"
                                :class="fieldErrors['min_order_quantity'] ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'">
@@ -561,16 +584,21 @@ class="space-y-6">
 
                 {{-- Volume Tier Price Builder --}}
                 <div class="pt-3 border-t border-gray-100 space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <label class="inline-flex items-center gap-2.5 cursor-pointer">
-                            {{-- Compact toggle switch --}}
-                            <span class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors"
-                                  :style="hasTierPricing ? 'background:var(--theme-primary)' : 'background:#d1d5db'">
-                                <input type="checkbox" name="has_tier_pricing" value="1" x-model="hasTierPricing" class="peer sr-only">
-                                <span class="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform" :style="hasTierPricing ? 'transform: translateX(1.125rem)' : 'transform: translateX(0.25rem)'"></span>
-                            </span>
-                            <span class="text-xs font-semibold text-gray-900">Enable Volume Pricing</span>
-                        </label>
+                    <input type="hidden" name="has_tier_pricing" :value="hasTierPricing ? 1 : 0">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-900 mb-1.5">Do you offer bulk discounts?</p>
+                            <div class="flex items-center gap-4">
+                                <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+                                    <input type="radio" :checked="hasTierPricing === true" @change="hasTierPricing = true" style="accent-color:var(--theme-primary)">
+                                    Yes
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+                                    <input type="radio" :checked="hasTierPricing === false" @change="hasTierPricing = false" style="accent-color:var(--theme-primary)">
+                                    No
+                                </label>
+                            </div>
+                        </div>
                         <button type="button" x-show="hasTierPricing" @click="addTier()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
                             <i class="fa-solid fa-plus"></i> Add Tier
                         </button>
@@ -620,7 +648,7 @@ class="space-y-6">
                 </div>
 
                 {{-- Product Inventory Details --}}
-                <div x-show="listingType === 'product'" class="pt-3 border-t border-gray-100 space-y-2.5">
+                <div x-show="listingType == productTypeId" class="pt-3 border-t border-gray-100 space-y-2.5">
                     <h4 class="text-xs font-bold text-gray-900">Inventory & Lead Time</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
@@ -658,8 +686,10 @@ class="space-y-6">
                     <i class="fa-solid fa-arrow-left"></i> Previous Step
                 </button>
                 <div class="flex items-center gap-3">
-                    <button type="button" @click="saveDraftStep3()" class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Draft
+                    <button type="button" @click="saveDraftStep3()" :disabled="isSaving"
+                            class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition">
+                        <i class="fa-solid" :class="isSaving ? 'fa-circle-notch fa-spin' : 'fa-floppy-disk'"></i>
+                        <span x-text="isSaving ? 'Saving...' : 'Save Draft'"></span>
                     </button>
                     <button type="submit" class="btn-primary text-sm font-medium px-6 py-2.5 rounded-lg flex items-center gap-2">
                         <span>Save & Continue to Review</span> <i class="fa-solid fa-arrow-right"></i>
@@ -679,7 +709,7 @@ class="space-y-6">
                 </div>
 
                 {{-- Variant Management Section (for Products) --}}
-                <div x-show="listingType === 'product'" class="p-5 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-4">
+                <div x-show="listingType == productTypeId" class="p-5 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <p class="text-xs text-gray-500 max-w-lg">Configure distinct SKU variations (different colors, sizes, storage, or models) with individual pricing & photos.</p>
                         <div class="flex items-center gap-2">
@@ -1424,8 +1454,9 @@ class="space-y-6">
                         <span>Preview Listing</span>
                     </button>
                     <button type="button" @click="saveDraftStep4()" :disabled="isSaving"
-                            class="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-floppy-disk"></i> Save as Draft
+                            class="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition">
+                        <i class="fa-solid" :class="isSaving ? 'fa-circle-notch fa-spin' : 'fa-floppy-disk'"></i>
+                        <span x-text="isSaving ? 'Saving...' : 'Save as Draft'"></span>
                     </button>
                     <button type="button" @click="submitForApproval()" :disabled="isSaving"
                             class="btn-primary text-sm font-medium px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-xs">
@@ -1446,11 +1477,13 @@ function productListingWizard(config) {
         listingId: config.listingId || null,
         currentStep: config.currentStep || 1,
         maxCompletedStep: config.maxCompletedStep || 1,
-        listingType: config.listingType || 'product',
+        productTypeId: config.productTypeId || '',
+        serviceTypeId: config.serviceTypeId || '',
+        listingType: config.listingType || config.productTypeId || '',
         // The full service workflow isn't built yet — new listings are
         // gated to "product" in the UI, but an existing service listing
         // (created before this gate) must remain editable.
-        wasServiceOnLoad: (config.isEdit && config.listingType == '{{ $listingTypes->firstWhere('code','service')?->id ?? '' }}') || false,
+        wasServiceOnLoad: (config.isEdit && config.listingType == config.serviceTypeId) || false,
         primaryImageId: config.primaryImageId || null,
         mediaItems: config.mediaItems || [],
         pricingType: config.pricingType || '',
@@ -1521,12 +1554,21 @@ function productListingWizard(config) {
         singleFormAttributes: {},
 
         get stepDefs() {
+            const isService = this.listingType == this.serviceTypeId;
             return [
                 { num: 1, label: 'Basics & Media' },
-                { num: 2, label: this.listingType === 'service' ? 'Category & Service' : 'Category & Specifications' },
-                { num: 3, label: this.listingType === 'service' ? 'Pricing & Terms' : 'Pricing & Commercial Terms' },
-                { num: 4, label: this.listingType === 'service' ? 'Review & Submit' : 'Variants & Review' },
+                { num: 2, label: isService ? 'Category & Service' : 'Category & Specifications' },
+                { num: 3, label: isService ? 'Pricing & Terms' : 'Pricing & Commercial Terms' },
+                { num: 4, label: isService ? 'Review & Submit' : 'Variants & Review' },
             ];
+        },
+
+        // maxCompletedStep out of the 4 wizard steps, as a percentage — a
+        // supplier landing back on a draft (or checking their progress) gets
+        // a number, not just "step 2 of 4" arithmetic they have to do
+        // themselves.
+        get completionPercent() {
+            return Math.round((Math.min(this.maxCompletedStep, this.stepDefs.length) / this.stepDefs.length) * 100);
         },
 
         get filteredVariants() {
@@ -1593,6 +1635,13 @@ function productListingWizard(config) {
             this.rebuildMediaIndex();
             if (this.selectedCategoryId) {
                 this.loadVariantAttributes(this.selectedCategoryId);
+                // Editing a listing whose category sits past page 1 of the
+                // tree used to always land on page 1, leaving the checked
+                // category invisible until paging through to find it.
+                const idx = this.categoryNodes.findIndex(n => n.id == this.selectedCategoryId);
+                if (idx !== -1) {
+                    this.catPage = Math.floor(idx / this.catPerPage) + 1;
+                }
             }
             window.addEventListener('category-selected', (e) => {
                 if (e.detail && e.detail.categoryId) {

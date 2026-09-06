@@ -2,15 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\Listing;
 use App\Models\Review;
+use App\Models\SupplierProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Admin moderation of buyer-submitted reviews. Publishing here is also the
- * only place supplier_profiles.rating / reviews_count get recalculated —
- * nothing else in the app writes those two columns.
+ * only place supplier_profiles.rating / reviews_count AND
+ * listings.product_rating / product_reviews_count get recalculated —
+ * nothing else in the app writes those columns. Which pair gets
+ * recalculated depends on the review's review_type (supplier vs product).
  */
 class ReviewModerationService
 {
@@ -28,7 +32,7 @@ class ReviewModerationService
                 'moderation_reason'   => null,
             ]);
 
-            $this->recalculateSupplierRating($review->supplier_account_id);
+            $this->recalculate($review);
         });
 
         activity('moderation')->causedBy($admin)->performedOn($review)->log('Review published');
@@ -48,7 +52,7 @@ class ReviewModerationService
             ]);
 
             if ($wasPublished) {
-                $this->recalculateSupplierRating($review->supplier_account_id);
+                $this->recalculate($review);
             }
         });
 
@@ -72,16 +76,44 @@ class ReviewModerationService
         return $review->fresh();
     }
 
+    private function recalculate(Review $review): void
+    {
+        if ($review->review_type === 'product') {
+            $this->recalculateProductRating($review->listing_id);
+        } else {
+            $this->recalculateSupplierRating($review->supplier_account_id);
+        }
+    }
+
     private function recalculateSupplierRating(int $supplierAccountId): void
     {
         $stats = Review::where('supplier_account_id', $supplierAccountId)
+            ->supplier()
             ->where('status', 'published')
             ->selectRaw('COUNT(*) as cnt, AVG(rating) as avg_rating')
             ->first();
 
-        \App\Models\SupplierProfile::where('account_id', $supplierAccountId)->update([
+        SupplierProfile::where('account_id', $supplierAccountId)->update([
             'rating'        => round((float) ($stats->avg_rating ?? 0), 2),
             'reviews_count' => (int) ($stats->cnt ?? 0),
+        ]);
+    }
+
+    private function recalculateProductRating(?int $listingId): void
+    {
+        if (! $listingId) {
+            return;
+        }
+
+        $stats = Review::where('listing_id', $listingId)
+            ->product()
+            ->where('status', 'published')
+            ->selectRaw('COUNT(*) as cnt, AVG(rating) as avg_rating')
+            ->first();
+
+        Listing::where('id', $listingId)->update([
+            'product_rating'        => round((float) ($stats->avg_rating ?? 0), 2),
+            'product_reviews_count' => (int) ($stats->cnt ?? 0),
         ]);
     }
 }

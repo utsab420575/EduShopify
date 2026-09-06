@@ -488,7 +488,17 @@ function categoryAttributesManager(config) {
             this.isLoading = true;
 
             try {
-                const url = this.endpointUrl.replace(':id', categoryId);
+                let url = this.endpointUrl.replace(':id', categoryId);
+                // Editing a draft that already has a value for an attribute
+                // since deactivated — keep it visible instead of silently
+                // dropping it. Only relevant on the initial load; a fresh
+                // category switch has no legacy values worth preserving.
+                if (isInitial) {
+                    const keepIds = Object.keys(this.enteredValues);
+                    if (keepIds.length > 0) {
+                        url += (url.includes('?') ? '&' : '?') + 'keep_attribute_ids=' + keepIds.join(',');
+                    }
+                }
                 const res = await fetch(url);
                 const data = await res.json();
 

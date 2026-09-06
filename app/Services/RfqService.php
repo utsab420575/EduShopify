@@ -61,7 +61,12 @@ class RfqService
                 'buyer_account_id'           => $buyerAccount->id,
                 'created_by_user_id'         => $rfq?->created_by_user_id ?? $user->id,
                 'visibility_type_id'         => $visibilityTypeId,
-                'title'                      => $data['title'],
+                // Autosave from an early wizard step may not carry title/
+                // quotation_deadline yet — fall back to whatever the row
+                // already has (null for a brand-new draft, now that both
+                // columns are nullable) instead of wiping a later step's
+                // already-saved value or fataling on a missing array key.
+                'title'                      => $data['title'] ?? $rfq?->title,
                 'description'                => $data['description'] ?? null,
                 'currency_code'              => $data['currency_code'] ?? null,
                 'budget_min'                 => $data['budget_min'] ?? null,
@@ -72,7 +77,7 @@ class RfqService
                 'delivery_address'           => $data['delivery_address'] ?? null,
                 'allow_partial_quotation'    => $data['allow_partial_quotation'] ?? true,
                 'allow_alternative_products' => $data['allow_alternative_products'] ?? true,
-                'quotation_deadline'         => $data['quotation_deadline'],
+                'quotation_deadline'         => $data['quotation_deadline'] ?? $rfq?->quotation_deadline,
                 'qna_deadline'               => $data['qna_deadline'] ?? null,
                 'expected_delivery_date'     => $data['expected_delivery_date'] ?? null,
             ];
@@ -92,10 +97,11 @@ class RfqService
                 $rfq->isInvited() ? ($data['selected_supplier_ids'] ?? []) : []
             );
             $this->syncTargetFilters($rfq, $data);
+            $this->syncDeliveryAddresses($rfq, $data['additional_addresses'] ?? []);
 
             $rfq->update(['items_count' => count($data['items'])]);
 
-            return $rfq->fresh(['items', 'invitedSupplierAccounts']);
+            return $rfq->fresh(['items', 'invitedSupplierAccounts', 'deliveryAddresses']);
         });
     }
 
@@ -103,6 +109,14 @@ class RfqService
     {
         if (! in_array($rfq->status, ['draft', 'pending_approval'], true)) {
             throw ValidationException::withMessages(['status' => 'Only a draft RFQ can be published.']);
+        }
+
+        if (! $rfq->title) {
+            throw ValidationException::withMessages(['title' => 'Give this RFQ a title before publishing.']);
+        }
+
+        if (! $rfq->quotation_deadline) {
+            throw ValidationException::withMessages(['quotation_deadline' => 'Set a quotation deadline before publishing.']);
         }
 
         if ($rfq->items()->count() === 0) {
@@ -642,6 +656,30 @@ class RfqService
                 'city_id'               => $tf['city_id'] ?? null,
             ]
         );
+    }
+
+    /**
+     * Delivery locations beyond the primary one on the rfqs row itself —
+     * delete-and-recreate, same approach as syncItems().
+     */
+    private function syncDeliveryAddresses(Rfq $rfq, array $addresses): void
+    {
+        \App\Models\RfqDeliveryAddress::where('rfq_id', $rfq->id)->delete();
+
+        foreach (array_values($addresses) as $i => $address) {
+            if (empty($address['country_id']) && empty($address['state_id']) && empty($address['city_id']) && empty($address['address'])) {
+                continue;
+            }
+
+            \App\Models\RfqDeliveryAddress::create([
+                'rfq_id'     => $rfq->id,
+                'country_id' => $address['country_id'] ?? null,
+                'state_id'   => $address['state_id'] ?? null,
+                'city_id'    => $address['city_id'] ?? null,
+                'address'    => $address['address'] ?? null,
+                'sort_order' => $i,
+            ]);
+        }
     }
 
     private function syncSelectedSuppliers(Rfq $rfq, User $user, array $supplierAccountIds): void

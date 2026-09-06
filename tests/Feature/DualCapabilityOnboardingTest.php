@@ -133,8 +133,20 @@ class DualCapabilityOnboardingTest extends TestCase
         $this->assertSame('draft', $account->buyerCapability->fresh()->status);
 
         // Supplier's Final Submit must redirect straight into the (now
-        // pre-filled) Buyer wizard, not the supplier "pending review" page.
+        // pre-filled) Buyer wizard, not the supplier "pending review" page —
+        // and must tell the user their Supplier profile is done and they're
+        // continuing on to Buyer, not leave them guessing why they suddenly
+        // landed on a different wizard.
         $supplier->assertRedirect(route('buyer.onboarding.profile'));
+
+        // The flash message must actually be visible on the real page the
+        // browser lands on next — proves the redirect target genuinely
+        // shows the "Supplier done, now Buyer" handoff message, not just
+        // that a redirect happened.
+        $this->actingAs($user->fresh())->get(route('buyer.onboarding.profile'))
+            ->assertOk()
+            ->assertSee('Your Supplier profile is complete')
+            ->assertSee('continue from where you left off');
 
         // The shared identity/contact fields must have been copied onto the
         // still-draft BuyerProfile.

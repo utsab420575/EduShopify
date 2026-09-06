@@ -208,6 +208,21 @@ class Account extends Model
         return $this->morphMany(SocialLink::class, 'socialable');
     }
 
+    public function services(): MorphMany
+    {
+        return $this->morphMany(Service::class, 'serviceable');
+    }
+
+    public function certifications(): HasMany
+    {
+        return $this->hasMany(Certification::class);
+    }
+
+    public function accountAchievements(): HasMany
+    {
+        return $this->hasMany(AccountAchievement::class);
+    }
+
     public function supplierTypes(): BelongsToMany
     {
         return $this->belongsToMany(

@@ -184,10 +184,21 @@ class QuotationController extends Controller
      * GET supplier/quotations/categories/{category}/attributes — identical
      * contract to the buyer module's equivalent endpoint, so the offer form
      * renders the same attribute set the buyer's requirement was built from.
+     *
+     * keep_attribute_ids: comma-separated attribute ids the offer item
+     * already has a saved value for (editing/revising an existing
+     * quotation) — so a since-deactivated attribute still shows instead of
+     * silently disappearing.
      */
-    public function categoryAttributes(Category $category)
+    public function categoryAttributes(Request $request, Category $category)
     {
-        return response()->json($category->attributesGroupedForForm());
+        $keepIds = collect(explode(',', (string) $request->query('keep_attribute_ids', '')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->values()
+            ->all();
+
+        return response()->json($category->attributesGroupedForForm($keepIds));
     }
 
     /**

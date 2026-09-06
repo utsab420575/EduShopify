@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Livewire\Buyer\BuyerProfileOnboarding;
 use App\Models\CapabilityType;
+use App\Models\City;
 use App\Models\Country;
 use App\Models\DocumentType;
 use App\Models\DocumentTypeEnable;
 use App\Models\SocialPlatform;
+use App\Models\State;
 use App\Services\AccountRegistrationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -54,6 +56,8 @@ class BuyerProfileOnboardingWizardTest extends TestCase
 
         [$user, $account] = $this->makeDraftBuyer('buyer-2step@example.com');
         $country = Country::create(['name' => 'UAE', 'iso2' => 'AE', 'iso3' => 'ARE', 'phone_code' => '971', 'currency_code' => 'AED', 'is_active' => true]);
+        $state = State::create(['country_id' => $country->id, 'name' => 'Dubai', 'is_active' => true]);
+        $city = City::create(['country_id' => $country->id, 'state_id' => $state->id, 'name' => 'Dubai City', 'is_active' => true]);
         $buyerType = \App\Models\BuyerType::first() ?? \App\Models\BuyerType::create(['name' => 'School', 'slug' => 'school-2step', 'is_active' => true]);
 
         $component = Livewire::actingAs($user)->test(BuyerProfileOnboarding::class);
@@ -66,6 +70,8 @@ class BuyerProfileOnboardingWizardTest extends TestCase
             ->set('contact_person', 'Jane Doe')
             ->set('email', 'buyer-2step@example.com')
             ->set('locations.0.country_id', $country->id)
+            ->set('locations.0.state_id', $state->id)
+            ->set('locations.0.city_id', $city->id)
             ->set('locations.0.address', '1 Buyer Ave, Dubai')
             ->call('nextStep')->assertHasNoErrors()->assertSet('step', 2);
 
@@ -128,6 +134,8 @@ class BuyerProfileOnboardingWizardTest extends TestCase
 
         [$user, $account] = $this->makeDraftBuyer('buyer-3step@example.com');
         $country = Country::create(['name' => 'UAE', 'iso2' => 'AE', 'iso3' => 'ARE', 'phone_code' => '971', 'currency_code' => 'AED', 'is_active' => true]);
+        $state = State::create(['country_id' => $country->id, 'name' => 'Dubai', 'is_active' => true]);
+        $city = City::create(['country_id' => $country->id, 'state_id' => $state->id, 'name' => 'Dubai City', 'is_active' => true]);
         $buyerType = \App\Models\BuyerType::first() ?? \App\Models\BuyerType::create(['name' => 'School', 'slug' => 'school-3step', 'is_active' => true]);
 
         $docType = DocumentType::create(['name' => 'Business Registration', 'slug' => 'business-registration-w', 'code' => 'BRW', 'is_required' => true, 'is_active' => true]);
@@ -147,6 +155,8 @@ class BuyerProfileOnboardingWizardTest extends TestCase
             ->set('contact_person', 'Jane Doe')
             ->set('email', 'buyer-3step@example.com')
             ->set('locations.0.country_id', $country->id)
+            ->set('locations.0.state_id', $state->id)
+            ->set('locations.0.city_id', $city->id)
             ->set('locations.0.address', '1 Buyer Ave, Dubai')
             ->call('nextStep')->assertHasNoErrors()->assertSet('step', 2);
 
@@ -195,6 +205,8 @@ class BuyerProfileOnboardingWizardTest extends TestCase
         $this->seedBase();
         [$user, $account] = $this->makeDraftBuyer('buyer-resume@example.com');
         $country = Country::create(['name' => 'UAE', 'iso2' => 'AE', 'iso3' => 'ARE', 'phone_code' => '971', 'currency_code' => 'AED', 'is_active' => true]);
+        $state = State::create(['country_id' => $country->id, 'name' => 'Dubai', 'is_active' => true]);
+        $city = City::create(['country_id' => $country->id, 'state_id' => $state->id, 'name' => 'Dubai City', 'is_active' => true]);
         $buyerType = \App\Models\BuyerType::first() ?? \App\Models\BuyerType::create(['name' => 'School', 'slug' => 'school-resume', 'is_active' => true]);
 
         $session1 = Livewire::actingAs($user)->test(BuyerProfileOnboarding::class);
@@ -205,6 +217,8 @@ class BuyerProfileOnboardingWizardTest extends TestCase
             ->set('contact_person', 'Jane Doe')
             ->set('email', 'buyer-resume@example.com')
             ->set('locations.0.country_id', $country->id)
+            ->set('locations.0.state_id', $state->id)
+            ->set('locations.0.city_id', $city->id)
             ->set('locations.0.address', '1 Buyer Ave, Dubai')
             ->call('nextStep')->assertHasNoErrors()->assertSet('step', 2);
 

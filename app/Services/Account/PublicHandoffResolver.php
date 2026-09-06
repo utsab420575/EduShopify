@@ -25,7 +25,7 @@ class PublicHandoffResolver
         }
 
         // Actions requiring active buyer capability: route to onboarding if not active yet
-        if (in_array($action, ['post_rfq', 'request_quote_listing', 'request_quote_supplier'])) {
+        if (in_array($action, ['post_rfq', 'request_quote_listing', 'request_quote_supplier', 'compare_rfq'])) {
             if (! $account || ! $account->hasActiveCapability('buyer')) {
                 return app(BuyerOnboardingStateService::class)->resolve($user);
             }
@@ -42,6 +42,7 @@ class PublicHandoffResolver
             'post_rfq' => route('buyer.rfqs.create'),
             'request_quote_listing' => $this->requestQuoteListing($params),
             'request_quote_supplier' => $this->requestQuoteSupplier($params),
+            'compare_rfq' => $this->compareRfq($params),
             'submit_quotation' => $this->submitQuotation($params),
             'save_listing' => $this->saveListing($params),
             'save_supplier' => $this->saveSupplier($params),
@@ -55,6 +56,26 @@ class PublicHandoffResolver
 
         return $listing
             ? route('buyer.rfqs.create', ['listing' => $listing->id])
+            : route('buyer.rfqs.create');
+    }
+
+    /**
+     * "Send RFQ to All Suppliers" from /compare, resumed after login —
+     * re-resolves every slug fresh against current public eligibility
+     * rather than trusting the pre-login list (a listing could have been
+     * unpublished in the meantime).
+     */
+    private function compareRfq(array $params): string
+    {
+        $slugs = $params['slugs'] ?? [];
+        if (empty($slugs)) {
+            return route('buyer.rfqs.create');
+        }
+
+        $ids = PublicListingQuery::base()->whereIn('slug', $slugs)->pluck('id');
+
+        return $ids->isNotEmpty()
+            ? route('buyer.rfqs.create', ['listings' => $ids->implode(',')])
             : route('buyer.rfqs.create');
     }
 

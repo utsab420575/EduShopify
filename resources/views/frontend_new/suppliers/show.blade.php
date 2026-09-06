@@ -144,7 +144,13 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
               @foreach($services->take(4) as $service)
                 <div class="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
-                  <div class="svc-icon mb-2"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>
+                  <div class="svc-icon mb-2">
+                    @if($service->icon)
+                      {!! $service->icon->render('text-emerald-600 text-lg flex items-center justify-center') !!}
+                    @else
+                      <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                    @endif
+                  </div>
                   <p class="text-sm font-semibold text-gray-900 mb-1">{{ $service->title }}</p>
                   <p class="text-[11px] text-gray-500 leading-snug">{{ Str::limit($service->description, 45) }}</p>
                 </div>
@@ -213,7 +219,13 @@
               @foreach($services as $service)
                 <div class="border border-gray-200 rounded-lg p-4">
                   <div class="flex items-start gap-3">
-                    <div class="svc-icon shrink-0"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>
+                    <div class="svc-icon shrink-0">
+                      @if($service->icon)
+                        {!! $service->icon->render('text-emerald-600 text-lg flex items-center justify-center') !!}
+                      @else
+                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                      @endif
+                    </div>
                     <div><p class="text-sm font-bold text-gray-900 mb-1">{{ $service->title }}</p><p class="text-xs text-gray-500 leading-relaxed">{{ $service->description }}</p></div>
                   </div>
                 </div>

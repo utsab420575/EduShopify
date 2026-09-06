@@ -57,6 +57,7 @@ class SupplierApplication extends Component
     public $banner;
     public $profile_photo;
     public array $gallery_files = [];
+    public $new_gallery_files = [];
     public array $video_urls = [];
 
     /* ── Step 3: Supplier Types & Exhibitions ── */
@@ -252,6 +253,26 @@ class SupplierApplication extends Component
     }
 
     /* ─────────────────── Gallery ─────────────────── */
+
+    /**
+     * Appends newly selected batch images to the existing gallery array
+     * without overwriting previously selected ones.
+     */
+    public function updatedNewGalleryFiles(): void
+    {
+        $this->validate([
+            'new_gallery_files.*' => 'image|max:5120',
+        ]);
+
+        foreach ((array) $this->new_gallery_files as $file) {
+            if ($file && count($this->gallery_files) < 10) {
+                $this->gallery_files[] = $file;
+            }
+        }
+
+        $this->new_gallery_files = [];
+        $this->resetErrorBag('gallery_files');
+    }
 
     /**
      * Removes a pending (not-yet-saved) gallery upload before it's ever
@@ -763,7 +784,7 @@ class SupplierApplication extends Component
         // the user straight into the (now pre-filled) Buyer wizard instead
         // of the supplier "pending review" holding page.
         if ($account->buyerCapability?->status === 'draft') {
-            session()->flash('success', "Supplier application submitted! Let's finish setting up your buyer account too.");
+            session()->flash('success', 'Your Supplier profile is complete and has been submitted for review. Now let\'s finish setting up your Buyer profile — continue from where you left off.');
             $this->redirect(route('buyer.onboarding.profile'), navigate: false);
             return;
         }

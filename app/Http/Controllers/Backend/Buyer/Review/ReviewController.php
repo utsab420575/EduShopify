@@ -20,7 +20,7 @@ class ReviewController extends Controller
         $account = $this->currentAccount();
 
         $reviews = $account->writtenReviews()
-            ->with(['supplierAccount.supplierProfile', 'rfq', 'reply'])
+            ->with(['supplierAccount.supplierProfile', 'listing', 'rfq', 'reply'])
             ->latest()
             ->paginate(10);
 
@@ -57,5 +57,21 @@ class ReviewController extends Controller
         }
 
         return back()->with('success', 'Thank you — your review has been submitted for moderation.');
+    }
+
+    public function updateProductReview(ReviewRequest $request, Review $review, ReviewService $service)
+    {
+        $this->authorize('updateProductReview', $review);
+
+        try {
+            $service->updateProductReview(
+                $this->currentAccount(), $review,
+                (int) $request->input('rating'), $request->input('title'), $request->input('comment')
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('success', 'Your product review has been updated and resubmitted for moderation.');
     }
 }

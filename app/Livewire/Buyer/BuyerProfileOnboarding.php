@@ -53,6 +53,7 @@ class BuyerProfileOnboarding extends Component
     public $logo;
     public $profile_photo;
     public array $gallery_files = [];
+    public $new_gallery_files = [];
     /** Repeatable rows: ['platform_id' => int|null, 'url' => string]. */
     public array $social_links = [];
 
@@ -261,21 +262,21 @@ class BuyerProfileOnboarding extends Component
         $this->guardPreviewableImage('logo');
     }
 
-    public function updatedGalleryFiles(): void
+    public function updatedNewGalleryFiles(): void
     {
-        $valid = [];
         $rejected = false;
 
-        foreach ($this->gallery_files as $file) {
+        foreach ((array) $this->new_gallery_files as $file) {
             if ($file && in_array(strtolower($file->getClientOriginalExtension()), self::PREVIEWABLE_IMAGE_EXTENSIONS, true)) {
-                $valid[] = $file;
+                if (count($this->gallery_files) < 10) {
+                    $this->gallery_files[] = $file;
+                }
             } else {
                 $rejected = true;
             }
         }
 
-        $this->gallery_files = $valid;
-
+        $this->new_gallery_files = [];
         $this->resetErrorBag('gallery_files');
 
         if ($rejected) {
@@ -590,8 +591,8 @@ class BuyerProfileOnboarding extends Component
                 'website' => 'nullable|url|max:255',
                 'locations' => 'required|array|min:1',
                 'locations.*.country_id' => 'required|exists:countries,id',
-                'locations.*.state_id' => 'nullable|exists:states,id',
-                'locations.*.city_id' => 'nullable|exists:cities,id',
+                'locations.*.state_id' => 'required|exists:states,id',
+                'locations.*.city_id' => 'required|exists:cities,id',
                 'locations.*.address' => 'required|string|max:500',
                 'tax_id' => 'nullable|string|max:100',
                 'bio' => 'nullable|string|max:2000',
@@ -649,6 +650,11 @@ class BuyerProfileOnboarding extends Component
         foreach ($this->locations as $i => $loc) {
             $label = $i === 0 ? 'your primary location' : 'Location '.($i + 1);
             $messages["locations.$i.country_id.required"] = "Please select a country for $label.";
+            $messages["locations.$i.country_id.exists"] = "Please select a valid country for $label.";
+            $messages["locations.$i.state_id.required"] = "Please select a state / region for $label.";
+            $messages["locations.$i.state_id.exists"] = "Please select a valid state / region for $label.";
+            $messages["locations.$i.city_id.required"] = "Please select a city for $label.";
+            $messages["locations.$i.city_id.exists"] = "Please select a valid city for $label.";
             $messages["locations.$i.address.required"] = "Please enter an address for $label.";
         }
 

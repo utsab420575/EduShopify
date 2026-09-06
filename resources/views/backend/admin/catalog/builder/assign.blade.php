@@ -14,12 +14,45 @@
         page: Number(new URLSearchParams(window.location.search).get('page')) || 1,
         perPage: 10,
         allNodes: {{ Js::from(collect($tree)->map(fn($n) => [
-            'id' => $n['id'], 'name' => $n['name'], 'depth' => $n['depth'],
+            'id' => $n['id'], 'parent_id' => $n['parent_id'], 'name' => $n['name'], 'depth' => $n['depth'],
             'is_active' => $n['is_active'], 'attributes_count' => $n['attributes_count'],
         ])->values()) }},
+        // Same ancestor/descendant-aware search as the Category tab: a
+        // name-only filter used to drop everything else, so searching for a
+        // leaf like Laptop hid that it lives under Electronics greater-than
+        // Computer and has its own children nested under it. Find direct
+        // name matches, then pull in every ancestor (breadcrumb) and every
+        // descendant (nested children), tagging which rows are the actual
+        // match vs. shown only for context.
         get filtered() {
             const q = this.search.trim().toLowerCase();
-            return q === '' ? this.allNodes : this.allNodes.filter(n => n.name.toLowerCase().includes(q));
+            if (q === '') return this.allNodes;
+
+            const byId = {};
+            this.allNodes.forEach(n => { byId[n.id] = n; });
+
+            const matchedIds = new Set(this.allNodes.filter(n => n.name.toLowerCase().includes(q)).map(n => n.id));
+            const includeIds = new Set(matchedIds);
+
+            matchedIds.forEach(id => {
+                let node = byId[id];
+                while (node && node.parent_id) {
+                    includeIds.add(node.parent_id);
+                    node = byId[node.parent_id];
+                }
+            });
+
+            this.allNodes.forEach(n => {
+                let node = n;
+                while (node) {
+                    if (matchedIds.has(node.id)) { includeIds.add(n.id); break; }
+                    node = node.parent_id ? byId[node.parent_id] : null;
+                }
+            });
+
+            return this.allNodes
+                .filter(n => includeIds.has(n.id))
+                .map(n => ({ ...n, isMatch: matchedIds.has(n.id) }));
         },
         get totalPages() { return Math.max(1, Math.ceil(this.filtered.length / this.perPage)); },
         get pageItems() {
@@ -95,15 +128,22 @@
                        class="w-full text-sm rounded-lg border border-gray-300 pl-9 pr-3 py-2 bg-white">
             </div>
 
+            <p x-show="search.trim() !== '' && filtered.length > 0" class="text-[11px] text-gray-400 mb-2 -mt-2">
+                <i class="fa-solid fa-circle-info mr-1"></i> Showing matches along with their parent and child categories for context — highlighted rows are the actual match.
+            </p>
+
             <div class="space-y-0.5 h-[420px] lg:h-[480px] overflow-y-auto">
                 <template x-for="node in pageItems" :key="node.id">
                     <button type="button" @click="selectCategory(node)"
                             class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-sm border"
-                            :class="selectedCategoryId === node.id ? 'border-indigo-200' : 'border-transparent hover:bg-gray-50'"
+                            :class="selectedCategoryId === node.id ? 'border-indigo-200' : (search.trim() !== '' && node.isMatch ? 'border-transparent bg-indigo-50/60 ring-1 ring-indigo-100' : 'border-transparent hover:bg-gray-50')"
                             :style="(selectedCategoryId === node.id ? 'background:var(--theme-primary-soft);' : '') + 'padding-left:' + (12 + node.depth * 20) + 'px'">
                         <span class="flex items-center gap-2 min-w-0">
                             <i class="fa-solid text-[10px]" :class="node.depth > 0 ? 'fa-turn-up fa-rotate-90 text-gray-300' : 'fa-folder text-indigo-400 text-sm'"></i>
-                            <span class="truncate font-medium" :class="selectedCategoryId === node.id ? 'text-indigo-700' : 'text-gray-800'" x-text="node.name"></span>
+                            <span class="truncate font-medium"
+                                  :class="selectedCategoryId === node.id ? 'text-indigo-700' : (search.trim() !== '' && !node.isMatch ? 'text-gray-400' : 'text-gray-800')"
+                                  x-text="node.name"></span>
+                            <span x-show="search.trim() !== '' && node.isMatch" class="shrink-0 text-[9px] font-bold uppercase tracking-wide text-indigo-500 bg-indigo-100 px-1.5 py-0.5 rounded">Match</span>
                         </span>
                         <span class="text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded-full"
                               :class="node.attributes_count > 0 ? 'text-indigo-700 bg-white border border-indigo-100' : 'text-gray-400 bg-gray-50 border border-gray-200'"

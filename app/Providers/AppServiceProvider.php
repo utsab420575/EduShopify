@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +36,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerMorphMap();
+
+        // backend.layouts.master puts x-data on <body> itself (mobile sidebar,
+        // notification/profile dropdowns), so Alpine must be present on every
+        // backend page — not just ones that happen to render a Livewire
+        // component, which is the only case Livewire auto-injects its bundled
+        // Alpine for. Forcing injection here is what let the redundant
+        // standalone Alpine <script> in master.blade.php be removed — running
+        // two Alpine instances together was corrupting wire:model diffing
+        // (stale values, duplicate submits) across every Livewire component.
+        Livewire::forceAssetInjection();
 
         // Enterprise RBAC Gate:
         // 1. Super Admin: Universal platform root bypass

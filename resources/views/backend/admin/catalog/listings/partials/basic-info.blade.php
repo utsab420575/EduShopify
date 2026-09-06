@@ -1,33 +1,53 @@
-{{-- Basic product identity — Tab 1 (Overview & Media), shown with the photo gallery. See listings/_panel.blade.php for expected variables. --}}
-<x-backend.form-card title="Product Information">
-    <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-        <div class="p-3 bg-gray-50 rounded-lg">
-            <dt class="text-gray-500 font-medium mb-0.5">Primary Category</dt>
-            <dd class="font-bold text-gray-900">{{ $listing->mainCategory?->name ?? '—' }}</dd>
-        </div>
-        <div class="p-3 bg-gray-50 rounded-lg">
-            <dt class="text-gray-500 font-medium mb-0.5">Brand</dt>
-            <dd class="font-bold text-gray-900">{{ $listing->brand?->name ?? 'Unbranded / Generic' }}</dd>
-        </div>
-        <div class="p-3 bg-gray-50 rounded-lg">
-            <dt class="text-gray-500 font-medium mb-0.5">SKU / Model Number</dt>
-            <dd class="font-bold font-mono text-gray-900">{{ $listing->sku ?? '—' }}</dd>
-        </div>
-    </dl>
+{{-- Basic product identity — Tab 1 (Overview & Media). See listings/_panel.blade.php for expected variables. --}}
 
-    @if($listing->short_description)
-        <div class="mt-4 pt-4 border-t border-gray-100">
-            <dt class="text-xs font-bold text-gray-700 mb-1">Short Summary</dt>
-            <dd class="text-xs text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">{{ $listing->short_description }}</dd>
+{{-- Quick identity row --}}
+<dl class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+    <div class="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
+        <div class="w-7 h-7 flex-shrink-0 rounded-lg bg-white border border-gray-200 flex items-center justify-center shadow-xs">
+            <i class="fa-solid fa-folder text-indigo-400 text-[11px]"></i>
         </div>
-    @endif
+        <div class="min-w-0">
+            <dt class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">Category</dt>
+            <dd class="font-bold text-gray-900 truncate">{{ $listing->mainCategory?->name ?? '—' }}</dd>
+        </div>
+    </div>
+    <div class="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
+        <div class="w-7 h-7 flex-shrink-0 rounded-lg bg-white border border-gray-200 flex items-center justify-center shadow-xs">
+            <i class="fa-regular fa-registered text-purple-400 text-[11px]"></i>
+        </div>
+        <div class="min-w-0">
+            <dt class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">Brand</dt>
+            <dd class="font-bold text-gray-900 truncate">{{ $listing->brand?->name ?? 'Unbranded / Generic' }}</dd>
+        </div>
+    </div>
+    <div class="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
+        <div class="w-7 h-7 flex-shrink-0 rounded-lg bg-white border border-gray-200 flex items-center justify-center shadow-xs">
+            <i class="fa-solid fa-barcode text-gray-400 text-[11px]"></i>
+        </div>
+        <div class="min-w-0">
+            <dt class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">SKU / Model</dt>
+            <dd class="font-bold font-mono text-gray-900 truncate">{{ $listing->sku ?? '—' }}</dd>
+        </div>
+    </div>
+</dl>
 
-    @if($listing->description)
-        <div class="mt-4 pt-4 border-t border-gray-100">
-            <dt class="text-xs font-bold text-gray-700 mb-1">Detailed Description</dt>
-            <div class="text-xs text-gray-700 leading-relaxed bg-gray-50 p-3.5 rounded-lg border border-gray-100 prose prose-xs max-w-none">
-                {!! nl2br(e($listing->description)) !!}
-            </div>
+{{-- Short description callout --}}
+@if($listing->short_description)
+    <div class="mt-4 flex items-start gap-3 p-4 rounded-xl bg-indigo-50/70 border border-indigo-100">
+        <i class="fa-solid fa-quote-left text-indigo-300 text-base mt-0.5 flex-shrink-0"></i>
+        <p class="text-sm text-indigo-900 leading-relaxed font-medium">{{ $listing->short_description }}</p>
+    </div>
+@endif
+
+{{-- Full description --}}
+@if($listing->description)
+    <div class="mt-4">
+        <div class="flex items-center gap-2 mb-2">
+            <i class="fa-solid fa-align-left text-gray-400 text-xs"></i>
+            <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Detailed Description</h4>
         </div>
-    @endif
-</x-backend.form-card>
+        <div class="text-xs text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-xl border border-gray-100 prose prose-xs max-w-none">
+            {!! nl2br(e($listing->description)) !!}
+        </div>
+    </div>
+@endif

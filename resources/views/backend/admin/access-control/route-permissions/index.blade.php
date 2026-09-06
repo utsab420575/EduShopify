@@ -28,6 +28,26 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="p-4 mb-6 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-red-600 text-base"></i>
+            <div>{{ session('error') }}</div>
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="p-4 mb-6 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200">
+            <div class="font-bold mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-red-600"></i> Please resolve the following errors:
+            </div>
+            <ul class="list-disc list-inside space-y-0.5 text-xs">
+                @foreach($errors->all() as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Summary Metric Cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
@@ -355,9 +375,8 @@
                     if (isMissing) missingChecked++;
                 }
 
-                // Update Row Badge
-                const badge = document.querySelector(`.role-status-badge[data-perm-name="${permName}"]`);
-                if (badge) {
+                // Update All Row Badges with this permission name
+                document.querySelectorAll(`.role-status-badge[data-perm-name="${permName}"]`).forEach(badge => {
                     if (cb.checked) {
                         badge.className = 'role-status-badge inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200';
                         badge.innerHTML = '<i class="fa-solid fa-check text-[9px]"></i> Assigned';
@@ -365,7 +384,7 @@
                         badge.className = 'role-status-badge inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-400 border border-gray-200';
                         badge.innerHTML = 'Unassigned';
                     }
-                }
+                });
             });
 
             document.getElementById('selected-counter').innerText = totalChecked;
@@ -450,16 +469,29 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     const container = document.getElementById('sync-role-inputs');
-                    container.innerHTML = '';
+                    const payload = [];
+                    const seen = new Set();
 
-                    checkedBoxes.forEach((cb, index) => {
-                        container.innerHTML += `
-                            <input type="hidden" name="permissions[${index}][name]" value="${cb.getAttribute('data-name')}">
-                            <input type="hidden" name="permissions[${index}][display_name]" value="${cb.getAttribute('data-display')}">
-                            <input type="hidden" name="permissions[${index}][group_name]" value="${cb.getAttribute('data-group')}">
-                            <input type="hidden" name="permissions[${index}][scope]" value="${cb.getAttribute('data-scope')}">
-                        `;
+                    checkedBoxes.forEach((cb) => {
+                        const name = cb.getAttribute('data-name');
+                        if (!seen.has(name)) {
+                            seen.add(name);
+                            payload.push({
+                                name: name,
+                                display_name: cb.getAttribute('data-display'),
+                                group_name: cb.getAttribute('data-group'),
+                                scope: cb.getAttribute('data-scope')
+                            });
+                        }
                     });
+
+                    container.innerHTML = `
+                        <input type="hidden" name="permissions_json" value="${encodeURIComponent(JSON.stringify(payload))}">
+                    `;
+
+                    // Also decode on client-side before sending plain form
+                    const hiddenInput = container.querySelector('input[name="permissions_json"]');
+                    hiddenInput.value = JSON.stringify(payload);
 
                     document.getElementById('form-sync-role').submit();
                 }
@@ -492,16 +524,28 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     const container = document.getElementById('create-missing-inputs');
-                    container.innerHTML = '';
+                    const payload = [];
+                    const seen = new Set();
 
-                    missingChecked.forEach((cb, index) => {
-                        container.innerHTML += `
-                            <input type="hidden" name="permissions[${index}][name]" value="${cb.getAttribute('data-name')}">
-                            <input type="hidden" name="permissions[${index}][display_name]" value="${cb.getAttribute('data-display')}">
-                            <input type="hidden" name="permissions[${index}][group_name]" value="${cb.getAttribute('data-group')}">
-                            <input type="hidden" name="permissions[${index}][scope]" value="${cb.getAttribute('data-scope')}">
-                        `;
+                    missingChecked.forEach((cb) => {
+                        const name = cb.getAttribute('data-name');
+                        if (!seen.has(name)) {
+                            seen.add(name);
+                            payload.push({
+                                name: name,
+                                display_name: cb.getAttribute('data-display'),
+                                group_name: cb.getAttribute('data-group'),
+                                scope: cb.getAttribute('data-scope')
+                            });
+                        }
                     });
+
+                    container.innerHTML = `
+                        <input type="hidden" name="permissions_json" value="">
+                    `;
+
+                    const hiddenInput = container.querySelector('input[name="permissions_json"]');
+                    hiddenInput.value = JSON.stringify(payload);
 
                     document.getElementById('form-create-missing').submit();
                 }

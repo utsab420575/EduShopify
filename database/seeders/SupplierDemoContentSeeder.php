@@ -129,5 +129,16 @@ class SupplierDemoContentSeeder extends Seeder
                 'published_at' => now()->subDays(rand(5, 180)),
             ]);
         }
+
+        $stats = Review::where('supplier_account_id', $supplierAccount->id)
+            ->supplier()
+            ->where('status', 'published')
+            ->selectRaw('COUNT(*) as cnt, AVG(rating) as avg_rating')
+            ->first();
+
+        SupplierProfile::where('account_id', $supplierAccount->id)->update([
+            'rating'        => round((float) ($stats->avg_rating ?? 0), 2),
+            'reviews_count' => (int) ($stats->cnt ?? 0),
+        ]);
     }
 }

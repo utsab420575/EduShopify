@@ -164,6 +164,15 @@ class Rfq extends Model
         return $this->belongsTo(City::class, 'delivery_city_id');
     }
 
+    /**
+     * Delivery locations beyond the primary one above — the wizard's
+     * "+ Add Address" rows.
+     */
+    public function deliveryAddresses(): HasMany
+    {
+        return $this->hasMany(RfqDeliveryAddress::class, 'rfq_id')->orderBy('sort_order');
+    }
+
     /* ── Contents & targeting ───────────────────────────────────────────── */
 
     public function items(): HasMany

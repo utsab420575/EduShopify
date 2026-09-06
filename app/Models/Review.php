@@ -11,8 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * Table: reviews — written by a buyer ACCOUNT about a supplier ACCOUNT.
- * Two contexts: quotation_experience and purchase_experience.
+ * Table: reviews — written by a buyer ACCOUNT, rating either a supplier
+ * ACCOUNT (review_type=supplier, listing_id NULL) or one specific
+ * listing/product (review_type=product, listing_id set). review_context
+ * (quotation_experience / purchase_experience) is orthogonal to that — it's
+ * which order the review came from, not what it's rating.
  */
 class Review extends Model
 {
@@ -21,6 +24,8 @@ class Review extends Model
     protected $fillable = [
         'buyer_account_id',
         'supplier_account_id',
+        'listing_id',
+        'review_type',
         'created_by_user_id',
         'review_context',
         'rfq_id',
@@ -51,6 +56,11 @@ class Review extends Model
     public function supplierAccount(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'supplier_account_id');
+    }
+
+    public function listing(): BelongsTo
+    {
+        return $this->belongsTo(Listing::class, 'listing_id');
     }
 
     public function createdBy(): BelongsTo
@@ -111,6 +121,16 @@ class Review extends Model
     public function scopeQuotationExperience(Builder $query): Builder
     {
         return $query->where('review_context', 'quotation_experience');
+    }
+
+    public function scopeSupplier(Builder $query): Builder
+    {
+        return $query->where('review_type', 'supplier');
+    }
+
+    public function scopeProduct(Builder $query): Builder
+    {
+        return $query->where('review_type', 'product');
     }
 
     public function isPublished(): bool

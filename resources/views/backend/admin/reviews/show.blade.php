@@ -5,7 +5,12 @@
 
 @section('body')
 
-    <x-backend.page-header :title="$review->title ?: 'Review'" :subtitle="$review->buyerAccount?->display_name . ' &rarr; ' . ($review->supplierAccount?->supplierProfile?->display_name ?? '')">
+    @php
+        $reviewSubject = $review->review_type === 'product'
+            ? ($review->listing?->name ?? 'a listing')
+            : ($review->supplierAccount?->supplierProfile?->display_name ?? '');
+    @endphp
+    <x-backend.page-header :title="$review->title ?: 'Review'" :subtitle="$review->buyerAccount?->display_name . ' &rarr; ' . $reviewSubject">
         <x-slot:actions>
             <x-backend.status-badge :status="$review->status" />
         </x-slot:actions>
@@ -29,6 +34,9 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
             <x-backend.form-card title="Review Content">
+                <p class="text-xs font-semibold uppercase tracking-wide mb-2 {{ $review->review_type === 'product' ? 'text-purple-600' : 'text-indigo-600' }}">
+                    {{ $review->review_type === 'product' ? 'Product Review' : 'Supplier Review' }} — {{ $reviewSubject }}
+                </p>
                 <div class="mb-2">
                     @for($i = 1; $i <= 5; $i++)
                         <i class="fa-solid fa-star {{ $i <= $review->rating ? 'text-amber-400' : 'text-gray-200' }}"></i>

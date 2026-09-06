@@ -36,6 +36,31 @@ class SavedItemService
         return true;
     }
 
+    public function save(Account $account, User $user, string $itemType, int $itemId): bool
+    {
+        if ($this->isSaved($account, $itemType, $itemId)) {
+            return false;
+        }
+
+        SavedItem::create([
+            'account_id'       => $account->id,
+            'saved_by_user_id' => $user->id,
+            'visibility'       => 'account',
+            'item_type'        => $itemType,
+            'item_id'          => $itemId,
+        ]);
+
+        return true;
+    }
+
+    public function remove(Account $account, string $itemType, int $itemId): bool
+    {
+        return (bool) SavedItem::where('account_id', $account->id)
+            ->where('item_type', $itemType)
+            ->where('item_id', $itemId)
+            ->delete();
+    }
+
     public function isSaved(Account $account, string $itemType, int $itemId): bool
     {
         return SavedItem::where('account_id', $account->id)

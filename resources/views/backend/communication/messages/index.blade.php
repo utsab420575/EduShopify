@@ -4,19 +4,23 @@
 @section('breadcrumb', 'Communication / Messages')
 
 @section('body')
+<script>
+    window.chatInitialConfig = {
+        currentUserId: {{ $currentUser->id }},
+        currentAccountId: {{ $currentAccount?->id ?? 'null' }},
+        activeConversationId: {{ isset($activeConversation) ? $activeConversation->id : 'null' }},
+        soundEnabled: {{ ($userPreferences->sound_enabled ?? true) ? 'true' : 'false' }},
+        browserNotificationsEnabled: {{ ($userPreferences->browser_notifications_enabled ?? false) ? 'true' : 'false' }},
+        reverbKey: '{{ config('broadcasting.connections.reverb.key') ?? env('REVERB_APP_KEY', '1m1w1dpziluc6nmp98gc') }}',
+        reverbHost: '{{ config('broadcasting.connections.reverb.options.host') ?? env('REVERB_HOST', '127.0.0.1') }}',
+        reverbPort: '{{ config('broadcasting.connections.reverb.options.port') ?? env('REVERB_PORT', 8080) }}',
+        reverbScheme: '{{ config('broadcasting.connections.reverb.options.scheme') ?? env('REVERB_SCHEME', 'http') }}',
+        initialConversations: @json($initialConversations ?? []),
+        initialMessages: @json($initialMessages ?? [])
+    };
+</script>
 <div class="h-[calc(100vh-140px)] min-h-[600px] flex flex-col bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden"
-     x-data="chatApp({
-         currentUserId: {{ $currentUser->id }},
-         currentAccountId: {{ $currentAccount?->id ?? 'null' }},
-         activeConversationId: {{ isset($activeConversation) ? $activeConversation->id : 'null' }},
-         soundEnabled: {{ ($userPreferences->sound_enabled ?? true) ? 'true' : 'false' }},
-         browserNotificationsEnabled: {{ ($userPreferences->browser_notifications_enabled ?? false) ? 'true' : 'false' }},
-         reverbKey: '{{ config('broadcasting.connections.reverb.key') ?? env('REVERB_APP_KEY', '1m1w1dpziluc6nmp98gc') }}',
-         reverbHost: '{{ config('broadcasting.connections.reverb.options.host') ?? env('REVERB_HOST', 'arounduz.uz') }}',
-         reverbPort: '{{ config('broadcasting.connections.reverb.options.port') ?? env('REVERB_PORT', 8080) }}',
-         reverbScheme: '{{ config('broadcasting.connections.reverb.options.scheme') ?? env('REVERB_SCHEME', 'http') }}',
-         initialMessages: @json($initialMessages ?? [])
-     })"
+     x-data="chatApp(window.chatInitialConfig)"
      x-init="initChat()"
      @keydown.escape="closeModals()">
 
@@ -31,17 +35,17 @@
             <div class="p-4 border-b border-gray-200 bg-white space-y-3">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <i class="fa-duotone fa-comments text-indigo-600"></i>
+                        <i class="fa-solid fa-comments text-indigo-600"></i>
                         <span>Messages</span>
                     </h2>
                     <button type="button" @click="showPreferencesModal = true" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition" title="Messaging Settings">
-                        <i class="fa-regular fa-gear"></i>
+                        <i class="fa-solid fa-gear"></i>
                     </button>
                 </div>
 
                 <!-- Search Input -->
                 <div class="relative">
-                    <i class="fa-regular fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                     <input type="text"
                            x-model="searchQuery"
                            @input.debounce.300ms="fetchConversations()"
@@ -85,12 +89,12 @@
                                 <span class="text-xs text-gray-400 whitespace-nowrap" x-text="formatTime(conv.last_message_at)"></span>
                             </div>
 
-                            <p class="text-xs text-gray-500 truncate" :class="{ 'font-semibold text-gray-800': conv.unread_count > 0 }" x-text="conv.latest_snippet || 'No messages yet'"></p>
+                            <p class="text-xs text-gray-500 truncate" :class="{ 'font-semibold text-gray-800': conv.unread_count > 0 }" x-text="conv.latest_snippet || (conv.latest_message ? (conv.latest_message.body || 'Attachment') : 'No messages yet')"></p>
 
                             <!-- Context Pill -->
                             <div class="flex items-center gap-1.5 mt-1.5" x-show="conv.active_context">
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
-                                    <i class="fa-regular fa-paperclip text-[9px]"></i>
+                                    <i class="fa-solid fa-paperclip text-[9px]"></i>
                                     <span x-text="conv.active_context"></span>
                                 </span>
                             </div>
@@ -107,7 +111,7 @@
                 </template>
 
                 <div x-show="conversations.length === 0 && !loadingConversations" class="p-8 text-center text-gray-400">
-                    <i class="fa-light fa-comments text-4xl mb-3"></i>
+                    <i class="fa-solid fa-comments text-4xl mb-3"></i>
                     <p class="text-sm font-medium">No conversations found</p>
                     <p class="text-xs text-gray-400 mt-1">Start messaging from a supplier page, RFQ, or quotation.</p>
                 </div>
@@ -124,7 +128,7 @@
                     <div class="flex items-center gap-3 min-w-0">
                         <!-- Mobile Back Button -->
                         <button type="button" @click="activeConversationId = null" class="md:hidden p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg">
-                            <i class="fa-regular fa-arrow-left"></i>
+                            <i class="fa-solid fa-arrow-left"></i>
                         </button>
 
                         <div class="relative flex-shrink-0">
@@ -151,7 +155,7 @@
                         <div class="hidden lg:flex items-center gap-1.5">
                             <template x-for="ctx in (activeConversation.contexts || [])" :key="ctx.id">
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                    <i class="fa-regular fa-tag text-[10px]"></i>
+                                    <i class="fa-solid fa-tag text-[10px]"></i>
                                     <span x-text="formatContextLabel(ctx)"></span>
                                 </span>
                             </template>
@@ -162,7 +166,7 @@
                             <i :class="activeConversation.is_muted ? 'fa-solid fa-bell-slash text-indigo-600' : 'fa-regular fa-bell'"></i>
                         </button>
                         <button type="button" @click="toggleArchive()" class="p-2 text-gray-500 hover:text-amber-600 hover:bg-gray-100 rounded-lg transition" :title="activeConversation.is_archived ? 'Unarchive' : 'Archive'">
-                            <i :class="activeConversation.is_archived ? 'fa-solid fa-box-archive text-amber-600' : 'fa-regular fa-box-archive'"></i>
+                            <i :class="activeConversation.is_archived ? 'fa-solid fa-box-archive text-amber-600' : 'fa-solid fa-box-archive'"></i>
                         </button>
                     </div>
                 </div>
@@ -174,7 +178,7 @@
                 <template x-if="activeConversationId === null">
                     <div class="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400">
                         <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl mb-4 shadow-xs">
-                            <i class="fa-duotone fa-comments"></i>
+                            <i class="fa-solid fa-comments"></i>
                         </div>
                         <h3 class="text-base font-bold text-gray-800">Your Messages</h3>
                         <p class="text-xs text-gray-500 mt-1 max-w-sm">Select a conversation from the sidebar to view chat history and start messaging in real-time.</p>
@@ -183,7 +187,7 @@
 
                 <!-- Loading Older Messages Spinner -->
                 <div x-show="loadingOlderMessages" class="text-center py-2">
-                    <i class="fa-regular fa-spinner-third fa-spin text-indigo-600 text-lg"></i>
+                    <i class="fa-solid fa-spinner fa-spin text-indigo-600 text-lg"></i>
                     <span class="text-xs text-gray-400 ml-2">Loading older messages...</span>
                 </div>
 
@@ -228,7 +232,7 @@
                                     <!-- Deleted State -->
                                     <template x-if="msg.is_deleted">
                                         <p class="italic opacity-70 flex items-center gap-1.5 text-xs">
-                                            <i class="fa-regular fa-ban text-[11px]"></i>
+                                            <i class="fa-solid fa-ban text-[11px]"></i>
                                             <span>This message was deleted</span>
                                         </p>
                                     </template>
@@ -308,7 +312,7 @@
 
                 <!-- Typing Bubble -->
                 <div x-show="typingUser" class="flex items-center gap-2 text-xs text-gray-500 py-1 px-3 bg-white rounded-full border border-gray-200 w-fit shadow-xs animate-pulse">
-                    <i class="fa-regular fa-ellipsis fa-fade text-indigo-600"></i>
+                    <i class="fa-solid fa-ellipsis fa-fade text-indigo-600"></i>
                     <span x-text="typingUser + ' is typing...'"></span>
                 </div>
             </div>
@@ -332,7 +336,7 @@
                     <div x-show="selectedFiles.length > 0" class="flex flex-wrap gap-2 py-1">
                         <template x-for="(file, i) in selectedFiles" :key="i">
                             <div class="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-lg text-xs text-gray-700 border border-gray-200">
-                                <i class="fa-regular fa-paperclip text-gray-400"></i>
+                                <i class="fa-solid fa-paperclip text-gray-400"></i>
                                 <span class="max-w-[140px] truncate font-medium" x-text="file.name"></span>
                                 <button type="button" @click="removeFile(i)" class="text-gray-400 hover:text-rose-600 ml-1">
                                     <i class="fa-solid fa-xmark text-[10px]"></i>
@@ -345,7 +349,7 @@
                     <form @submit.prevent="sendMessage()" class="flex items-end gap-2">
                         <!-- Attachment Upload Button -->
                         <label class="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-xl cursor-pointer transition flex-shrink-0" title="Attach image or document">
-                            <i class="fa-regular fa-paperclip text-lg"></i>
+                            <i class="fa-solid fa-paperclip text-lg"></i>
                             <input type="file" multiple @change="handleFileSelect($event)" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt">
                         </label>
 
@@ -365,8 +369,8 @@
                                 :disabled="sending || (messageText.trim() === '' && selectedFiles.length === 0)"
                                 class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition flex items-center gap-2 shadow-xs flex-shrink-0">
                             <span x-show="!sending">Send</span>
-                            <i x-show="!sending" class="fa-solid fa-paper-plane-top text-xs"></i>
-                            <i x-show="sending" class="fa-regular fa-spinner-third fa-spin text-sm"></i>
+                            <i x-show="!sending" class="fa-solid fa-paper-plane text-xs"></i>
+                            <i x-show="sending" class="fa-solid fa-spinner fa-spin text-sm"></i>
                         </button>
                     </form>
                 </div>
@@ -394,7 +398,7 @@
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200 space-y-5">
             <div class="flex items-center justify-between">
                 <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                    <i class="fa-regular fa-sliders text-indigo-600"></i>
+                    <i class="fa-solid fa-sliders text-indigo-600"></i>
                     <span>Messaging Preferences</span>
                 </h3>
                 <button type="button" @click="showPreferencesModal = false" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
@@ -459,7 +463,7 @@ function chatApp(config) {
         currentUserId: config.currentUserId,
         currentAccountId: config.currentAccountId,
         activeConversationId: config.activeConversationId,
-        conversations: [],
+        conversations: config.initialConversations || [],
         activeConversation: null,
         messages: config.initialMessages || [],
         searchQuery: '',
@@ -483,22 +487,93 @@ function chatApp(config) {
         prefEmailDelay: 24,
         echoInstance: null,
         activeChannel: null,
+        syncTimer: null,
+        syncCounter: 0,
+        syncingActive: false,
 
         initChat() {
             this.initEcho();
-            this.fetchConversations();
+            if (this.conversations.length === 0) {
+                this.fetchConversations();
+            }
             if (this.activeConversationId) {
                 this.loadConversation(this.activeConversationId);
+            } else if (this.conversations.length > 0 && window.innerWidth >= 768) {
+                this.selectConversation(this.conversations[0].id);
             }
+            this.startSyncLoop();
+        },
+
+        startSyncLoop() {
+            if (this.syncTimer) clearInterval(this.syncTimer);
+            this.syncTimer = setInterval(() => {
+                this.syncCounter++;
+                if (this.activeConversationId) {
+                    this.syncActiveMessages();
+                }
+                // Refresh list every 5 seconds (every 2 ticks)
+                if (this.syncCounter % 2 === 0) {
+                    this.fetchConversations(true);
+                }
+            }, 2500);
+        },
+
+        syncActiveMessages() {
+            if (!this.activeConversationId || this.syncingActive) return;
+            const maxId = this.messages.reduce((max, m) => Math.max(max, m.id || 0), 0);
+            this.syncingActive = true;
+
+            fetch(`/messages/${this.activeConversationId}?after_id=${maxId}`, {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.syncingActive = false;
+                if (data.messages && data.messages.length > 0) {
+                    let hasNewIncoming = false;
+                    data.messages.forEach(msg => {
+                        if (!this.messages.some(m => m.id === msg.id)) {
+                            this.messages.push(msg);
+                            if (!msg.is_mine) {
+                                hasNewIncoming = true;
+                                this.acknowledgeDelivered(msg.id);
+                            }
+                        }
+                    });
+
+                    if (hasNewIncoming) {
+                        if (this.prefSound) {
+                            this.playNotificationSound();
+                        }
+                        this.acknowledgeUnseenMessages();
+                    }
+
+                    this.scrollToBottom();
+
+                    // Update active conversation snippet in left list
+                    const activeConv = this.conversations.find(c => c.id === this.activeConversationId);
+                    if (activeConv && data.messages.length > 0) {
+                        const lastMsg = data.messages[data.messages.length - 1];
+                        activeConv.latest_snippet = lastMsg.body || 'Sent an attachment';
+                        activeConv.last_message_at = lastMsg.created_at_iso || new Date().toISOString();
+                        this.conversations = [activeConv, ...this.conversations.filter(c => c.id !== activeConv.id)];
+                    }
+                }
+            })
+            .catch(() => { this.syncingActive = false; });
         },
 
         initEcho() {
             try {
+                if (typeof Pusher === 'undefined' || typeof Echo === 'undefined') {
+                    return;
+                }
                 window.Pusher = Pusher;
+                const host = (config.reverbHost && config.reverbHost !== 'arounduz.uz') ? config.reverbHost : window.location.hostname;
                 this.echoInstance = new Echo({
                     broadcaster: 'reverb',
-                    key: config.reverbKey,
-                    wsHost: config.reverbHost,
+                    key: config.reverbKey || '1m1w1dpziluc6nmp98gc',
+                    wsHost: host,
                     wsPort: parseInt(config.reverbPort) || 8080,
                     wssPort: parseInt(config.reverbPort) || 8080,
                     forceTLS: (config.reverbScheme === 'https'),
@@ -528,17 +603,21 @@ function chatApp(config) {
             }
         },
 
-        fetchConversations() {
-            this.loadingConversations = true;
+        fetchConversations(quiet = false) {
+            if (!quiet) this.loadingConversations = true;
             fetch(`/messages?filter=${this.activeFilter}&search=${encodeURIComponent(this.searchQuery)}`, {
                 headers: { 'Accept': 'application/json' }
             })
             .then(res => res.json())
             .then(data => {
-                this.conversations = data.conversations || [];
-                this.loadingConversations = false;
+                if (data.conversations) {
+                    this.conversations = data.conversations;
+                }
+                if (!quiet) this.loadingConversations = false;
             })
-            .catch(() => { this.loadingConversations = false; });
+            .catch(() => {
+                if (!quiet) this.loadingConversations = false;
+            });
         },
 
         selectConversation(id) {
@@ -665,6 +744,14 @@ function chatApp(config) {
                     this.selectedFiles = [];
                     this.replyTarget = null;
                     this.scrollToBottom();
+
+                    // Update active conversation in list immediately
+                    const activeConv = this.conversations.find(c => c.id === this.activeConversationId);
+                    if (activeConv) {
+                        activeConv.latest_snippet = data.message.body || 'Sent an attachment';
+                        activeConv.last_message_at = new Date().toISOString();
+                        this.conversations = [activeConv, ...this.conversations.filter(c => c.id !== activeConv.id)];
+                    }
                 }
             })
             .catch(() => { this.sending = false; });

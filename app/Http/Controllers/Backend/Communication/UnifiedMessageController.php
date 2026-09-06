@@ -74,10 +74,11 @@ class UnifiedMessageController extends Controller
         }
 
         $conversations = $query->orderByDesc('last_message_at')->paginate(25);
+        $serializedConversations = $this->serializeConversations($conversations->items(), $user, $account);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
-                'conversations' => $conversations->items(),
+                'conversations' => $serializedConversations,
                 'has_more'      => $conversations->hasMorePages(),
                 'next_page'     => $conversations->nextPageUrl(),
             ]);
@@ -94,12 +95,13 @@ class UnifiedMessageController extends Controller
         }
 
         return view('backend.communication.messages.index', [
-            'conversations'   => $conversations,
-            'currentAccount'  => $account,
-            'currentUser'     => $user,
-            'userPreferences' => $userPreferences,
-            'activeFilter'    => $filter,
-            'layout'          => $layout,
+            'conversations'        => $conversations,
+            'initialConversations' => $serializedConversations,
+            'currentAccount'       => $account,
+            'currentUser'          => $user,
+            'userPreferences'      => $userPreferences,
+            'activeFilter'         => $filter,
+            'layout'               => $layout,
         ]);
     }
 
@@ -162,6 +164,25 @@ class UnifiedMessageController extends Controller
             'contexts.addedBy',
             'userStates' => fn ($q) => $q->where('user_id', $user->id),
         ]);
+
+        // If polling for new messages since after_id
+        if ($request->filled('after_id')) {
+            $newMessages = $conversation->messages()
+                ->withTrashed()
+                ->with(['senderUser', 'senderAccount', 'replyTo.senderUser', 'media', 'receipts'])
+                ->where('id', '>', $request->integer('after_id'))
+                ->orderBy('id', 'asc')
+                ->get();
+
+            return response()->json([
+                'conversation' => [
+                    'id'              => $conversation->id,
+                    'last_message_at' => $conversation->last_message_at?->format('d M Y, h:i A'),
+                ],
+                'messages' => $this->serializeMessages($newMessages, $user->id, $account?->id),
+                'has_more' => false,
+            ]);
+        }
 
         $messagesQuery = $conversation->messages()
             ->withTrashed()
@@ -380,6 +401,57 @@ class UnifiedMessageController extends Controller
     }
 
     /* ── Helper Serializers ─────────────────────────────────────────────── */
+
+    private function serializeConversations($conversations, $user, ?Account $account): array
+    {
+        return collect($conversations)->map(fn ($c) => $this->serializeConversation($c, $user, $account))->values()->all();
+    }
+
+    private function serializeConversation(Conversation $conversation, $user, ?Account $account): array
+    {
+        $otherAccount = $conversation->getOtherAccount($account?->id ?? 0) ?? $conversation->accounts->first();
+        $latest = $conversation->latestMessage;
+
+        $snippet = null;
+        if ($latest) {
+            if ($latest->trashed()) {
+                $snippet = 'This message was deleted';
+            } elseif (! empty($latest->body)) {
+                $snippet = \Illuminate\Support\Str::limit($latest->body, 60);
+            } elseif ($latest->media && $latest->media->isNotEmpty()) {
+                $snippet = 'Sent an attachment';
+            } else {
+                $snippet = 'Sent a message';
+            }
+        }
+
+        $activeContext = null;
+        if ($conversation->context_type && ! in_array($conversation->context_type, ['general', 'support'])) {
+            $activeContext = strtoupper($conversation->context_type) . ($conversation->context_id ? " #{$conversation->context_id}" : '');
+        } elseif ($conversation->contexts && $conversation->contexts->isNotEmpty()) {
+            $ctx = $conversation->contexts->first();
+            $activeContext = strtoupper($ctx->context_type) . ($ctx->context_id ? " #{$ctx->context_id}" : '');
+        }
+
+        return [
+            'id'              => $conversation->id,
+            'title'           => $conversation->title,
+            'status'          => $conversation->status,
+            'last_message_at' => $conversation->last_message_at?->toIso8601String(),
+            'other_account'   => $otherAccount,
+            'accounts'        => $conversation->accounts,
+            'latest_message'  => $latest ? [
+                'id'         => $latest->id,
+                'body'       => $latest->body,
+                'created_at' => $latest->created_at?->toIso8601String(),
+            ] : null,
+            'latest_snippet'  => $snippet,
+            'unread_count'    => $conversation->unreadCountForUser($user->id),
+            'active_context'  => $activeContext,
+            'is_muted'        => $conversation->isMutedBy($user->id),
+            'is_archived'     => $conversation->isArchivedBy($user->id),
+        ];
+    }
 
     private function serializeMessages($messages, int $currentUserId, ?int $currentAccountId): array
     {

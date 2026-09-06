@@ -20,10 +20,15 @@ class PurchaseOrderController extends Controller
 
         $account = $this->currentAccount();
 
+        $sort = in_array($request->string('sort')->toString(), ['po_number', 'grand_total', 'issued_at'], true)
+            ? $request->string('sort')->toString()
+            : null;
+        $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
+
         $orders = $account->buyerPurchaseOrders()
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->with(['rfq', 'supplierAccount.supplierProfile'])
-            ->latest('issued_at')
+            ->when($sort, fn ($q) => $q->orderBy($sort, $direction), fn ($q) => $q->latest('issued_at'))
             ->paginate(10)
             ->withQueryString();
 

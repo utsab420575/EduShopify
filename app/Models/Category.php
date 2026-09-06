@@ -34,6 +34,7 @@ class Category extends Model
         'reviewed_at',
         'is_active',
         'sort_order',
+        'level',
     ];
 
     protected function casts(): array
@@ -42,6 +43,7 @@ class Category extends Model
             'reviewed_at' => 'datetime',
             'is_active'   => 'boolean',
             'sort_order'  => 'integer',
+            'level'       => 'integer',
         ];
     }
 
@@ -69,10 +71,26 @@ class Category extends Model
      * buyer RFQ item form build their dynamic spec forms from:
      * {category_id, category_name, groups: [{group_id, group_name,
      * sort_order, attributes: [...]}], total_count}.
+     *
+     * Deactivated attributes are excluded by default — an admin turning an
+     * attribute off shouldn't have it keep appearing on brand new
+     * listings/RFQ items/quotations. $keepInactiveAttributeIds is the one
+     * exception: attribute ids a caller already has a saved value for (an
+     * existing draft being edited), so reopening that draft doesn't silently
+     * drop a field the supplier/buyer already filled in.
      */
-    public function attributesGroupedForForm(): array
+    public function attributesGroupedForForm(array $keepInactiveAttributeIds = []): array
     {
-        $assignedAttributes = $this->attributes()
+        $applyActiveFilter = function ($query) use ($keepInactiveAttributeIds) {
+            return $query->where(function ($q) use ($keepInactiveAttributeIds) {
+                $q->where('attributes.is_active', true);
+                if (! empty($keepInactiveAttributeIds)) {
+                    $q->orWhereIn('attributes.id', $keepInactiveAttributeIds);
+                }
+            });
+        };
+
+        $assignedAttributes = $applyActiveFilter($this->attributes())
             ->with([
                 'attributeGroup',
                 'unit',
@@ -85,7 +103,7 @@ class Category extends Model
             while ($assignedAttributes->isEmpty() && $curr->parent_id) {
                 $curr = $curr->parent;
                 if ($curr) {
-                    $assignedAttributes = $curr->attributes()
+                    $assignedAttributes = $applyActiveFilter($curr->attributes())
                         ->with([
                             'attributeGroup',
                             'unit',
@@ -231,6 +249,53 @@ class Category extends Model
         }
 
         return implode(' › ', $parts);
+    }
+
+    /**
+     * A root category is level 0; every other category is one deeper than
+     * its parent. Shared by manual creation (CategoryController) and bulk
+     * path import (CategoryImportService) so both compute it identically.
+     */
+    public static function levelForParent(?int $parentId): int
+    {
+        if (! $parentId) {
+            return 0;
+        }
+
+        return (static::find($parentId)?->level ?? 0) + 1;
+    }
+
+    /**
+     * Called after this category's own `level` is saved with a new value
+     * (i.e. it was re-parented) — walks every descendant and brings its
+     * `level` back in sync, since a category's level is only ever set once
+     * at creation and otherwise goes stale the moment an ancestor moves.
+     */
+    public function realignDescendantLevels(): void
+    {
+        foreach ($this->children as $child) {
+            $child->update(['level' => $this->level + 1]);
+            $child->realignDescendantLevels();
+        }
+    }
+
+    /**
+     * Slug uniqueness is global (not per-parent, unlike the name), so both
+     * manual creation (CategoryController) and bulk path import
+     * (CategoryImportService) share this one implementation.
+     */
+    public static function generateUniqueSlug(string $name): string
+    {
+        $base = \Illuminate\Support\Str::slug($name);
+        $slug = $base;
+        $i = 2;
+
+        while (static::where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$i}";
+            $i++;
+        }
+
+        return $slug;
     }
 
     /* ── Actors ─────────────────────────────────────────────────────────── */

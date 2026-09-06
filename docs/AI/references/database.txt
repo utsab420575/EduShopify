@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 28, 2026 at 05:25 AM
+-- Generation Time: Sep 03, 2026 at 01:47 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.30
 
@@ -111,6 +111,35 @@ CREATE TABLE `account_dashboard_preferences` (
   `default_mode` enum('buyer','supplier') COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NOT NULL,
   `updated_at` timestamp NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `account_documents`
+--
+
+CREATE TABLE `account_documents` (
+  `id` bigint UNSIGNED NOT NULL,
+  `documentable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `documentable_id` bigint UNSIGNED NOT NULL,
+  `capability_type_id` bigint UNSIGNED NOT NULL,
+  `supplier_account_id` bigint UNSIGNED DEFAULT NULL,
+  `document_type_id` bigint UNSIGNED DEFAULT NULL,
+  `custom_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `original_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `mime_type` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_size_kb` int UNSIGNED DEFAULT NULL,
+  `status` enum('pending','verified','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `rejection_reason` text COLLATE utf8mb4_unicode_ci,
+  `uploaded_by_user_id` bigint UNSIGNED NOT NULL,
+  `verified_by_user_id` bigint UNSIGNED DEFAULT NULL,
+  `verified_at` timestamp NULL DEFAULT NULL,
+  `expires_at` date DEFAULT NULL,
+  `is_current` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -312,6 +341,7 @@ CREATE TABLE `attribute_groups` (
   `description` text COLLATE utf8mb4_unicode_ci,
   `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_by_user_id` bigint UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
@@ -451,6 +481,26 @@ CREATE TABLE `buyer_buyer_type` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `buyer_galleries`
+--
+
+CREATE TABLE `buyer_galleries` (
+  `id` bigint UNSIGNED NOT NULL,
+  `buyer_account_id` bigint UNSIGNED NOT NULL,
+  `media_id` bigint UNSIGNED DEFAULT NULL,
+  `image_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `caption` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `alt_text` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_by_user_id` bigint UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `buyer_profiles`
 --
 
@@ -470,11 +520,14 @@ CREATE TABLE `buyer_profiles` (
   `city_id` bigint UNSIGNED DEFAULT NULL,
   `address` text COLLATE utf8mb4_unicode_ci,
   `logo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `profile_photo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tax_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `bio` text COLLATE utf8mb4_unicode_ci,
   `procurement_info` text COLLATE utf8mb4_unicode_ci,
   `additional_data` json DEFAULT NULL,
   `profile_completed_at` timestamp NULL DEFAULT NULL,
+  `current_step` tinyint UNSIGNED DEFAULT NULL,
+  `max_step_reached` tinyint UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -564,6 +617,7 @@ CREATE TABLE `capability_types` (
 CREATE TABLE `categories` (
   `id` bigint UNSIGNED NOT NULL,
   `parent_id` bigint UNSIGNED DEFAULT NULL,
+  `level` tinyint UNSIGNED NOT NULL DEFAULT '0',
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
@@ -681,6 +735,7 @@ CREATE TABLE `contact_inquiries` (
 
 CREATE TABLE `conversations` (
   `id` bigint UNSIGNED NOT NULL,
+  `direct_key` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `context_type` enum('rfq','quotation','listing','purchase_order','general','support') COLLATE utf8mb4_unicode_ci NOT NULL,
   `context_id` bigint UNSIGNED DEFAULT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -723,6 +778,23 @@ CREATE TABLE `conversation_admin_users` (
   `joined_at` timestamp NULL DEFAULT NULL,
   `left_at` timestamp NULL DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `conversation_contexts`
+--
+
+CREATE TABLE `conversation_contexts` (
+  `id` bigint UNSIGNED NOT NULL,
+  `conversation_id` bigint UNSIGNED NOT NULL,
+  `context_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `context_id` bigint UNSIGNED DEFAULT NULL,
+  `added_by_user_id` bigint UNSIGNED DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1172,6 +1244,7 @@ CREATE TABLE `media` (
 CREATE TABLE `messages` (
   `id` bigint UNSIGNED NOT NULL,
   `conversation_id` bigint UNSIGNED NOT NULL,
+  `reply_to_message_id` bigint UNSIGNED DEFAULT NULL,
   `sender_account_id` bigint UNSIGNED DEFAULT NULL,
   `sender_user_id` bigint UNSIGNED DEFAULT NULL,
   `message_type` enum('text','file','image','system') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'text',
@@ -1179,6 +1252,22 @@ CREATE TABLE `messages` (
   `metadata` json DEFAULT NULL,
   `edited_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `message_receipts`
+--
+
+CREATE TABLE `message_receipts` (
+  `id` bigint UNSIGNED NOT NULL,
+  `message_id` bigint UNSIGNED NOT NULL,
+  `user_id` bigint UNSIGNED NOT NULL,
+  `delivered_at` timestamp NULL DEFAULT NULL,
+  `seen_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1456,6 +1545,7 @@ CREATE TABLE `quotation_items` (
   `offered_listing_id` bigint UNSIGNED DEFAULT NULL,
   `offered_variant_id` bigint UNSIGNED DEFAULT NULL,
   `is_alternative` tinyint(1) NOT NULL DEFAULT '0',
+  `is_optional_addon` tinyint(1) NOT NULL DEFAULT '0',
   `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `quantity` decimal(15,3) NOT NULL,
@@ -1468,6 +1558,27 @@ CREATE TABLE `quotation_items` (
   `line_total` decimal(15,2) NOT NULL,
   `lead_time_days` int UNSIGNED DEFAULT NULL,
   `specs` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `quotation_item_attribute_values`
+--
+
+CREATE TABLE `quotation_item_attribute_values` (
+  `id` bigint UNSIGNED NOT NULL,
+  `quotation_item_id` bigint UNSIGNED NOT NULL,
+  `attribute_id` bigint UNSIGNED NOT NULL,
+  `attribute_value_id` bigint UNSIGNED DEFAULT NULL,
+  `custom_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `value_text` text COLLATE utf8mb4_unicode_ci,
+  `value_number` decimal(15,4) DEFAULT NULL,
+  `value_boolean` tinyint(1) DEFAULT NULL,
+  `value_date` date DEFAULT NULL,
+  `value_json` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1515,6 +1626,7 @@ CREATE TABLE `quotation_revision_items` (
   `offered_listing_id` bigint UNSIGNED DEFAULT NULL,
   `offered_variant_id` bigint UNSIGNED DEFAULT NULL,
   `is_alternative` tinyint(1) NOT NULL DEFAULT '0',
+  `is_optional_addon` tinyint(1) NOT NULL DEFAULT '0',
   `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `quantity` decimal(15,3) NOT NULL,
@@ -1527,6 +1639,27 @@ CREATE TABLE `quotation_revision_items` (
   `line_total` decimal(15,2) NOT NULL,
   `lead_time_days` int UNSIGNED DEFAULT NULL,
   `specs` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `quotation_revision_item_attribute_values`
+--
+
+CREATE TABLE `quotation_revision_item_attribute_values` (
+  `id` bigint UNSIGNED NOT NULL,
+  `quotation_revision_item_id` bigint UNSIGNED NOT NULL,
+  `attribute_id` bigint UNSIGNED NOT NULL,
+  `attribute_value_id` bigint UNSIGNED DEFAULT NULL,
+  `custom_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `value_text` text COLLATE utf8mb4_unicode_ci,
+  `value_number` decimal(15,4) DEFAULT NULL,
+  `value_boolean` tinyint(1) DEFAULT NULL,
+  `value_date` date DEFAULT NULL,
+  `value_json` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1631,7 +1764,7 @@ CREATE TABLE `rfqs` (
   `rfq_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `buyer_account_id` bigint UNSIGNED NOT NULL,
   `created_by_user_id` bigint UNSIGNED NOT NULL,
-  `visibility_type` enum('global','selected_suppliers') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'global',
+  `visibility_type_id` bigint UNSIGNED NOT NULL,
   `source_listing_id` bigint UNSIGNED DEFAULT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` longtext COLLATE utf8mb4_unicode_ci,
@@ -1732,6 +1865,27 @@ CREATE TABLE `rfq_items` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `rfq_item_attribute_values`
+--
+
+CREATE TABLE `rfq_item_attribute_values` (
+  `id` bigint UNSIGNED NOT NULL,
+  `rfq_item_id` bigint UNSIGNED NOT NULL,
+  `attribute_id` bigint UNSIGNED NOT NULL,
+  `attribute_value_id` bigint UNSIGNED DEFAULT NULL,
+  `custom_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `value_text` text COLLATE utf8mb4_unicode_ci,
+  `value_number` decimal(15,4) DEFAULT NULL,
+  `value_boolean` tinyint(1) DEFAULT NULL,
+  `value_date` date DEFAULT NULL,
+  `value_json` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Stand-in structure for view `rfq_public_summary`
 -- (See below for the actual view)
 --
@@ -1740,7 +1894,9 @@ CREATE TABLE `rfq_public_summary` (
 ,`rfq_number` varchar(50)
 ,`title` varchar(255)
 ,`status` enum('draft','pending_approval','open','closed','award_pending','awarded','cancelled','expired','completed')
-,`visibility_type` enum('global','selected_suppliers')
+,`visibility_type_id` bigint unsigned
+,`visibility_type` varchar(50)
+,`visibility_engine_type` enum('invited','open')
 ,`currency_code` varchar(10)
 ,`quotation_deadline` timestamp
 ,`qna_deadline` timestamp
@@ -1837,6 +1993,7 @@ CREATE TABLE `rfq_supplier_queue` (
   `notified_at` timestamp NULL DEFAULT NULL,
   `seen_at` timestamp NULL DEFAULT NULL,
   `status` enum('pending','available','notified','seen','ignored','quotation_submitted','expired') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `decline_reason` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1851,6 +2008,7 @@ CREATE TABLE `rfq_target_filters` (
   `id` bigint UNSIGNED NOT NULL,
   `rfq_id` bigint UNSIGNED NOT NULL,
   `category_id` bigint UNSIGNED DEFAULT NULL,
+  `location_match_level` enum('none','country','state','city') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'none',
   `country_id` bigint UNSIGNED DEFAULT NULL,
   `state_id` bigint UNSIGNED DEFAULT NULL,
   `city_id` bigint UNSIGNED DEFAULT NULL,
@@ -2020,6 +2178,45 @@ CREATE TABLE `social_accounts` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `social_links`
+--
+
+CREATE TABLE `social_links` (
+  `id` bigint UNSIGNED NOT NULL,
+  `socialable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `socialable_id` bigint UNSIGNED NOT NULL,
+  `social_platform_id` bigint UNSIGNED NOT NULL,
+  `url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `handle` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `label` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_public` tinyint(1) NOT NULL DEFAULT '1',
+  `is_verified` tinyint(1) NOT NULL DEFAULT '0',
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `social_platforms`
+--
+
+CREATE TABLE `social_platforms` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `icon` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `base_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sort_order` smallint UNSIGNED NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `states`
 --
 
@@ -2130,25 +2327,15 @@ CREATE TABLE `subscription_plans` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `supplier_documents`
+-- Table structure for table `supplier_categories`
 --
 
-CREATE TABLE `supplier_documents` (
+CREATE TABLE `supplier_categories` (
   `id` bigint UNSIGNED NOT NULL,
   `supplier_account_id` bigint UNSIGNED NOT NULL,
-  `document_type_id` bigint UNSIGNED DEFAULT NULL,
-  `custom_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `original_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `mime_type` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `file_size_kb` int UNSIGNED DEFAULT NULL,
-  `status` enum('pending','verified','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `rejection_reason` text COLLATE utf8mb4_unicode_ci,
-  `uploaded_by_user_id` bigint UNSIGNED NOT NULL,
-  `verified_by_user_id` bigint UNSIGNED DEFAULT NULL,
-  `verified_at` timestamp NULL DEFAULT NULL,
-  `expires_at` date DEFAULT NULL,
-  `is_current` tinyint(1) NOT NULL DEFAULT '1',
+  `category_id` bigint UNSIGNED NOT NULL,
+  `is_primary` tinyint(1) NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2203,12 +2390,13 @@ CREATE TABLE `supplier_profiles` (
   `banner` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `profile_photo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` longtext COLLATE utf8mb4_unicode_ci,
-  `socials` json DEFAULT NULL,
   `rating` decimal(4,2) NOT NULL DEFAULT '0.00',
   `reviews_count` int UNSIGNED NOT NULL DEFAULT '0',
   `quotation_response_rate` decimal(5,2) NOT NULL DEFAULT '0.00',
   `average_response_minutes` int UNSIGNED DEFAULT NULL,
   `profile_completed_at` timestamp NULL DEFAULT NULL,
+  `current_step` tinyint UNSIGNED DEFAULT NULL,
+  `max_step_reached` tinyint UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2378,6 +2566,44 @@ CREATE TABLE `users` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_messaging_preferences`
+--
+
+CREATE TABLE `user_messaging_preferences` (
+  `id` bigint UNSIGNED NOT NULL,
+  `user_id` bigint UNSIGNED NOT NULL,
+  `sound_enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `browser_notifications_enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `unread_email_enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `unread_email_delay_hours` int UNSIGNED DEFAULT '24',
+  `last_reminder_sent_at` timestamp NULL DEFAULT NULL,
+  `last_digest_hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `visibility_types`
+--
+
+CREATE TABLE `visibility_types` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `engine_type` enum('invited','open') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
+  `max_suppliers` int UNSIGNED DEFAULT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `sort_order` int UNSIGNED NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 --
 -- Indexes for dumped tables
 --
@@ -2422,6 +2648,20 @@ ALTER TABLE `account_conversion_requests`
 ALTER TABLE `account_dashboard_preferences`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `account_dashboard_preferences_account_id_unique` (`account_id`);
+
+--
+-- Indexes for table `account_documents`
+--
+ALTER TABLE `account_documents`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `account_documents_documentable_capability_index` (`documentable_type`,`documentable_id`,`capability_type_id`),
+  ADD KEY `account_documents_supplier_doctype_index` (`supplier_account_id`,`document_type_id`),
+  ADD KEY `account_documents_status_index` (`status`),
+  ADD KEY `account_documents_expires_at_index` (`expires_at`),
+  ADD KEY `account_documents_capability_type_id_foreign` (`capability_type_id`),
+  ADD KEY `account_documents_document_type_id_foreign` (`document_type_id`),
+  ADD KEY `account_documents_uploaded_by_user_id_foreign` (`uploaded_by_user_id`),
+  ADD KEY `account_documents_verified_by_user_id_foreign` (`verified_by_user_id`);
 
 --
 -- Indexes for table `account_locations`
@@ -2514,7 +2754,8 @@ ALTER TABLE `attribute_custom_value_reviews`
 ALTER TABLE `attribute_groups`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `attribute_groups_slug_unique` (`slug`),
-  ADD KEY `attribute_groups_is_active_sort_order_index` (`is_active`,`sort_order`);
+  ADD KEY `attribute_groups_is_active_sort_order_index` (`is_active`,`sort_order`),
+  ADD KEY `attribute_groups_created_by_user_id_foreign` (`created_by_user_id`);
 
 --
 -- Indexes for table `attribute_suggestions`
@@ -2574,6 +2815,15 @@ ALTER TABLE `business_hours`
 ALTER TABLE `buyer_buyer_type`
   ADD PRIMARY KEY (`buyer_account_id`,`buyer_type_id`),
   ADD KEY `buyer_buyer_type_buyer_type_id_foreign` (`buyer_type_id`);
+
+--
+-- Indexes for table `buyer_galleries`
+--
+ALTER TABLE `buyer_galleries`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `buyer_galleries_buyer_account_id_is_active_sort_order_index` (`buyer_account_id`,`is_active`,`sort_order`),
+  ADD KEY `buyer_galleries_media_id_foreign` (`media_id`),
+  ADD KEY `buyer_galleries_created_by_user_id_foreign` (`created_by_user_id`);
 
 --
 -- Indexes for table `buyer_profiles`
@@ -2685,6 +2935,7 @@ ALTER TABLE `contact_inquiries`
 --
 ALTER TABLE `conversations`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `conversations_direct_key_unique` (`direct_key`),
   ADD KEY `conversations_context_type_context_id_index` (`context_type`,`context_id`),
   ADD KEY `conversations_created_by_account_id_index` (`created_by_account_id`),
   ADD KEY `conversations_created_by_user_id_index` (`created_by_user_id`),
@@ -2705,6 +2956,15 @@ ALTER TABLE `conversation_admin_users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `conversation_admin_users_conversation_id_user_id_unique` (`conversation_id`,`user_id`),
   ADD KEY `conversation_admin_users_user_id_is_active_index` (`user_id`,`is_active`);
+
+--
+-- Indexes for table `conversation_contexts`
+--
+ALTER TABLE `conversation_contexts`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `conv_contexts_unique` (`conversation_id`,`context_type`,`context_id`),
+  ADD KEY `conv_contexts_lookup_idx` (`conversation_id`,`context_type`,`context_id`),
+  ADD KEY `conversation_contexts_added_by_user_id_foreign` (`added_by_user_id`);
 
 --
 -- Indexes for table `conversation_user_states`
@@ -2904,7 +3164,18 @@ ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `messages_conversation_id_created_at_index` (`conversation_id`,`created_at`),
   ADD KEY `messages_sender_account_id_index` (`sender_account_id`),
-  ADD KEY `messages_sender_user_id_index` (`sender_user_id`);
+  ADD KEY `messages_sender_user_id_index` (`sender_user_id`),
+  ADD KEY `messages_reply_to_message_id_foreign` (`reply_to_message_id`);
+
+--
+-- Indexes for table `message_receipts`
+--
+ALTER TABLE `message_receipts`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `msg_receipts_user_unique` (`message_id`,`user_id`),
+  ADD KEY `message_receipts_message_id_delivered_at_index` (`message_id`,`delivered_at`),
+  ADD KEY `message_receipts_message_id_seen_at_index` (`message_id`,`seen_at`),
+  ADD KEY `message_receipts_user_id_foreign` (`user_id`);
 
 --
 -- Indexes for table `migrations`
@@ -3032,6 +3303,15 @@ ALTER TABLE `quotation_items`
   ADD KEY `quotation_items_unit_id_foreign` (`unit_id`);
 
 --
+-- Indexes for table `quotation_item_attribute_values`
+--
+ALTER TABLE `quotation_item_attribute_values`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `qiav_item_attr_idx` (`quotation_item_id`,`attribute_id`),
+  ADD KEY `quotation_item_attribute_values_attribute_id_foreign` (`attribute_id`),
+  ADD KEY `quotation_item_attribute_values_attribute_value_id_foreign` (`attribute_value_id`);
+
+--
 -- Indexes for table `quotation_revisions`
 --
 ALTER TABLE `quotation_revisions`
@@ -3051,6 +3331,15 @@ ALTER TABLE `quotation_revision_items`
   ADD KEY `quotation_revision_items_offered_listing_id_index` (`offered_listing_id`),
   ADD KEY `quotation_revision_items_offered_variant_id_foreign` (`offered_variant_id`),
   ADD KEY `quotation_revision_items_unit_id_foreign` (`unit_id`);
+
+--
+-- Indexes for table `quotation_revision_item_attribute_values`
+--
+ALTER TABLE `quotation_revision_item_attribute_values`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `qriav_revision_item_attr_idx` (`quotation_revision_item_id`,`attribute_id`),
+  ADD KEY `qriav_attribute_fk` (`attribute_id`),
+  ADD KEY `qriav_attribute_value_fk` (`attribute_value_id`);
 
 --
 -- Indexes for table `quotation_revision_requests`
@@ -3111,7 +3400,8 @@ ALTER TABLE `rfqs`
   ADD KEY `rfqs_delivery_country_id_foreign` (`delivery_country_id`),
   ADD KEY `rfqs_delivery_state_id_foreign` (`delivery_state_id`),
   ADD KEY `rfqs_delivery_city_id_foreign` (`delivery_city_id`),
-  ADD KEY `rfqs_approved_by_user_id_foreign` (`approved_by_user_id`);
+  ADD KEY `rfqs_approved_by_user_id_foreign` (`approved_by_user_id`),
+  ADD KEY `rfqs_visibility_type_id_fk` (`visibility_type_id`);
 
 --
 -- Indexes for table `rfq_change_logs`
@@ -3139,6 +3429,15 @@ ALTER TABLE `rfq_items`
   ADD KEY `rfq_items_listing_id_foreign` (`listing_id`),
   ADD KEY `rfq_items_category_id_foreign` (`category_id`),
   ADD KEY `rfq_items_unit_id_foreign` (`unit_id`);
+
+--
+-- Indexes for table `rfq_item_attribute_values`
+--
+ALTER TABLE `rfq_item_attribute_values`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `rfq_item_attribute_values_rfq_item_id_attribute_id_index` (`rfq_item_id`,`attribute_id`),
+  ADD KEY `rfq_item_attribute_values_attribute_id_foreign` (`attribute_id`),
+  ADD KEY `rfq_item_attribute_values_attribute_value_id_foreign` (`attribute_value_id`);
 
 --
 -- Indexes for table `rfq_questions`
@@ -3268,6 +3567,22 @@ ALTER TABLE `social_accounts`
   ADD KEY `social_accounts_user_id_index` (`user_id`);
 
 --
+-- Indexes for table `social_links`
+--
+ALTER TABLE `social_links`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `social_links_unique_per_platform` (`socialable_type`,`socialable_id`,`social_platform_id`),
+  ADD KEY `social_links_social_platform_id_foreign` (`social_platform_id`),
+  ADD KEY `social_links_socialable_index` (`socialable_type`,`socialable_id`);
+
+--
+-- Indexes for table `social_platforms`
+--
+ALTER TABLE `social_platforms`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `social_platforms_slug_unique` (`slug`);
+
+--
 -- Indexes for table `states`
 --
 ALTER TABLE `states`
@@ -3310,17 +3625,12 @@ ALTER TABLE `subscription_plans`
   ADD KEY `subscription_plans_is_featured_index` (`is_featured`);
 
 --
--- Indexes for table `supplier_documents`
+-- Indexes for table `supplier_categories`
 --
-ALTER TABLE `supplier_documents`
+ALTER TABLE `supplier_categories`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `supplier_documents_supplier_account_id_document_type_id_index` (`supplier_account_id`,`document_type_id`),
-  ADD KEY `supplier_documents_status_index` (`status`),
-  ADD KEY `supplier_documents_expires_at_index` (`expires_at`),
-  ADD KEY `supplier_documents_document_type_id_foreign` (`document_type_id`),
-  ADD KEY `supplier_documents_uploaded_by_user_id_foreign` (`uploaded_by_user_id`),
-  ADD KEY `supplier_documents_verified_by_user_id_foreign` (`verified_by_user_id`),
-  ADD KEY `supp_docs_current_type_index` (((case when (`is_current` = 1) then `document_type_id` else NULL end)));
+  ADD UNIQUE KEY `supplier_categories_supplier_account_id_category_id_unique` (`supplier_account_id`,`category_id`),
+  ADD KEY `supplier_categories_category_id_index` (`category_id`);
 
 --
 -- Indexes for table `supplier_gallery`
@@ -3414,6 +3724,20 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `users_email_unique` (`email`);
 
 --
+-- Indexes for table `user_messaging_preferences`
+--
+ALTER TABLE `user_messaging_preferences`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_messaging_preferences_user_id_unique` (`user_id`);
+
+--
+-- Indexes for table `visibility_types`
+--
+ALTER TABLE `visibility_types`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `visibility_types_code_unique` (`code`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -3439,6 +3763,12 @@ ALTER TABLE `account_conversion_requests`
 -- AUTO_INCREMENT for table `account_dashboard_preferences`
 --
 ALTER TABLE `account_dashboard_preferences`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `account_documents`
+--
+ALTER TABLE `account_documents`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3526,6 +3856,12 @@ ALTER TABLE `business_hours`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `buyer_galleries`
+--
+ALTER TABLE `buyer_galleries`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `buyer_profiles`
 --
 ALTER TABLE `buyer_profiles`
@@ -3595,6 +3931,12 @@ ALTER TABLE `conversation_accounts`
 -- AUTO_INCREMENT for table `conversation_admin_users`
 --
 ALTER TABLE `conversation_admin_users`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `conversation_contexts`
+--
+ALTER TABLE `conversation_contexts`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3724,6 +4066,12 @@ ALTER TABLE `messages`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `message_receipts`
+--
+ALTER TABLE `message_receipts`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
@@ -3784,6 +4132,12 @@ ALTER TABLE `quotation_items`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `quotation_item_attribute_values`
+--
+ALTER TABLE `quotation_item_attribute_values`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `quotation_revisions`
 --
 ALTER TABLE `quotation_revisions`
@@ -3793,6 +4147,12 @@ ALTER TABLE `quotation_revisions`
 -- AUTO_INCREMENT for table `quotation_revision_items`
 --
 ALTER TABLE `quotation_revision_items`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `quotation_revision_item_attribute_values`
+--
+ALTER TABLE `quotation_revision_item_attribute_values`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3841,6 +4201,12 @@ ALTER TABLE `rfq_deadline_extensions`
 -- AUTO_INCREMENT for table `rfq_items`
 --
 ALTER TABLE `rfq_items`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rfq_item_attribute_values`
+--
+ALTER TABLE `rfq_item_attribute_values`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3916,6 +4282,18 @@ ALTER TABLE `social_accounts`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `social_links`
+--
+ALTER TABLE `social_links`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `social_platforms`
+--
+ALTER TABLE `social_platforms`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `states`
 --
 ALTER TABLE `states`
@@ -3940,9 +4318,9 @@ ALTER TABLE `subscription_plans`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `supplier_documents`
+-- AUTO_INCREMENT for table `supplier_categories`
 --
-ALTER TABLE `supplier_documents`
+ALTER TABLE `supplier_categories`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -3999,6 +4377,18 @@ ALTER TABLE `units`
 ALTER TABLE `users`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `user_messaging_preferences`
+--
+ALTER TABLE `user_messaging_preferences`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `visibility_types`
+--
+ALTER TABLE `visibility_types`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
 -- --------------------------------------------------------
 
 --
@@ -4006,7 +4396,7 @@ ALTER TABLE `users`
 --
 DROP TABLE IF EXISTS `rfq_public_summary`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `rfq_public_summary`  AS SELECT `r`.`id` AS `rfq_id`, `r`.`rfq_number` AS `rfq_number`, `r`.`title` AS `title`, `r`.`status` AS `status`, `r`.`visibility_type` AS `visibility_type`, `r`.`currency_code` AS `currency_code`, `r`.`quotation_deadline` AS `quotation_deadline`, `r`.`qna_deadline` AS `qna_deadline`, `r`.`expected_delivery_date` AS `expected_delivery_date`, `r`.`published_at` AS `published_at`, `r`.`items_count` AS `items_count`, `r`.`quotations_count` AS `quotations_count`, `r`.`delivery_country_id` AS `delivery_country_id`, `co`.`name` AS `delivery_country`, `r`.`delivery_state_id` AS `delivery_state_id`, `st`.`name` AS `delivery_state`, `r`.`delivery_city_id` AS `delivery_city_id`, `ci`.`name` AS `delivery_city`, (select group_concat(distinct `cat`.`name` order by `cat`.`name` ASC separator ', ') from (`rfq_items` `ri` join `categories` `cat` on((`cat`.`id` = `ri`.`category_id`))) where (`ri`.`rfq_id` = `r`.`id`)) AS `category_summary`, (select group_concat(distinct `ri`.`item_type` order by `ri`.`item_type` ASC separator ', ') from `rfq_items` `ri` where (`ri`.`rfq_id` = `r`.`id`)) AS `item_types`, (select count(0) from `rfq_items` `ri` where (`ri`.`rfq_id` = `r`.`id`)) AS `item_count` FROM (((`rfqs` `r` left join `countries` `co` on((`co`.`id` = `r`.`delivery_country_id`))) left join `states` `st` on((`st`.`id` = `r`.`delivery_state_id`))) left join `cities` `ci` on((`ci`.`id` = `r`.`delivery_city_id`))) WHERE ((`r`.`deleted_at` is null) AND (`r`.`published_at` is not null) AND (`r`.`status` = 'open')) ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `rfq_public_summary`  AS SELECT `r`.`id` AS `rfq_id`, `r`.`rfq_number` AS `rfq_number`, `r`.`title` AS `title`, `r`.`status` AS `status`, `r`.`visibility_type_id` AS `visibility_type_id`, `vt`.`code` AS `visibility_type`, `vt`.`engine_type` AS `visibility_engine_type`, `r`.`currency_code` AS `currency_code`, `r`.`quotation_deadline` AS `quotation_deadline`, `r`.`qna_deadline` AS `qna_deadline`, `r`.`expected_delivery_date` AS `expected_delivery_date`, `r`.`published_at` AS `published_at`, `r`.`items_count` AS `items_count`, `r`.`quotations_count` AS `quotations_count`, `r`.`delivery_country_id` AS `delivery_country_id`, `co`.`name` AS `delivery_country`, `r`.`delivery_state_id` AS `delivery_state_id`, `st`.`name` AS `delivery_state`, `r`.`delivery_city_id` AS `delivery_city_id`, `ci`.`name` AS `delivery_city`, (select group_concat(distinct `cat`.`name` order by `cat`.`name` ASC separator ', ') from (`rfq_items` `ri` join `categories` `cat` on((`cat`.`id` = `ri`.`category_id`))) where (`ri`.`rfq_id` = `r`.`id`)) AS `category_summary`, (select group_concat(distinct `ri`.`item_type` order by `ri`.`item_type` ASC separator ', ') from `rfq_items` `ri` where (`ri`.`rfq_id` = `r`.`id`)) AS `item_types`, (select count(0) from `rfq_items` `ri` where (`ri`.`rfq_id` = `r`.`id`)) AS `item_count` FROM ((((`rfqs` `r` left join `visibility_types` `vt` on((`vt`.`id` = `r`.`visibility_type_id`))) left join `countries` `co` on((`co`.`id` = `r`.`delivery_country_id`))) left join `states` `st` on((`st`.`id` = `r`.`delivery_state_id`))) left join `cities` `ci` on((`ci`.`id` = `r`.`delivery_city_id`))) WHERE ((`r`.`deleted_at` is null) AND (`r`.`published_at` is not null) AND (`r`.`status` = 'open')) ;
 
 --
 -- Constraints for dumped tables
@@ -4043,6 +4433,15 @@ ALTER TABLE `account_conversion_requests`
 --
 ALTER TABLE `account_dashboard_preferences`
   ADD CONSTRAINT `account_dashboard_preferences_account_id_foreign` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `account_documents`
+--
+ALTER TABLE `account_documents`
+  ADD CONSTRAINT `account_documents_capability_type_id_foreign` FOREIGN KEY (`capability_type_id`) REFERENCES `capability_types` (`id`) ON DELETE RESTRICT,
+  ADD CONSTRAINT `account_documents_document_type_id_foreign` FOREIGN KEY (`document_type_id`) REFERENCES `document_types` (`id`) ON DELETE RESTRICT,
+  ADD CONSTRAINT `account_documents_uploaded_by_user_id_foreign` FOREIGN KEY (`uploaded_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+  ADD CONSTRAINT `account_documents_verified_by_user_id_foreign` FOREIGN KEY (`verified_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `account_locations`
@@ -4107,6 +4506,12 @@ ALTER TABLE `attribute_custom_value_reviews`
   ADD CONSTRAINT `attribute_custom_value_reviews_supplier_account_id_foreign` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE SET NULL;
 
 --
+-- Constraints for table `attribute_groups`
+--
+ALTER TABLE `attribute_groups`
+  ADD CONSTRAINT `attribute_groups_created_by_user_id_foreign` FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
 -- Constraints for table `attribute_suggestions`
 --
 ALTER TABLE `attribute_suggestions`
@@ -4152,6 +4557,14 @@ ALTER TABLE `business_hours`
 ALTER TABLE `buyer_buyer_type`
   ADD CONSTRAINT `buyer_buyer_type_buyer_account_id_foreign` FOREIGN KEY (`buyer_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `buyer_buyer_type_buyer_type_id_foreign` FOREIGN KEY (`buyer_type_id`) REFERENCES `buyer_types` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `buyer_galleries`
+--
+ALTER TABLE `buyer_galleries`
+  ADD CONSTRAINT `buyer_galleries_buyer_account_id_foreign` FOREIGN KEY (`buyer_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `buyer_galleries_created_by_user_id_foreign` FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+  ADD CONSTRAINT `buyer_galleries_media_id_foreign` FOREIGN KEY (`media_id`) REFERENCES `media` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `buyer_profiles`
@@ -4231,6 +4644,13 @@ ALTER TABLE `conversation_accounts`
 ALTER TABLE `conversation_admin_users`
   ADD CONSTRAINT `conversation_admin_users_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `conversation_admin_users_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `conversation_contexts`
+--
+ALTER TABLE `conversation_contexts`
+  ADD CONSTRAINT `conversation_contexts_added_by_user_id_foreign` FOREIGN KEY (`added_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `conversation_contexts_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `conversation_user_states`
@@ -4344,8 +4764,16 @@ ALTER TABLE `listing_variant_media`
 --
 ALTER TABLE `messages`
   ADD CONSTRAINT `messages_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `messages_reply_to_message_id_foreign` FOREIGN KEY (`reply_to_message_id`) REFERENCES `messages` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `messages_sender_account_id_foreign` FOREIGN KEY (`sender_account_id`) REFERENCES `accounts` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `messages_sender_user_id_foreign` FOREIGN KEY (`sender_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `message_receipts`
+--
+ALTER TABLE `message_receipts`
+  ADD CONSTRAINT `message_receipts_message_id_foreign` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `message_receipts_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `model_has_permissions`
@@ -4421,6 +4849,14 @@ ALTER TABLE `quotation_items`
   ADD CONSTRAINT `quotation_items_unit_id_foreign` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL;
 
 --
+-- Constraints for table `quotation_item_attribute_values`
+--
+ALTER TABLE `quotation_item_attribute_values`
+  ADD CONSTRAINT `quotation_item_attribute_values_attribute_id_foreign` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `quotation_item_attribute_values_attribute_value_id_foreign` FOREIGN KEY (`attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `quotation_item_attribute_values_quotation_item_id_foreign` FOREIGN KEY (`quotation_item_id`) REFERENCES `quotation_items` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `quotation_revisions`
 --
 ALTER TABLE `quotation_revisions`
@@ -4437,6 +4873,14 @@ ALTER TABLE `quotation_revision_items`
   ADD CONSTRAINT `quotation_revision_items_quotation_revision_id_foreign` FOREIGN KEY (`quotation_revision_id`) REFERENCES `quotation_revisions` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `quotation_revision_items_rfq_item_id_foreign` FOREIGN KEY (`rfq_item_id`) REFERENCES `rfq_items` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `quotation_revision_items_unit_id_foreign` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `quotation_revision_item_attribute_values`
+--
+ALTER TABLE `quotation_revision_item_attribute_values`
+  ADD CONSTRAINT `qriav_attribute_fk` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `qriav_attribute_value_fk` FOREIGN KEY (`attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `qriav_revision_item_fk` FOREIGN KEY (`quotation_revision_item_id`) REFERENCES `quotation_revision_items` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `quotation_revision_requests`
@@ -4487,7 +4931,8 @@ ALTER TABLE `rfqs`
   ADD CONSTRAINT `rfqs_delivery_city_id_foreign` FOREIGN KEY (`delivery_city_id`) REFERENCES `cities` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `rfqs_delivery_country_id_foreign` FOREIGN KEY (`delivery_country_id`) REFERENCES `countries` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `rfqs_delivery_state_id_foreign` FOREIGN KEY (`delivery_state_id`) REFERENCES `states` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `rfqs_source_listing_id_foreign` FOREIGN KEY (`source_listing_id`) REFERENCES `listings` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `rfqs_source_listing_id_foreign` FOREIGN KEY (`source_listing_id`) REFERENCES `listings` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `rfqs_visibility_type_id_fk` FOREIGN KEY (`visibility_type_id`) REFERENCES `visibility_types` (`id`) ON DELETE RESTRICT;
 
 --
 -- Constraints for table `rfq_change_logs`
@@ -4511,6 +4956,14 @@ ALTER TABLE `rfq_items`
   ADD CONSTRAINT `rfq_items_listing_id_foreign` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `rfq_items_rfq_id_foreign` FOREIGN KEY (`rfq_id`) REFERENCES `rfqs` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `rfq_items_unit_id_foreign` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `rfq_item_attribute_values`
+--
+ALTER TABLE `rfq_item_attribute_values`
+  ADD CONSTRAINT `rfq_item_attribute_values_attribute_id_foreign` FOREIGN KEY (`attribute_id`) REFERENCES `attributes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `rfq_item_attribute_values_attribute_value_id_foreign` FOREIGN KEY (`attribute_value_id`) REFERENCES `attribute_values` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `rfq_item_attribute_values_rfq_item_id_foreign` FOREIGN KEY (`rfq_item_id`) REFERENCES `rfq_items` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `rfq_questions`
@@ -4601,6 +5054,12 @@ ALTER TABLE `social_accounts`
   ADD CONSTRAINT `social_accounts_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `social_links`
+--
+ALTER TABLE `social_links`
+  ADD CONSTRAINT `social_links_social_platform_id_foreign` FOREIGN KEY (`social_platform_id`) REFERENCES `social_platforms` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `states`
 --
 ALTER TABLE `states`
@@ -4622,13 +5081,11 @@ ALTER TABLE `subscription_payments`
   ADD CONSTRAINT `subscription_payments_supplier_account_id_foreign` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `supplier_documents`
+-- Constraints for table `supplier_categories`
 --
-ALTER TABLE `supplier_documents`
-  ADD CONSTRAINT `supplier_documents_document_type_id_foreign` FOREIGN KEY (`document_type_id`) REFERENCES `document_types` (`id`) ON DELETE RESTRICT,
-  ADD CONSTRAINT `supplier_documents_supplier_account_id_foreign` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `supplier_documents_uploaded_by_user_id_foreign` FOREIGN KEY (`uploaded_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
-  ADD CONSTRAINT `supplier_documents_verified_by_user_id_foreign` FOREIGN KEY (`verified_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+ALTER TABLE `supplier_categories`
+  ADD CONSTRAINT `supplier_categories_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `supplier_categories_supplier_account_id_foreign` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `supplier_gallery`
@@ -4694,6 +5151,12 @@ ALTER TABLE `units`
   ADD CONSTRAINT `units_created_by_user_id_foreign` FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `units_reviewed_by_user_id_foreign` FOREIGN KEY (`reviewed_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `units_supplier_account_id_foreign` FOREIGN KEY (`supplier_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `user_messaging_preferences`
+--
+ALTER TABLE `user_messaging_preferences`
+  ADD CONSTRAINT `user_messaging_preferences_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

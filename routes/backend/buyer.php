@@ -42,6 +42,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/saved-items/toggle', [SavedItemController::class, 'toggle'])->name('saved-items.toggle');
 
     Route::middleware([\App\Http\Middleware\RequireBuyerCapability::class])->group(function () {
 
@@ -68,12 +69,14 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
             Route::get('/', [RfqController::class, 'index'])->name('index');
             Route::get('/create', [RfqController::class, 'create'])->name('create');
             Route::post('/', [RfqController::class, 'store'])->name('store');
+            Route::post('/autosave', [RfqController::class, 'autosaveCreate'])->name('autosave.create');
             Route::get('/supplier-search', [RfqController::class, 'searchSuppliers'])->name('supplier-search');
             Route::get('/categories/{category}/attributes', [RfqController::class, 'categoryAttributes'])->name('category-attributes');
             Route::get('/listings/search', [RfqController::class, 'searchListings'])->name('listings.search');
             Route::get('/listings/{listing}/prefill', [RfqController::class, 'listingPrefill'])->name('listings.prefill');
             Route::get('/{rfq}/edit', [RfqController::class, 'edit'])->name('edit');
             Route::put('/{rfq}', [RfqController::class, 'update'])->name('update');
+            Route::put('/{rfq}/autosave', [RfqController::class, 'autosaveUpdate'])->name('autosave.update');
             Route::get('/{rfq}', [RfqController::class, 'show'])->name('show');
             Route::post('/{rfq}/publish', [RfqController::class, 'publish'])->name('publish');
             Route::post('/{rfq}/cancel', [RfqController::class, 'cancel'])->name('cancel');
@@ -106,13 +109,13 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
 
         /* Saved Items */
         Route::get('/saved-items', [SavedItemController::class, 'index'])->name('saved-items.index');
-        Route::post('/saved-items/toggle', [SavedItemController::class, 'toggle'])->name('saved-items.toggle');
 
         /* Reviews */
         Route::prefix('reviews')->name('reviews.')->group(function () {
             Route::get('/', [ReviewController::class, 'index'])->name('index');
             Route::post('/quotation/{quotation}', [ReviewController::class, 'storeForQuotation'])->name('store-for-quotation');
             Route::post('/purchase-order/{purchaseOrder}', [ReviewController::class, 'storeForPurchaseOrder'])->name('store-for-purchase-order');
+            Route::put('/{review}', [ReviewController::class, 'updateProductReview'])->name('update-product');
         });
 
         /* Communication */

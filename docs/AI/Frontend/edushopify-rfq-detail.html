@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edushopify – Open RFQs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    .nav-link { font-size: 14px; font-weight: 500; color: #374151; }
+    .nav-link:hover { color: #111; }
+    .nav-link-active { font-size: 14px; font-weight: 600; color: #111827; background: #f3f4f6; padding: 4px 12px; border-radius: 6px; }
+    .badge-bidding  { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-posted   { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-closed   { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+    .badge-awarded  { background: #e8f5ee; color: #1a7f45; border: 1px solid #b6e0c6; }
+    .rfq-card { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; transition: box-shadow .2s, border-color .2s; }
+    .rfq-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.07); border-color: #d1d5db; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+<!-- ───────────────────── NAVBAR ───────────────────── -->
+<header class="sticky top-0 z-50 bg-white border-b border-gray-200">
+  <div class="max-w-7xl mx-auto px-4 flex items-center gap-6 h-14">
+
+    <!-- Logo -->
+    <a href="#" class="flex items-center gap-2 shrink-0">
+      <svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0"  y="0"  width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="13" y="0"  width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="26" y="0"  width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="0"  y="13" width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="13" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="26" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="0"  y="26" width="9" height="9" rx="2" fill="#6ee7b7"/>
+        <rect x="13" y="26" width="9" height="9" rx="2" fill="#10b981"/>
+        <rect x="26" y="26" width="9" height="9" rx="2" fill="#10b981"/>
+      </svg>
+      <div class="flex flex-col leading-tight">
+        <span class="font-bold text-gray-900 text-[17px] tracking-tight">Edu<span class="text-emerald-500">shopify</span></span>
+        <span class="text-[9px] text-gray-400 font-normal hidden sm:block">Connecting Education</span>
+      </div>
+    </a>
+
+    <!-- Search -->
+    <div class="flex-1 max-w-md relative hidden sm:flex">
+      <input type="text" placeholder="Search suppliers, products, categories..."
+        class="w-full border border-gray-200 rounded-l-md text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent" />
+      <button class="px-3 bg-emerald-500 hover:bg-emerald-600 rounded-r-md flex items-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Nav -->
+    <nav class="hidden lg:flex items-center gap-1 ml-2">
+      <a href="#" class="nav-link px-3 py-1.5">Categories</a>
+      <a href="#" class="nav-link-active">RFQ</a>
+      <a href="#" class="nav-link px-3 py-1.5">Suppliers</a>
+      <a href="#" class="nav-link px-3 py-1.5">Resources</a>
+    </nav>
+
+    <!-- Right icons -->
+    <div class="ml-auto flex items-center gap-3">
+      <button class="hidden sm:block text-gray-400 hover:text-gray-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </button>
+      <button class="hidden sm:block text-gray-400 hover:text-gray-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+      <button class="hidden sm:block text-gray-400 hover:text-gray-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+      <a href="#" class="text-sm font-medium text-gray-700 hover:text-gray-900 ml-1 hidden sm:inline">Sign In</a>
+      <a href="#" class="text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-md">Register</a>
+    </div>
+  </div>
+</header>
+
+<!-- ───────────────────── MAIN CONTENT ───────────────────── -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+
+  <!-- Page header -->
+  <div class="mb-7">
+    <h1 class="text-3xl font-bold text-gray-900 mb-1.5">Open RFQs</h1>
+    <p class="text-sm text-gray-500">Browse active requests for quotation from institutional buyers</p>
+  </div>
+
+  <!-- Search bar -->
+  <div class="relative max-w-xl mb-8">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+    </span>
+    <input type="text" id="rfq-search" placeholder="Search RFQs..."
+      class="w-full border border-gray-200 rounded-md text-sm pl-9 pr-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent" />
+  </div>
+
+  <!-- RFQ Cards list -->
+  <div class="flex flex-col gap-4" id="rfq-list">
+
+    <!-- Card 1 -->
+    <div class="rfq-card p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <span class="badge-bidding text-xs font-semibold px-2.5 py-0.5 rounded">bidding</span>
+        <span class="text-sm text-gray-400 shrink-0">4 bids</span>
+      </div>
+      <h2 class="text-[17px] font-bold text-gray-900 mb-2 leading-snug">
+        50 Interactive Displays for Schools in UAE
+      </h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-4">
+        Ministry of Education project requiring 50 × 75-inch interactive flat panel displays with built-in Android, multi-touch capability, and 3-year warranty. Installation and training required.
+      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          UAE
+        </span>
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          100,000 USD
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Deadline: Jun 15, 2026
+        </span>
+        <span>Qty: 50</span>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="rfq-card p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <span class="badge-posted text-xs font-semibold px-2.5 py-0.5 rounded">posted</span>
+        <span class="text-sm text-gray-400 shrink-0">1 bids</span>
+      </div>
+      <h2 class="text-[17px] font-bold text-gray-900 mb-2 leading-snug">
+        200 STEM Robotics Kits for Saudi Schools
+      </h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-4">
+        Seeking competitive quotations for 200 programmable robotics kits suitable for grades 5–9. Must include teacher training materials and curriculum alignment documentation.
+      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          Saudi Arabia
+        </span>
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          45,000 USD
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Deadline: Jun 20, 2026
+        </span>
+        <span>Qty: 200</span>
+      </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="rfq-card p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <span class="badge-posted text-xs font-semibold px-2.5 py-0.5 rounded">posted</span>
+        <span class="text-sm text-gray-400 shrink-0">0 bids</span>
+      </div>
+      <h2 class="text-[17px] font-bold text-gray-900 mb-2 leading-snug">
+        500 Student Chairs and Desks for University Campus
+      </h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-4">
+        University of Dhaka requires ergonomic student chairs and adjustable desks for 500 seats across 10 classrooms. Delivery and assembly included. Preferred: ISO-certified manufacturers.
+      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          Bangladesh
+        </span>
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          28,000 USD
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Deadline: Jul 05, 2026
+        </span>
+        <span>Qty: 500</span>
+      </div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="rfq-card p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <span class="badge-bidding text-xs font-semibold px-2.5 py-0.5 rounded">bidding</span>
+        <span class="text-sm text-gray-400 shrink-0">7 bids</span>
+      </div>
+      <h2 class="text-[17px] font-bold text-gray-900 mb-2 leading-snug">
+        Science Lab Equipment for 30 Secondary Schools in Canada
+      </h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-4">
+        Ontario School Board procurement for complete science lab kits including microscopes, chemical sets, safety equipment, and digital sensors. All items must comply with Canadian safety standards.
+      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          Canada
+        </span>
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          180,000 USD
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Deadline: Jun 30, 2026
+        </span>
+        <span>Qty: 30 sets</span>
+      </div>
+    </div>
+
+    <!-- Card 5 -->
+    <div class="rfq-card p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <span class="badge-awarded text-xs font-semibold px-2.5 py-0.5 rounded">awarded</span>
+        <span class="text-sm text-gray-400 shrink-0">12 bids</span>
+      </div>
+      <h2 class="text-[17px] font-bold text-gray-900 mb-2 leading-snug">
+        LMS Software Licenses for 10,000 Students — Uzbekistan Ministry
+      </h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-4">
+        Ministry of Public Education Uzbekistan requires a cloud-based LMS for 10,000 students and 800 teachers. Must support Uzbek and Russian languages, offline mode, and integrate with national ID system.
+      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          Uzbekistan
+        </span>
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          320,000 USD
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Deadline: May 31, 2026
+        </span>
+        <span>Qty: 10,800 licenses</span>
+      </div>
+    </div>
+
+    <!-- Card 6 -->
+    <div class="rfq-card p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <span class="badge-posted text-xs font-semibold px-2.5 py-0.5 rounded">posted</span>
+        <span class="text-sm text-gray-400 shrink-0">3 bids</span>
+      </div>
+      <h2 class="text-[17px] font-bold text-gray-900 mb-2 leading-snug">
+        Audio-Visual Equipment for 20 Conference Rooms — Dubai University
+      </h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-4">
+        Dubai American Academy requires professional AV systems for 20 conference and seminar rooms. Scope includes projectors, screens, audio systems, video conferencing units, and installation services.
+      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          UAE
+        </span>
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          75,000 USD
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Deadline: Jul 15, 2026
+        </span>
+        <span>Qty: 20 rooms</span>
+      </div>
+    </div>
+
+    <!-- Card 7 -->
+    <div class="rfq-card p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <span class="badge-closed text-xs font-semibold px-2.5 py-0.5 rounded">closed</span>
+        <span class="text-sm text-gray-400 shrink-0">9 bids</span>
+      </div>
+      <h2 class="text-[17px] font-bold text-gray-900 mb-2 leading-snug">
+        3D Printers for Engineering Faculty — Egypt Technical University
+      </h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-4">
+        Helwan University Engineering Faculty requires 15 professional-grade FDM 3D printers with dual extruders, build volume min 300×300×300mm, and 1-year on-site warranty. Filament starter pack included.
+      </p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          Egypt
+        </span>
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          55,000 USD
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Deadline: May 10, 2026
+        </span>
+        <span>Qty: 15</span>
+      </div>
+    </div>
+
+  </div><!-- end rfq-list -->
+
+  <!-- Empty state (hidden by default — shown via JS when search has no results) -->
+  <div id="empty-state" class="hidden text-center py-20">
+    <div class="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+      <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+    </div>
+    <p class="font-semibold text-gray-900 mb-1">No RFQs found</p>
+    <p class="text-sm text-gray-500">Try a different search term.</p>
+  </div>
+
+</main>
+
+<!-- ───────────────────── FOOTER ───────────────────── -->
+<footer class="bg-white border-t border-gray-200 pt-14 pb-8 px-4 mt-10">
+  <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+
+    <!-- Brand -->
+    <div>
+      <div class="flex items-center gap-2.5 mb-4">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0"  y="0"  width="9" height="9" rx="2" fill="#10b981"/>
+          <rect x="13" y="0"  width="9" height="9" rx="2" fill="#10b981"/>
+          <rect x="26" y="0"  width="9" height="9" rx="2" fill="#6ee7b7"/>
+          <rect x="0"  y="13" width="9" height="9" rx="2" fill="#10b981"/>
+          <rect x="13" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/>
+          <rect x="26" y="13" width="9" height="9" rx="2" fill="#6ee7b7"/>
+          <rect x="0"  y="26" width="9" height="9" rx="2" fill="#6ee7b7"/>
+          <rect x="13" y="26" width="9" height="9" rx="2" fill="#10b981"/>
+          <rect x="26" y="26" width="9" height="9" rx="2" fill="#10b981"/>
+        </svg>
+        <div class="flex flex-col leading-tight">
+          <span class="font-bold text-gray-900 text-[17px] tracking-tight">Edu<span class="text-emerald-500">shopify</span></span>
+          <span class="text-[11px] text-gray-400 font-normal">Connecting Education</span>
+        </div>
+      </div>
+      <p class="text-sm text-gray-500 leading-relaxed max-w-[260px]">
+        The B2B education procurement marketplace connecting institutional buyers with verified suppliers worldwide.
+      </p>
+    </div>
+
+    <!-- Marketplace -->
+    <div>
+      <p class="font-semibold text-[15px] text-gray-900 mb-5">Marketplace</p>
+      <ul class="space-y-4">
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Browse Suppliers</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Products</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Categories</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Request Quote</a></li>
+      </ul>
+    </div>
+
+    <!-- Company -->
+    <div>
+      <p class="font-semibold text-[15px] text-gray-900 mb-5">Company</p>
+      <ul class="space-y-4">
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">About Us</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Blog</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Contact</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Careers</a></li>
+      </ul>
+    </div>
+
+    <!-- Support -->
+    <div>
+      <p class="font-semibold text-[15px] text-gray-900 mb-5">Support</p>
+      <ul class="space-y-4">
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Help Center</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Pricing</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Terms of Service</a></li>
+        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Privacy Policy</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="max-w-7xl mx-auto border-t border-gray-200 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <p class="text-sm text-gray-400">© 2026 Edushopify. All rights reserved.</p>
+    <div class="flex gap-6 text-sm text-gray-400">
+      <a href="#" class="hover:text-gray-700 transition-colors">Terms</a>
+      <a href="#" class="hover:text-gray-700 transition-colors">Privacy</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ───────────────────── JS ───────────────────── -->
+<script>
+  // Live search filter
+  document.getElementById('rfq-search').addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#rfq-list .rfq-card');
+    let visible = 0;
+    cards.forEach(card => {
+      const text = card.textContent.toLowerCase();
+      const match = text.includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    document.getElementById('empty-state').classList.toggle('hidden', visible > 0);
+  });
+</script>
+
+</body>
+</html>

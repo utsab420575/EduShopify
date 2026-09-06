@@ -75,6 +75,24 @@ class ReviewPolicy
     }
 
     /**
+     * A buyer editing their own opinion of one product from an order they
+     * already reviewed — part of the hybrid review flow (one whole-order
+     * rating fans out into per-product rows the buyer can each refine).
+     */
+    public function updateProductReview(User $user, Review $review): bool
+    {
+        if (! $this->checkBuyerAccess($user, 'supplier.review')) {
+            return false;
+        }
+
+        if ($review->review_type !== 'product') {
+            return false;
+        }
+
+        return $review->buyer_account_id === $user->accountMember?->account_id;
+    }
+
+    /**
      * Supplier side: one public reply per published review (unique(review_id, supplier_account_id)).
      */
     public function reply(User $user, Review $review): bool

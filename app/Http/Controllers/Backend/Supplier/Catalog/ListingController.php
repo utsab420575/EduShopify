@@ -34,7 +34,7 @@ class ListingController extends Controller
     {
         $account = $this->currentAccount();
 
-        $query = $account->listings()->with(['mainCategory', 'brand', 'unit'])->latest();
+        $query = $account->listings()->with(['mainCategory', 'brand', 'unit', 'listingType', 'pricingType']);
 
         if ($request->filled('status')) {
             $query->where('approval_status', $request->string('status'));
@@ -47,21 +47,46 @@ class ListingController extends Controller
         if ($request->filled('search')) {
             $s = '%' . $request->string('search') . '%';
             $query->where(function ($q) use ($s) {
-                $q->where('name', 'like', $s)
-                  ->orWhere('listing_number', 'like', $s)
-                  ->orWhere('sku', 'like', $s);
+                $q->where('listings.name', 'like', $s)
+                  ->orWhere('listings.listing_number', 'like', $s)
+                  ->orWhere('listings.sku', 'like', $s);
             });
         }
 
-        $listings = $query->paginate(12)->withQueryString();
+        $sort = $request->string('sort')->toString();
+        $direction = strtolower($request->string('direction', 'desc')->toString()) === 'asc' ? 'asc' : 'desc';
+
+        if ($sort === 'category') {
+            $query->leftJoin('categories', 'listings.main_category_id', '=', 'categories.id')
+                ->select('listings.*')
+                ->orderBy('categories.name', $direction);
+        } elseif ($sort === 'type') {
+            $query->leftJoin('listing_types', 'listings.listing_type_id', '=', 'listing_types.id')
+                ->select('listings.*')
+                ->orderBy('listing_types.name', $direction);
+        } elseif ($sort === 'price') {
+            $query->orderBy('listings.base_price', $direction);
+        } elseif ($sort === 'status') {
+            $query->orderBy('listings.approval_status', $direction);
+        } elseif (in_array($sort, ['name', 'listing_number', 'sku', 'created_at'], true)) {
+            $query->orderBy('listings.' . $sort, $direction);
+        } else {
+            $sort = 'created_at';
+            $direction = 'desc';
+            $query->latest('listings.created_at');
+        }
+
+        $listings = $query->paginate(20)->withQueryString();
 
         return view('backend.supplier.catalog.listings.index', [
-            'account'  => $account,
-            'user'     => $this->currentUser(),
-            'listings' => $listings,
-            'status'   => $request->string('status')->toString(),
-            'type'     => $request->string('type')->toString(),
-            'search'   => $request->string('search')->toString(),
+            'account'   => $account,
+            'user'      => $this->currentUser(),
+            'listings'  => $listings,
+            'status'    => $request->string('status')->toString(),
+            'type'      => $request->string('type')->toString(),
+            'search'    => $request->string('search')->toString(),
+            'sort'      => $sort,
+            'direction' => $direction,
         ]);
     }
 
@@ -95,9 +120,25 @@ class ListingController extends Controller
         ]);
     }
 
-    public function categoryAttributes(Category $category)
+    public function categoryAttributes(Request $request, Category $category)
     {
-        return response()->json($category->attributesGroupedForForm());
+        return response()->json($category->attributesGroupedForForm($this->parseKeepAttributeIds($request)));
+    }
+
+    /**
+     * keep_attribute_ids: comma-separated attribute ids the caller already
+     * has a saved value for (editing an existing listing) — so a since-
+     * deactivated attribute still shows instead of silently disappearing.
+     * Absent for a brand new listing, where deactivated attributes should
+     * simply not appear.
+     */
+    private function parseKeepAttributeIds(Request $request): array
+    {
+        return collect(explode(',', (string) $request->query('keep_attribute_ids', '')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function store(Request $request)
@@ -304,6 +345,8 @@ class ListingController extends Controller
             'mainCategory',
             'brand',
             'unit',
+            'listingType',
+            'pricingType',
             'productDetail',
             'serviceDetail',
             'variants.variantAttributes.attribute',

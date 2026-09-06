@@ -44,6 +44,20 @@
         <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ session('error') }}</div>
     @endif
 
+    @if($errors->any())
+        <div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2.5 shadow-2xs">
+            <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <div>
+                <p class="font-bold text-red-800">Please complete all required fields:</p>
+                <ul class="list-disc list-inside mt-1 space-y-0.5 text-red-700">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
+
     {{-- ═══════════ STEP 1: Company Information ═══════════ --}}
     @if($step === 1)
     <div>
@@ -72,17 +86,20 @@
             <div class="grid grid-cols-2 gap-2">
                 @foreach($buyerTypes as $type)
                     @php($checked = in_array($type->id, array_map('intval', $buyer_type_ids)))
-                    <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all duration-150
-                        {{ $checked ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300' }}">
-                        <input type="checkbox" wire:click="toggleBuyerType({{ $type->id }})" @checked($checked) class="sr-only">
-                        <div class="w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center {{ $checked ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300' }}">
-                            @if($checked)<svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>@endif
-                        </div>
-                        <span class="text-sm {{ $checked ? 'text-indigo-800 font-medium' : 'text-gray-700' }}">{{ $type->name }}</span>
-                    </label>
+                    <button type="button" wire:click="toggleBuyerType({{ $type->id }})"
+                        class="p-3 rounded-xl border text-left transition flex items-center justify-between gap-2
+                            {{ in_array($type->id, $buyer_type_ids, true)
+                                ? 'border-indigo-600 bg-indigo-50/60 text-indigo-900 font-semibold ring-1 ring-indigo-600'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white' }}">
+                        <span class="text-xs">{{ $type->name }}</span>
+                        @if(in_array($type->id, $buyer_type_ids, true))
+                            <svg class="w-4 h-4 text-indigo-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        @endif
+                    </button>
                 @endforeach
             </div>
-            @error('buyer_type_ids') <p class="mt-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{{ $message }}</p> @enderror
+            @error('buyer_type_ids') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            @error('buyer_type_ids.*') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
         </div>
 
         <div class="grid grid-cols-2 gap-3 mb-4">
@@ -93,29 +110,32 @@
                 @error('contact_person') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1.5">Position</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1.5">Position <span class="text-gray-400 font-normal">(optional)</span></label>
                 <input type="text" wire:model.blur="position" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
             </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-4">
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1.5">Contact Email <span class="text-red-500">*</span></label>
+                <label class="block text-xs font-medium text-gray-700 mb-1.5">Email <span class="text-red-500">*</span></label>
                 <input type="email" wire:model.blur="email"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent @error('email') border-red-400 @enderror">
                 @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1.5">Phone</label>
-                <input type="tel" wire:model.blur="phone" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                <input type="text" wire:model.blur="phone" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1.5">Website</label>
+                <input type="url" wire:model.blur="website" placeholder="https://example.com"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent @error('website') border-red-400 @enderror">
+                @error('website') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
         </div>
 
-        <div class="mb-4">
-            <label class="block text-xs font-medium text-gray-700 mb-1.5">Website</label>
-            <input type="text" wire:model.blur="website" placeholder="https://yourcompany.com"
-                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-        </div>
-
         {{-- Locations — repeatable: at least one, add/remove more freely --}}
-        <div class="mb-4 pt-2">
+        <div class="mb-4">
             <div class="flex items-center justify-between mb-2">
                 <label class="block text-xs font-semibold text-gray-700">Locations <span class="text-red-500">*</span></label>
                 <button type="button" wire:click="addLocation" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
@@ -149,24 +169,26 @@
                                 @error('locations.'.$i.'.country_id') <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
-                                <label class="block text-[10px] font-medium text-gray-500 mb-1">State / Region</label>
+                                <label class="block text-[10px] font-medium text-gray-500 mb-1">State / Region <span class="text-red-500">*</span></label>
                                 <select wire:model.live="locations.{{ $i }}.state_id"
-                                    class="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white" {{ empty($loc['states']) ? 'disabled' : '' }}>
+                                    class="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white @error('locations.'.$i.'.state_id') border-red-400 @enderror" {{ empty($loc['states']) ? 'disabled' : '' }}>
                                     <option value="">{{ empty($loc['states']) ? 'Select country first' : 'Select…' }}</option>
                                     @foreach($loc['states'] as $state)
                                         <option value="{{ $state['id'] }}" @selected($loc['state_id'] == $state['id'])>{{ $state['name'] }}</option>
                                     @endforeach
                                 </select>
+                                @error('locations.'.$i.'.state_id') <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
-                                <label class="block text-[10px] font-medium text-gray-500 mb-1">City</label>
+                                <label class="block text-[10px] font-medium text-gray-500 mb-1">City <span class="text-red-500">*</span></label>
                                 <select wire:model="locations.{{ $i }}.city_id"
-                                    class="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white" {{ empty($loc['cities']) ? 'disabled' : '' }}>
-                                    <option value="">{{ empty($loc['cities']) ? 'Select first' : 'Select…' }}</option>
+                                    class="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white @error('locations.'.$i.'.city_id') border-red-400 @enderror" {{ empty($loc['cities']) ? 'disabled' : '' }}>
+                                    <option value="">{{ empty($loc['cities']) ? 'Select state first' : 'Select…' }}</option>
                                     @foreach($loc['cities'] as $city)
                                         <option value="{{ $city['id'] }}" @selected($loc['city_id'] == $city['id'])>{{ $city['name'] }}</option>
                                     @endforeach
                                 </select>
+                                @error('locations.'.$i.'.city_id') <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>
 
@@ -272,7 +294,7 @@
             <label class="flex items-center gap-2 px-3 py-2.5 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition text-sm text-gray-500">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Click to add gallery images
-                <input type="file" wire:model="gallery_files" multiple class="hidden" accept="image/*">
+                <input type="file" wire:model="new_gallery_files" multiple class="hidden" accept="image/*">
             </label>
             @if($gallery_files)
                 <div class="mt-2 grid grid-cols-5 gap-2">
@@ -289,6 +311,8 @@
             @endif
             @error('gallery_files') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             @error('gallery_files.*') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            @error('new_gallery_files') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            @error('new_gallery_files.*') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
         </div>
 
         {{-- Social Media (optional, repeatable) --}}

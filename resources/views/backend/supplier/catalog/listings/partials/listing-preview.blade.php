@@ -1,9 +1,14 @@
 {{--
-    Read-only listing detail content, shared by the full show.blade.php page
-    and the Step 4 "Preview Listing" modal (fetched as an HTML fragment via
+    Read-only listing detail content, flat (no tabs) — used by the Step 4
+    "Preview Listing" modal (fetched as an HTML fragment via
     ListingController::previewFragment and injected with x-html). Expects
     $listing (with variants.images, variants.tierPrices, allTierPrices,
     attributeValues... eager loaded) and $groupedSpecifications.
+
+    Deliberately stays flat rather than gaining the tabbed layout
+    show.blade.php uses (see listing-preview-tabbed.blade.php): content
+    injected via x-html is a dead Alpine subtree, so an x-data tab shell
+    placed here would leave the modal's tab buttons permanently inert.
 
     Split into several @include'd sub-partials rather than one large file:
     a single template this size hit a Blade compiler bug (repeatable —
@@ -15,8 +20,8 @@
 
     <div class="xl:col-span-8 space-y-6">
         @include('backend.supplier.catalog.listings.partials.preview-overview')
+        @include('backend.supplier.catalog.listings.partials.preview-specifications')
         @include('backend.supplier.catalog.listings.partials.preview-variants')
-        @include('backend.supplier.catalog.listings.partials.preview-pricing')
     </div>
 
     <div class="xl:col-span-4 space-y-6">
