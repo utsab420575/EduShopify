@@ -150,6 +150,15 @@ class BlogPostController extends Controller
         return back()->with('success', 'Blog post deleted.');
     }
 
+    public function toggleFeatured(BlogPost $post)
+    {
+        $this->authorize('platform.blog.manage');
+
+        $post->update(['featured' => ! $post->featured]);
+
+        return back()->with('success', $post->featured ? 'Post marked as featured.' : 'Post removed from featured.');
+    }
+
     /**
      * Summernote posts each inserted image here individually (rather than
      * embedding it as base64 in the content HTML) so blog_posts.content

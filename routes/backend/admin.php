@@ -165,6 +165,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::get('/posts/{post}/edit', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'edit'])->name('posts.edit');
             Route::put('/posts/{post}', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'update'])->name('posts.update');
             Route::delete('/posts/{post}', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'destroy'])->name('posts.destroy');
+            Route::post('/posts/{post}/toggle-featured', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'toggleFeatured'])->name('posts.toggle-featured');
             Route::post('/posts/upload-image', [\App\Http\Controllers\Backend\Admin\Blog\BlogPostController::class, 'uploadContentImage'])->name('posts.upload-image');
 
             Route::post('/categories/quick-add', [\App\Http\Controllers\Backend\Admin\Blog\BlogCategoryController::class, 'store'])->name('categories.quick-add');

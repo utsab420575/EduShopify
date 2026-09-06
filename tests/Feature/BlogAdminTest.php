@@ -94,6 +94,26 @@ class BlogAdminTest extends TestCase
         $this->assertNull(BlogPost::find($post->id));
     }
 
+    public function test_admin_can_toggle_featured_from_the_index_page(): void
+    {
+        $admin = $this->makePlatformAdmin();
+        $post = BlogPost::create([
+            'account_id' => $admin->account->id,
+            'title' => 'Toggle Featured Post',
+            'slug' => 'toggle-featured-post',
+            'content' => '<p>Body</p>',
+            'status' => 'draft',
+            'featured' => false,
+            'reading_time_minutes' => 1,
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.blog.posts.toggle-featured', $post))->assertRedirect();
+        $this->assertTrue($post->fresh()->featured);
+
+        $this->actingAs($admin)->post(route('admin.blog.posts.toggle-featured', $post))->assertRedirect();
+        $this->assertFalse($post->fresh()->featured);
+    }
+
     public function test_content_image_upload_stores_under_blogs_accounts_dated_folder(): void
     {
         Storage::fake('public');

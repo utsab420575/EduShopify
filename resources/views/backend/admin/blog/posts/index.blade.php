@@ -71,6 +71,13 @@
                     </td>
                     <td class="px-5 py-3.5 text-right">
                         <div class="flex items-center justify-end gap-1.5">
+                            <form method="POST" action="{{ route('admin.blog.posts.toggle-featured', $post) }}">
+                                @csrf
+                                <button type="submit" title="{{ $post->featured ? 'Remove from Featured' : 'Mark as Featured' }}"
+                                        class="w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors {{ $post->featured ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:bg-gray-100' }}">
+                                    <i class="fa-{{ $post->featured ? 'solid' : 'regular' }} fa-star"></i>
+                                </button>
+                            </form>
                             <a href="{{ route('admin.blog.posts.edit', $post) }}" title="Edit" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100"><i class="fa-regular fa-pen-to-square"></i></a>
                             <form method="POST" action="{{ route('admin.blog.posts.destroy', $post) }}" onsubmit="return confirmSwal(this, 'Delete this post?', '{{ addslashes($post->title) }} will be permanently removed.', 'warning', 'Yes, delete')">
                                 @csrf @method('DELETE')
