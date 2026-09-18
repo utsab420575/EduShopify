@@ -341,7 +341,7 @@ class RfqController extends Controller
     {
         $this->authorize('update', $rfq);
 
-        $rfq->load(['items.attributeValues', 'invitedSupplierAccounts.supplierProfile', 'targetFilters', 'visibilityType', 'deliveryAddresses']);
+        $rfq->load(['items.attributeValues', 'items.media', 'invitedSupplierAccounts.supplierProfile', 'targetFilters', 'visibilityType', 'deliveryAddresses']);
 
         $itemAttributeValues = $rfq->items->values()
             ->mapWithKeys(fn (RfqItem $item, int $idx) => [$idx => $this->itemAttributeValuesForPrefill($item)])
@@ -412,7 +412,7 @@ class RfqController extends Controller
         $this->authorize('view', $rfq);
 
         $rfq->load([
-            'items.category', 'items.unit', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
+            'items.category', 'items.unit', 'items.media', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
             'invitedSupplierAccounts.supplierProfile',
             'deliveryCountry', 'deliveryState', 'deliveryCity',
             'targetFilters.category', 'targetFilters.country', 'targetFilters.state', 'targetFilters.city',
@@ -516,6 +516,10 @@ class RfqController extends Controller
     {
         return [
             'categories'      => Category::active()->approved()->orderBy('name')->get(['id', 'name', 'parent_id']),
+            // Flat, hierarchy-path-aware list for the "Add Custom Product" item
+            // category picker — same helper the supplier catalog listing wizard
+            // uses for its searchable category tree (id/name/path/depth/attributes_count).
+            'categoryNodes'   => Category::getTreeSelectOptions(['product', 'service', 'both']),
             'units'           => Unit::active()->orderBy('name')->get(['id', 'name', 'symbol']),
             'currencies'      => Currency::active()->orderBy('code')->get(['code', 'name', 'symbol']),
             'visibilityTypes' => \App\Models\VisibilityType::active()->ordered()->get(),

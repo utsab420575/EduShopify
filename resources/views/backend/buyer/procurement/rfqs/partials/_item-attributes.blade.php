@@ -34,7 +34,8 @@
                                        :name="'items[' + index + '][attribute_values][' + attr.id + '][value_text]'"
                                        :placeholder="attr.placeholder || ('Enter ' + attr.name.toLowerCase())"
                                        x-model="getAttrVal(item, attr.id).value_text"
-                                       class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                       class="w-full text-xs rounded-lg border px-3 py-2 bg-white"
+                                       :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'">
                             </template>
 
                             {{-- TEXTAREA --}}
@@ -43,7 +44,8 @@
                                           :placeholder="attr.placeholder || ('Enter ' + attr.name.toLowerCase())"
                                           rows="2"
                                           x-model="getAttrVal(item, attr.id).value_text"
-                                          class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white"></textarea>
+                                          class="w-full text-xs rounded-lg border px-3 py-2 bg-white"
+                                          :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'"></textarea>
                             </template>
 
                             {{-- NUMBER --}}
@@ -52,7 +54,8 @@
                                        :name="'items[' + index + '][attribute_values][' + attr.id + '][value_number]'"
                                        :placeholder="attr.placeholder || '0'"
                                        x-model="getAttrVal(item, attr.id).value_number"
-                                       class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                       class="w-full text-xs rounded-lg border px-3 py-2 bg-white"
+                                       :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'">
                             </template>
 
                             {{-- SELECT --}}
@@ -60,7 +63,15 @@
                                 <div class="space-y-1">
                                     <select :name="'items[' + index + '][attribute_values][' + attr.id + '][attribute_value_id]'"
                                             x-model="getAttrVal(item, attr.id).attribute_value_id"
-                                            class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                            {{-- The <option>s below are populated by a nested x-for, which Alpine
+                                                 renders AFTER it applies this select's own x-model value — so a
+                                                 pre-filled value (e.g. from "Add from Marketplace") gets assigned
+                                                 to the <select> before its matching <option> exists and silently
+                                                 fails to stick. Re-apply it once those options are actually in
+                                                 the DOM. --}}
+                                            x-init="$nextTick(() => { $el.value = getAttrVal(item, attr.id).attribute_value_id ?? '' })"
+                                            class="w-full text-xs rounded-lg border px-3 py-2 bg-white"
+                                            :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'">
                                         <option value="">Select option</option>
                                         <template x-for="opt in attr.values" :key="opt.id">
                                             <option :value="opt.id" x-text="opt.value"></option>
@@ -73,13 +84,15 @@
                                            :name="'items[' + index + '][attribute_values][' + attr.id + '][custom_value]'"
                                            placeholder="Please specify..."
                                            x-model="getAttrVal(item, attr.id).custom_value"
-                                           class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                           class="w-full text-xs rounded-lg border px-3 py-2 bg-white"
+                                           :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'">
                                 </div>
                             </template>
 
                             {{-- MULTI SELECT / CHECKBOXES --}}
                             <template x-if="attr.input_type === 'multi_select'">
-                                <div class="p-2.5 bg-white rounded-lg border border-gray-200 max-h-32 overflow-y-auto space-y-1.5">
+                                <div class="p-2.5 bg-white rounded-lg border max-h-32 overflow-y-auto space-y-1.5"
+                                     :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'">
                                     <template x-if="attr.values.length > 0">
                                         <div>
                                             <template x-for="opt in attr.values" :key="opt.id">
@@ -107,7 +120,8 @@
 
                             {{-- BOOLEAN --}}
                             <template x-if="attr.input_type === 'boolean'">
-                                <div class="flex items-center gap-3 py-1.5">
+                                <div class="flex items-center gap-3 py-1.5 px-2 rounded-lg border"
+                                     :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-transparent'">
                                     <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
                                         <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][value_boolean]'" value="1"
                                                :checked="getAttrVal(item, attr.id).value_boolean == 1"
@@ -130,13 +144,15 @@
                                        x-model="getAttrVal(item, attr.id).value_date"
                                        x-init="typeof flatpickr !== 'undefined' && flatpickr($el, getAttrVal(item, attr.id).value_date ? { dateFormat: 'Y-m-d', defaultDate: getAttrVal(item, attr.id).value_date } : { dateFormat: 'Y-m-d' })"
                                        autocomplete="off" placeholder="Select date"
-                                       class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                       class="w-full text-xs rounded-lg border px-3 py-2 bg-white"
+                                       :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-300'">
                             </template>
 
                             {{-- COLOR --}}
                             <template x-if="attr.input_type === 'color'">
                                 <div class="space-y-1.5">
-                                    <div class="flex flex-wrap gap-1.5">
+                                    <div class="flex flex-wrap gap-1.5 p-1.5 rounded-lg border"
+                                         :class="showStepError && attr.is_required && !isAttrFilled(item, attr) ? 'border-red-500 ring-2 ring-red-100' : 'border-transparent'">
                                         <template x-for="opt in attr.values" :key="opt.id">
                                             <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] cursor-pointer"
                                                    :class="getAttrVal(item, attr.id).attribute_value_id == opt.id ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500 font-semibold' : 'border-gray-200 bg-white hover:bg-gray-50'">

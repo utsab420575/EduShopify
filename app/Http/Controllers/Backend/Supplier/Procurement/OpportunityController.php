@@ -41,11 +41,22 @@ class OpportunityController extends Controller
             'invited' => $queueQuery->whereHas('rfq.visibilityType', fn ($q) => $q->where('code', 'invited')),
             'open_matching' => $queueQuery->whereHas('rfq.visibilityType', fn ($q) => $q->where('code', 'open_matching')),
             'broadcast' => $queueQuery->whereHas('rfq.visibilityType', fn ($q) => $q->where('code', 'broadcast_all')),
-            'declined' => $queueQuery->where('status', 'ignored'),
-            default => $queueQuery->where('status', '!=', 'ignored'),
+            // Qualified with the table name — the join to rfqs below means an
+            // unqualified 'status' is ambiguous (both tables have one).
+            'declined' => $queueQuery->where('rfq_supplier_queue.status', 'ignored'),
+            default => $queueQuery->where('rfq_supplier_queue.status', '!=', 'ignored'),
         };
 
-        $opportunities = $queueQuery->latest()->paginate(10)->withQueryString();
+        // latest() on its own sorts by rfq_supplier_queue.created_at (when the
+        // queue row itself was generated) rather than the RFQ's actual
+        // publish time — join rfqs so newest-published RFQ genuinely sorts
+        // first regardless of queue-row bookkeeping.
+        $opportunities = $queueQuery
+            ->join('rfqs', 'rfqs.id', '=', 'rfq_supplier_queue.rfq_id')
+            ->select('rfq_supplier_queue.*')
+            ->orderByDesc('rfqs.published_at')
+            ->paginate(10)
+            ->withQueryString();
 
         return view('backend.supplier.procurement.opportunities.index', [
             'account' => $account,
@@ -64,7 +75,7 @@ class OpportunityController extends Controller
 
         $rfq->load([
             'buyerAccount.buyerProfile',
-            'items.unit', 'items.category', 'items.listing.attributeValues.attribute', 'items.listing.media', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
+            'items.unit', 'items.category', 'items.media', 'items.listing.attributeValues.attribute', 'items.listing.media', 'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
             'questions' => fn ($q) => $q->where('status', 'answered')->orWhere('supplier_account_id', $account->id),
         ]);
 

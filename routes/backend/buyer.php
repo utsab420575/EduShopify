@@ -15,8 +15,10 @@ use App\Http\Controllers\Backend\Buyer\Organization\InvitationController;
 use App\Http\Controllers\Backend\Buyer\Organization\MemberController;
 use App\Http\Controllers\Backend\Buyer\Organization\OwnershipController;
 use App\Http\Controllers\Backend\Buyer\Procurement\AwardController;
+use App\Http\Controllers\Backend\Buyer\Procurement\ProductSelectorController;
 use App\Http\Controllers\Backend\Buyer\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Backend\Buyer\Procurement\QuotationController;
+use App\Http\Controllers\Backend\Buyer\Procurement\RequirementController;
 use App\Http\Controllers\Backend\Buyer\Procurement\RfqController;
 use App\Http\Controllers\Backend\Buyer\Review\ReviewController;
 use App\Http\Controllers\Backend\Buyer\SavedItem\SavedItemController;
@@ -64,10 +66,18 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
             Route::post('/{supplierAccount}/message', [SupplierDirectoryController::class, 'message'])->name('message');
         });
 
+        /* Marketplace product picker used by the RFQ "Add from Marketplace" flow */
+        Route::get('/select-products-for-rfq', [ProductSelectorController::class, 'index'])->name('select-products-for-rfq');
+
         /* Procurement */
         Route::prefix('rfqs')->name('rfqs.')->group(function () {
             Route::get('/', [RfqController::class, 'index'])->name('index');
             Route::get('/create', [RfqController::class, 'create'])->name('create');
+            Route::get('/add-requirement', [RequirementController::class, 'create'])->name('add-requirement');
+            Route::post('/add-requirement', [RequirementController::class, 'store'])->name('store-requirement');
+            Route::get('/requirements/{item}/data', [RequirementController::class, 'itemData'])->name('requirements.data');
+            Route::put('/requirements/{item}', [RequirementController::class, 'update'])->name('update-requirement');
+            Route::delete('/requirements/{item}/attachments/{media}', [RequirementController::class, 'deleteAttachment'])->name('requirements.attachments.delete');
             Route::post('/', [RfqController::class, 'store'])->name('store');
             Route::post('/autosave', [RfqController::class, 'autosaveCreate'])->name('autosave.create');
             Route::get('/supplier-search', [RfqController::class, 'searchSuppliers'])->name('supplier-search');

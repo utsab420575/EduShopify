@@ -200,7 +200,34 @@
                                         <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border {{ $sourceClass($item) }}">{{ $sourceLabel($item) }}</span>
                                     </div>
                                     @if($rfqItem)
-                                        <p class="text-xs text-gray-400 mt-0.5">Responding to: {{ $rfqItem->item_name }} ({{ $rfqItem->category?->name ?? 'No category' }})</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">
+                                            Responding to: <span class="font-medium text-gray-800">{{ $rfqItem->item_name }}</span>
+                                            @if($rfqItem->category)
+                                                <span class="text-gray-400">({{ $rfqItem->category->name }})</span>
+                                            @endif
+                                            @if($rfqItem->isRequirement())
+                                                <span class="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                                    <i class="fa-solid fa-file-invoice text-[9px] mr-0.5"></i> Requirement
+                                                </span>
+                                            @endif
+                                        </p>
+                                        @if($rfqItem->isRequirement() && !empty($rfqItem->specs['description']))
+                                            <p class="text-xs text-gray-600 mt-1 bg-amber-50/40 p-2 rounded border border-amber-100 leading-relaxed">
+                                                <strong class="text-amber-900 font-semibold">Scope:</strong> {{ $rfqItem->specs['description'] }}
+                                            </p>
+                                        @endif
+                                        @if($rfqItem->media->isNotEmpty())
+                                            <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Buyer Files:</span>
+                                                @foreach($rfqItem->media as $file)
+                                                    <a href="{{ $file->getUrl() }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-indigo-700 hover:text-indigo-900 hover:border-indigo-300 font-medium transition shadow-2xs">
+                                                        <i class="fa-solid fa-paperclip text-[10px]"></i>
+                                                        <span class="truncate max-w-[120px]">{{ $file->file_name }}</span>
+                                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     @endif
                                     @if($item->description)
                                         <p class="text-xs text-gray-500 mt-1">{{ $item->description }}</p>
@@ -256,8 +283,8 @@
                                         <div class="min-w-0">
                                             <div class="flex items-center gap-2">
                                                 <span class="font-bold text-gray-900">{{ $uItem->item_name }}</span>
-                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $uItem->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
-                                                    {{ $uItem->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
+                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $uItem->isRequirement() ? 'bg-amber-50 text-amber-700 border border-amber-200' : ($uItem->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200') }}">
+                                                    {{ $uItem->isRequirement() ? 'Requirement (Quotation Only)' : ($uItem->listing_id ? 'Marketplace Product' : 'Custom Product') }}
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-gray-500 mt-0.5">{{ $uItem->category?->name ?? 'General' }}</p>

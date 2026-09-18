@@ -61,7 +61,11 @@
                                 <tr>
                                     <td class="px-5 py-3">
                                         <p class="text-sm font-medium text-gray-900">{{ $item->item_name }}</p>
-                                        @if($item->is_alternative)
+                                        @if($item->rfqItem?->isRequirement())
+                                            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                                <i class="fa-solid fa-file-invoice text-[9px] mr-0.5"></i> Requirement
+                                            </span>
+                                        @elseif($item->is_alternative)
                                             <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Alternative</span>
                                         @endif
                                     </td>

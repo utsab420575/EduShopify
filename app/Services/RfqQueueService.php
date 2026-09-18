@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\NotifyReleasedRfqOpportunityJob;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Rfq;
@@ -49,22 +50,49 @@ class RfqQueueService
      * it's published (RfqService::publish()/approve()), so it's safe to
      * notify every supplier just fanned into the queue without risking
      * duplicate notifications on a later call.
+     *
+     * Every queue row's eligibility for the supplier's own view of it is
+     * governed by RfqSupplierQueue::scopeReleased() (eligibility_status ===
+     * 'eligible' AND available_at has passed) — the same gate
+     * RfqPolicy::viewAsOpportunity() and the opportunities list both use.
+     * Notifying outside that gate means the supplier gets a notification
+     * that 404s/403s (no subscription) or points at an opportunity that
+     * isn't in their list yet (a paid-tier delay hasn't elapsed) — so this
+     * splits into three groups instead of notifying everyone unconditionally:
+     *   - already released              -> notify immediately, as before
+     *   - eligible, delay not elapsed   -> schedule a notification for the
+     *                                      moment it releases
+     *   - not eligible (no/expired sub) -> never notify; they can't open it
+     *                                      through this flow regardless
      */
     private function notifyQueuedSuppliers(Rfq $rfq): void
     {
-        $supplierAccountIds = RfqSupplierQueue::where('rfq_id', $rfq->id)->pluck('supplier_account_id');
+        $rows = RfqSupplierQueue::where('rfq_id', $rfq->id)->get();
 
-        if ($supplierAccountIds->isEmpty()) {
+        if ($rows->isEmpty()) {
             return;
         }
 
-        $users = User::whereHas('accountMember', fn ($q) => $q->whereIn('account_id', $supplierAccountIds)->where('status', 'active'))->get();
+        $now = now();
+        $releasedIds = $rows
+            ->filter(fn (RfqSupplierQueue $row) => $row->eligibility_status === 'eligible' && $row->available_at <= $now)
+            ->pluck('supplier_account_id');
 
-        if ($users->isNotEmpty()) {
-            Notification::send($users, new DashboardNotification(
-                "New RFQ opportunity: \"{$rfq->title}\".",
-                route('supplier.opportunities.show', $rfq)
-            ));
+        if ($releasedIds->isNotEmpty()) {
+            $users = User::whereHas('accountMember', fn ($q) => $q->whereIn('account_id', $releasedIds)->where('status', 'active'))->get();
+
+            if ($users->isNotEmpty()) {
+                Notification::send($users, new DashboardNotification(
+                    "New RFQ opportunity: \"{$rfq->title}\".",
+                    route('supplier.opportunities.show', $rfq)
+                ));
+            }
+        }
+
+        $delayedRows = $rows->filter(fn (RfqSupplierQueue $row) => $row->eligibility_status === 'eligible' && $row->available_at > $now);
+
+        foreach ($delayedRows as $row) {
+            NotifyReleasedRfqOpportunityJob::dispatch($rfq->id, $row->supplier_account_id)->delay($row->available_at);
         }
     }
 
@@ -122,40 +150,74 @@ class RfqQueueService
             return;
         }
 
-        $query->whereHas('serviceAreas', function (Builder $q) use ($level, $filter, $rfq) {
-            $q->where('is_active', true);
+        $query->where(function (Builder $outer) use ($level, $filter, $rfq) {
+            // 1. Match via active delivery service areas (supplier_service_areas)
+            $outer->whereHas('serviceAreas', function (Builder $q) use ($level, $filter, $rfq) {
+                $q->where('is_active', true);
 
-            $q->where(function (Builder $q2) use ($level, $filter, $rfq) {
-                // A country-level coverage row satisfies any target level —
-                // but only a row whose OWN area_level is 'country' counts;
-                // a state/city row incidentally sharing the same country_id
-                // is not "country-wide" coverage and must not match here.
+                $q->where(function (Builder $q2) use ($level, $filter, $rfq) {
+                    // A country-level coverage row satisfies any target level (country, state, city)
+                    if ($filter->country_id) {
+                        $q2->orWhere(fn (Builder $q3) => $q3->where('area_level', 'country')->where('country_id', $filter->country_id));
+                    }
+
+                    // A state-level coverage row satisfies state and city targets
+                    if (($level === 'state' || $level === 'city') && $filter->state_id) {
+                        $q2->orWhere(fn (Builder $q3) => $q3->where('area_level', 'state')->where('state_id', $filter->state_id));
+                    }
+
+                    // A city-level coverage row satisfies city targets
+                    if ($level === 'city') {
+                        if ($filter->city_id) {
+                            $q2->orWhere(fn (Builder $q3) => $q3->where('area_level', 'city')->where('city_id', $filter->city_id));
+                        }
+
+                        $lat = $rfq->delivery_latitude;
+                        $lng = $rfq->delivery_longitude;
+                        if ($lat !== null && $lng !== null) {
+                            $q2->orWhere(function (Builder $q3) use ($lat, $lng) {
+                                $q3->where('area_level', 'radius')
+                                    ->whereNotNull('center_latitude')
+                                    ->whereNotNull('center_longitude')
+                                    ->whereRaw(
+                                        '6371 * acos(cos(radians(?)) * cos(radians(center_latitude)) * cos(radians(center_longitude) - radians(?)) + sin(radians(?)) * sin(radians(center_latitude))) <= radius_km',
+                                        [$lat, $lng, $lat]
+                                    );
+                            });
+                        }
+                    }
+                });
+            });
+
+            // 2. OR match via registered primary business address (supplier_profiles)
+            $outer->orWhereHas('supplierProfile', function (Builder $q) use ($level, $filter) {
                 if ($filter->country_id) {
-                    $q2->orWhere(fn (Builder $q3) => $q3->where('area_level', 'country')->where('country_id', $filter->country_id));
+                    $q->where('country_id', $filter->country_id);
                 }
 
                 if (($level === 'state' || $level === 'city') && $filter->state_id) {
-                    $q2->orWhere(fn (Builder $q3) => $q3->where('area_level', 'state')->where('state_id', $filter->state_id));
+                    $q->where('state_id', $filter->state_id);
                 }
 
-                if ($level === 'city') {
-                    if ($filter->city_id) {
-                        $q2->orWhere(fn (Builder $q3) => $q3->where('area_level', 'city')->where('city_id', $filter->city_id));
-                    }
+                if ($level === 'city' && $filter->city_id) {
+                    $q->where('city_id', $filter->city_id);
+                }
+            });
 
-                    $lat = $rfq->delivery_latitude;
-                    $lng = $rfq->delivery_longitude;
-                    if ($lat !== null && $lng !== null) {
-                        $q2->orWhere(function (Builder $q3) use ($lat, $lng) {
-                            $q3->where('area_level', 'radius')
-                                ->whereNotNull('center_latitude')
-                                ->whereNotNull('center_longitude')
-                                ->whereRaw(
-                                    '6371 * acos(cos(radians(?)) * cos(radians(center_latitude)) * cos(radians(center_longitude) - radians(?)) + sin(radians(?)) * sin(radians(center_latitude))) <= radius_km',
-                                    [$lat, $lng, $lat]
-                                );
-                        });
-                    }
+            // 3. OR match via physical warehouses / branch locations (account_locations)
+            $outer->orWhereHas('locations', function (Builder $q) use ($level, $filter) {
+                $q->where('is_active', true);
+
+                if ($filter->country_id) {
+                    $q->where('country_id', $filter->country_id);
+                }
+
+                if (($level === 'state' || $level === 'city') && $filter->state_id) {
+                    $q->where('state_id', $filter->state_id);
+                }
+
+                if ($level === 'city' && $filter->city_id) {
+                    $q->where('city_id', $filter->city_id);
                 }
             });
         });

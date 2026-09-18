@@ -6,13 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * Table: rfq_items — every RFQ must carry at least one.
  */
-class RfqItem extends Model
+class RfqItem extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('attachments')
+            ->useDisk(config('media-library.disk_name', 'public'));
+    }
 
     protected $fillable = [
         'rfq_id',
@@ -72,5 +80,39 @@ class RfqItem extends Model
     public function quotationRevisionItems(): HasMany
     {
         return $this->hasMany(QuotationRevisionItem::class, 'rfq_item_id');
+    }
+
+    public function isMarketplaceProduct(): bool
+    {
+        return ! empty($this->listing_id);
+    }
+
+    public function isRequirement(): bool
+    {
+        if ($this->isMarketplaceProduct()) {
+            return false;
+        }
+
+        $specs = $this->specs;
+        if (is_array($specs)) {
+            if (!empty($specs['is_requirement']) || ($specs['item_mode'] ?? '') === 'requirement') {
+                return true;
+            }
+            foreach ($specs as $key => $val) {
+                if (is_array($val) && ($val['name'] ?? '') === '__is_requirement' && ($val['value'] ?? '') === '1') {
+                    return true;
+                }
+                if ($key === 'is_requirement' && $val) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function isCustomProduct(): bool
+    {
+        return ! $this->isMarketplaceProduct() && ! $this->isRequirement();
     }
 }

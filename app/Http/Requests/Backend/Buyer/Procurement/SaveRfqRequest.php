@@ -33,6 +33,7 @@ class SaveRfqRequest extends FormRequest
         return [
             'rfq_id' => ['nullable', 'integer', 'exists:rfqs,id'],
             'current_step' => ['nullable', 'integer', 'between:1,4'],
+            'max_completed_step' => ['nullable', 'integer', 'between:1,4'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
 

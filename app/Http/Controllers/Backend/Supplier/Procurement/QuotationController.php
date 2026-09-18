@@ -73,7 +73,7 @@ class QuotationController extends Controller
         }
 
         $rfq->load([
-            'items.unit', 'items.category', 'items.listing.attributeValues.attribute', 'items.listing.media',
+            'items.unit', 'items.category', 'items.listing.attributeValues.attribute', 'items.listing.media', 'items.media',
             'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
             'buyerAccount.buyerProfile'
         ]);
@@ -110,6 +110,7 @@ class QuotationController extends Controller
             'rfq.items.category',
             'rfq.items.listing.attributeValues.attribute',
             'rfq.items.listing.media',
+            'rfq.items.media',
             'rfq.items.attributeValues.attribute.unit',
             'rfq.items.attributeValues.attributeValue',
             'items.attributeValues.attribute.unit',
@@ -141,7 +142,7 @@ class QuotationController extends Controller
         $this->authorize('editDraft', $quotation);
 
         $quotation->load([
-            'rfq.items.unit', 'rfq.items.category', 'rfq.items.listing.attributeValues.attribute', 'rfq.items.listing.media',
+            'rfq.items.unit', 'rfq.items.category', 'rfq.items.listing.attributeValues.attribute', 'rfq.items.listing.media', 'rfq.items.media',
             'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
             'items.attributeValues',
         ]);

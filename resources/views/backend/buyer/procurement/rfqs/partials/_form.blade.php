@@ -5,23 +5,82 @@
     $targetFilter = $targetFilter ?? null;
     $isEditingPublished = $isEdit && $rfq->status !== 'draft';
 
-    $initialItems = $items->isNotEmpty() ? $items->values()->map(fn ($i, $idx) => [
-        'id' => $i->id, 'item_type' => $i->item_type, 'listing_id' => $i->listing_id ?? null, 'category_id' => $i->category_id,
-        'category_name' => $i->category_name ?? $i->category?->name ?? null,
-        'item_name' => $i->item_name, 'description' => $i->description, 'quantity' => (string) $i->quantity,
-        'unit_id' => $i->unit_id, 'custom_unit' => $i->custom_unit, 'estimated_unit_price' => $i->estimated_unit_price,
-        'attribute_values' => (object) ($itemAttributeValues[$idx] ?? []),
-        'custom_attributes' => is_array($i->specs ?? null) ? $i->specs : [],
-        '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [],
-        '_mode' => ($idx === 0 && !empty($i->listing_id)) ? 'initial_marketplace' : (!empty($i->listing_id) ? 'marketplace' : 'custom'),
-        '_specsOpen' => !($idx === 0 && !empty($i->listing_id)) || !empty($i->specs),
-        'listing_image_url' => $i->listing_image_url ?? ($i->listing ? ($i->listing->primaryImage?->getUrl() ?? $i->listing->getFirstMediaUrl('gallery') ?: null) : null),
-    ])->values() : collect([[
+    // For the requirement item card's category badges — every category a
+    // buyer picked, not just the primary one in category_id (see
+    // RequirementController::resolveCategoryIds(), same reconstruction here
+    // since this is the server-rendered page-load path rather than the
+    // itemData() AJAX round trip that path uses instead).
+    $categoryNameMap = collect($categoryNodes ?? [])->pluck('name', 'id');
+
+    $initialItems = $items->isNotEmpty() ? $items->values()->map(function ($i, $idx) use ($itemAttributeValues, $categoryNameMap) {
+        $isReq = method_exists($i, 'isRequirement') ? $i->isRequirement() : (
+            empty($i->listing_id) && (
+                is_array($i->specs ?? null) && (
+                    !empty($i->specs['is_requirement']) ||
+                    collect($i->specs)->contains(fn($s) => is_array($s) && ($s['name'] ?? '') === '__is_requirement' && ($s['value'] ?? '') === '1')
+                )
+            )
+        );
+
+        $cleanCustomAttrs = is_array($i->specs ?? null)
+            ? array_values(array_filter($i->specs, fn($s) => is_array($s) && ! in_array($s['name'] ?? '', ['__is_requirement', '__category_ids'], true)))
+            : [];
+
+        $attachments = method_exists($i, 'getMedia') ? $i->getMedia('attachments')->map(fn ($m) => [
+            'id'        => $m->id,
+            'name'      => $m->file_name,
+            'size'      => $m->human_readable_size,
+            'url'       => $m->getUrl(),
+            'is_image'  => str_starts_with($m->mime_type ?? '', 'image/'),
+        ])->values() : collect();
+
+        $mode = $isReq
+            ? 'requirement'
+            : (($idx === 0 && !empty($i->listing_id)) ? 'initial_marketplace' : (!empty($i->listing_id) ? 'marketplace' : 'custom'));
+
+        $categoryIds = [];
+        if (! empty($i->category_id)) {
+            $categoryIds[] = (int) $i->category_id;
+        }
+        if (is_array($i->specs ?? null)) {
+            foreach ($i->specs as $s) {
+                if (is_array($s) && ($s['name'] ?? '') === '__category_ids') {
+                    foreach (explode(',', (string) ($s['value'] ?? '')) as $cid) {
+                        $cid = (int) $cid;
+                        if ($cid && ! in_array($cid, $categoryIds, true)) {
+                            $categoryIds[] = $cid;
+                        }
+                    }
+                }
+            }
+        }
+        $categoryNames = collect($categoryIds)->map(fn ($cid) => $categoryNameMap[$cid] ?? null)->filter()->values()->all();
+
+        return [
+            'id' => $i->id, 'item_type' => $i->item_type ?? 'product', 'listing_id' => $i->listing_id ?? null, 'category_id' => $i->category_id,
+            'category_name' => $i->category_name ?? $i->category?->name ?? null,
+            'category_ids' => $categoryIds, 'category_names' => $categoryNames,
+            'item_name' => $i->item_name, 'description' => $i->description, 'quantity' => (string) $i->quantity,
+            'unit_id' => $i->unit_id, 'custom_unit' => $i->custom_unit, 'estimated_unit_price' => $i->estimated_unit_price,
+            'attribute_values' => (object) ($itemAttributeValues[$idx] ?? []),
+            'custom_attributes' => $cleanCustomAttrs,
+            'attachments' => $attachments,
+            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [],
+            '_categorySearch' => '', '_categoryPickerOpen' => false,
+            '_mode' => $mode,
+            '_specsOpen' => $isReq || !($idx === 0 && !empty($i->listing_id)) || !empty($i->specs),
+            // Accordion: land with only the first item expanded when there's
+            // more than one, so a multi-item RFQ doesn't open as a wall of cards.
+            '_collapsed' => $idx > 0,
+            'listing_image_url' => $i->listing_image_url ?? ($i->listing ? ($i->listing->primaryImage?->getUrl() ?? $i->listing->getFirstMediaUrl('gallery') ?: null) : null),
+        ];
+    })->values() : collect([[
         'id' => null, 'item_type' => 'product', 'listing_id' => null, 'category_id' => null, 'category_name' => null,
         'item_name' => '', 'description' => '', 'quantity' => '1', 'unit_id' => null, 'custom_unit' => null,
         'estimated_unit_price' => null, 'attribute_values' => (object) ($itemAttributeValues[0] ?? []),
-        'custom_attributes' => [], '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [],
-        '_mode' => 'custom', '_specsOpen' => true, 'listing_image_url' => null,
+        'custom_attributes' => [], 'attachments' => [], '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [],
+        '_categorySearch' => '', '_categoryPickerOpen' => false,
+        '_mode' => 'custom', '_specsOpen' => true, '_collapsed' => false, 'listing_image_url' => null,
     ]]);
 
     $initialSuppliers = $invitedSuppliers->map(fn ($a) => ['id' => $a->id, 'name' => $a->supplierProfile?->display_name ?? $a->display_name])->values();
@@ -31,11 +90,11 @@
     $buyerVisibilityLabels = [
         'direct' => ['label' => 'Specific Supplier', 'desc' => 'Send RFQ to one supplier only.'],
         'invited' => ['label' => 'Selected Suppliers', 'desc' => 'Invite multiple suppliers manually.'],
-        'open_matching' => ['label' => 'All Eligible Suppliers', 'desc' => 'Automatically match suppliers based on category and location.'],
+        'open_matching' => ['label' => 'All Eligible Suppliers', 'desc' => 'Broadcast to all active, verified suppliers on EduShopify.'],
     ];
 
     $initialTargetFilter = [
-        'category_id' => old('target_filter.category_id', $targetFilter?->category_id),
+        'category_id' => null,
         'location_match_level' => old('target_filter.location_match_level', $targetFilter?->location_match_level ?? 'none'),
         'country_id' => old('target_filter.country_id', $targetFilter?->country_id ?? 0),
         'state_id' => old('target_filter.state_id', $targetFilter?->state_id ?? 0),
@@ -58,6 +117,8 @@
         $requestedStep = (int) request('step');
         if ($requestedStep >= 1 && $requestedStep <= 4) {
             $initialStep = $requestedStep;
+        } elseif (!empty($rfq->max_completed_step) && $rfq->max_completed_step >= 1 && $rfq->max_completed_step <= 4) {
+            $initialStep = (int) $rfq->max_completed_step;
         } elseif (!empty($rfq->current_step) && $rfq->current_step >= 1 && $rfq->current_step <= 4) {
             $initialStep = (int) $rfq->current_step;
         } else {
@@ -69,6 +130,17 @@
             };
         }
     }
+
+    // The gate ceiling a buyer can freely jump between (step tabs beyond
+    // this stay locked until earlier steps are completed). Already-published
+    // RFQs were fully valid to publish, so every step is reachable there —
+    // matches the existing $isEditingPublished behaviour of no gating at all.
+    // Otherwise it's whatever's stored, floored by $initialStep so an
+    // explicit ?step= deep link (e.g. from "Back to RFQ" links elsewhere)
+    // never opens on a step its own state claims is locked.
+    $maxCompletedStep = $isEditingPublished
+        ? 4
+        : max((int) ($rfq->max_completed_step ?? 1), $initialStep);
 @endphp
 
 @push('styles')
@@ -101,8 +173,12 @@
         searchUrl: '{{ route('buyer.rfqs.supplier-search') }}',
         targetFilter: {{ collect($initialTargetFilter)->toJson() }},
         categoryAttributesUrl: '{{ url('/buyer/rfqs/categories') }}',
+        categoryNodes: {{ json_encode($categoryNodes) }},
         listingsSearchUrl: '{{ route('buyer.rfqs.listings.search') }}',
         listingsPrefillUrl: '{{ url('/buyer/rfqs/listings') }}',
+        selectProductsUrl: '{{ route('buyer.select-products-for-rfq') }}',
+        addRequirementUrl: '{{ route('buyer.rfqs.add-requirement') }}',
+        requirementDataUrlBase: '{{ url('/buyer/rfqs/requirements') }}',
         title: {{ json_encode(old('title', $rfq->title ?? '')) }},
         description: {{ json_encode(old('description', $rfq->description ?? '')) }},
         currencyCode: {{ json_encode(old('currency_code', $rfq->currency_code ?? '')) }},
@@ -110,7 +186,6 @@
         budgetMax: {{ json_encode(old('budget_max', $rfq->budget_max ?? '')) }},
         deliveryAddress: {{ json_encode(old('delivery_address', $rfq->delivery_address ?? '')) }},
         quotationDeadline: {{ json_encode(old('quotation_deadline', optional($rfq->quotation_deadline)->format('Y-m-d H:i') ?? '')) }},
-        qnaDeadline: {{ json_encode(old('qna_deadline', optional($rfq->qna_deadline)->format('Y-m-d H:i') ?? '')) }},
         expectedDeliveryDate: {{ json_encode(old('expected_delivery_date', optional($rfq->expected_delivery_date)->format('Y-m-d') ?? '')) }},
         allowPartialQuotation: {{ old('allow_partial_quotation', $rfq->allow_partial_quotation ?? true) ? 'true' : 'false' }},
         allowAlternativeProducts: {{ old('allow_alternative_products', $rfq->allow_alternative_products ?? true) ? 'true' : 'false' }},
@@ -123,6 +198,7 @@
         autosaveUpdateUrlBase: '{{ url('/buyer/rfqs') }}',
         csrfToken: '{{ csrf_token() }}',
         initialStep: {{ $initialStep }},
+        maxCompletedStep: {{ $maxCompletedStep }},
     })"
     x-init="init()"
 >
@@ -132,6 +208,7 @@
     @endif
     <input type="hidden" name="rfq_id" :value="rfqId">
     <input type="hidden" name="current_step" :value="currentStep">
+    <input type="hidden" name="max_completed_step" :value="maxCompletedStep">
 
     {{-- ═══ Admin-style tab-bar step indicator ═══ --}}
     @php
@@ -142,24 +219,30 @@
             4 => ['label' => 'Review & Submit',       'icon' => 'fa-circle-check'],
         ];
     @endphp
-    <div class="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden">
+    <div class="mb-4">
         {{-- Tab bar --}}
         <div class="border-b border-gray-200 px-2">
             <nav class="flex gap-0 -mb-px overflow-x-auto" aria-label="RFQ creation steps">
                 @foreach($rfqSteps as $num => $step)
                     <button type="button" @click="setStep({{ $num }})"
-                            class="flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors focus:outline-none
-                                   {{ $num < count($rfqSteps) ? '' : '' }}"
-                            :class="currentStep === {{ $num }}
-                                ? 'border-indigo-600 text-indigo-600'
-                                : (stepValid({{ $num }}) ? 'border-emerald-500 text-emerald-600 hover:text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')">
+                            :disabled="isStepLocked({{ $num }})"
+                            :title="isStepLocked({{ $num }}) ? 'Complete the earlier steps first' : ''"
+                            class="flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors focus:outline-none disabled:cursor-not-allowed"
+                            :class="isStepLocked({{ $num }})
+                                ? 'border-transparent text-gray-300'
+                                : (currentStep === {{ $num }}
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : (stepValid({{ $num }}) ? 'border-emerald-500 text-emerald-600 hover:text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'))">
                         {{-- Numbered badge --}}
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors"
-                              :class="stepValid({{ $num }})
-                                  ? 'bg-emerald-500 text-white'
-                                  : (currentStep === {{ $num }} ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500')">
-                            <i class="fa-solid fa-check" x-show="stepValid({{ $num }})" x-cloak style="font-size:8px"></i>
-                            <span x-show="!stepValid({{ $num }})">{{ $num }}</span>
+                              :class="isStepLocked({{ $num }})
+                                  ? 'bg-gray-100 text-gray-300'
+                                  : (stepValid({{ $num }})
+                                      ? 'bg-emerald-500 text-white'
+                                      : (currentStep === {{ $num }} ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'))">
+                            <i class="fa-solid fa-lock" x-show="isStepLocked({{ $num }})" x-cloak style="font-size:7px"></i>
+                            <i class="fa-solid fa-check" x-show="!isStepLocked({{ $num }}) && stepValid({{ $num }})" x-cloak style="font-size:8px"></i>
+                            <span x-show="!isStepLocked({{ $num }}) && !stepValid({{ $num }})">{{ $num }}</span>
                         </span>
                         {{-- Icon --}}
                         <i class="fa-solid {{ $step['icon'] }} text-xs"></i>
@@ -178,22 +261,19 @@
                 </div>
             </nav>
         </div>
+
+        {{-- Completion progress — how far through the 4-step wizard this RFQ is --}}
+        <div class="flex items-center gap-3 px-5 py-3">
+            <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300" :style="'width:' + completionPercent + '%; background:var(--theme-primary, #4f46e5)'"></div>
+            </div>
+            <span class="text-xs font-bold text-gray-700 shrink-0" x-text="completionPercent + '% Complete'"></span>
+        </div>
     </div>
 
     {{-- ═══════ STEP 1 — Items ═══════ --}}
     <div x-show="currentStep === 1" x-cloak class="flex flex-col" style="height:calc(100vh - 320px);min-height:460px;">
         <div class="flex-1 overflow-y-auto pr-1 space-y-4">
-
-            {{-- Page header for step 1 --}}
-            <div class="bg-white rounded-xl border border-gray-200 px-6 py-4">
-                <div>
-                    <h2 class="text-sm font-bold text-gray-900 flex items-center gap-2">
-                        <i class="fa-solid fa-box-open text-indigo-500"></i>
-                        RFQ Items
-                    </h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Add every product or service you want suppliers to quote on. Linked marketplace products are pre-filled — just confirm the quantity.</p>
-                </div>
-            </div>
 
             {{-- Item cards --}}
             <template x-for="(item, index) in items" :key="index">
@@ -201,15 +281,33 @@
             </template>
 
             {{-- Action buttons in one single row after items --}}
-            <div class="flex items-center gap-3 pt-2">
-                <button type="button" @click="addMarketplaceItem()"
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <button type="button" @click="openMarketplaceSelector()"
                         class="inline-flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-colors">
-                    <i class="fa-solid fa-store"></i> Add from Marketplace
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <i class="fa-solid fa-store"></i> Add Marketplace Product
                 </button>
                 <button type="button" @click="addCustomItem()"
                         class="inline-flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm transition-colors">
-                    <i class="fa-solid fa-pen-to-square"></i> Add Custom Item
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <i class="fa-solid fa-box-open"></i> Add Custom Product
                 </button>
+                <button type="button" @click="openRequirementPage()" :disabled="isSaving"
+                        class="inline-flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm transition-colors disabled:opacity-60">
+                    <i class="fa-solid fa-plus text-[10px]" x-show="!isSaving"></i>
+                    <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="isSaving" x-cloak></i>
+                    <i class="fa-solid fa-file-circle-plus" style="color: var(--theme-primary, #4f46e5);"></i> Add Requirement (Quotation Only)
+                </button>
+
+                {{-- Accordion controls — only useful once there's more than one item to manage --}}
+                <div x-show="items.length > 1" x-cloak class="ml-auto flex items-center gap-3">
+                    <button type="button" @click="collapseAllItems()" class="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-compress"></i> Collapse All
+                    </button>
+                    <button type="button" @click="expandAllItems()" class="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-expand"></i> Expand All
+                    </button>
+                </div>
             </div>
 
             <p x-show="showStepError && !stepValid(1)" x-cloak class="text-xs text-red-600 px-1">Every item needs a name and a quantity greater than zero.</p>
@@ -242,7 +340,10 @@
             <x-backend.form-card title="Basic Information">
                 <div class="space-y-4">
                     <div>
-                        <x-backend.input name="title" label="RFQ Title" required x-model="title" placeholder="e.g. 500 units of A4 exercise books" />
+                        <label for="title" class="block text-sm font-medium text-gray-700 mb-1.5">RFQ Title <span class="text-red-500">*</span></label>
+                        <input type="text" name="title" id="title" required x-model="title" placeholder="e.g. 500 units of A4 exercise books"
+                               class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition"
+                               :class="showStepError && !title.trim() ? 'border-red-500 bg-red-50 ring-2 ring-red-100' : 'border-gray-300 focus-accent'">
                         <p x-show="showStepError && !title.trim()" x-cloak class="text-xs text-red-600 mt-1">Give this RFQ a title before continuing.</p>
                     </div>
                     <x-backend.textarea name="description" label="Description" x-model="description" hint="Explain what you need — specifications, use case, quality requirements." />
@@ -370,16 +471,13 @@
                 <x-backend.form-card title="Deadlines & Options">
                     <div class="space-y-4">
                         <div>
-                            <x-backend.input type="text" name="quotation_deadline" label="Quotation Deadline" required
-                                             x-model="quotationDeadline" x-ref="quotationDeadlineInput"
-                                             autocomplete="off" placeholder="Select date &amp; time" />
+                            <label for="quotation_deadline" class="block text-sm font-medium text-gray-700 mb-1.5">Quotation Deadline <span class="text-red-500">*</span></label>
+                            <input type="text" name="quotation_deadline" id="quotation_deadline" required
+                                   x-model="quotationDeadline" x-ref="quotationDeadlineInput"
+                                   autocomplete="off" placeholder="Select date &amp; time"
+                                   class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition"
+                                   :class="showStepError && !quotationDeadline ? 'border-red-500 bg-red-50 ring-2 ring-red-100' : 'border-gray-300 focus-accent'">
                             <p x-show="showStepError && !quotationDeadline" x-cloak class="text-xs text-red-600 mt-1">Set a quotation deadline before continuing.</p>
-                        </div>
-                        <div>
-                            <x-backend.input type="text" name="qna_deadline" label="Q&A Deadline"
-                                             x-model="qnaDeadline" x-ref="qnaDeadlineInput"
-                                             autocomplete="off" placeholder="Select date &amp; time" />
-                            <p x-show="qnaDeadlineInvalid()" x-cloak class="text-xs text-red-600 mt-1">Q&amp;A deadline must be before the quotation deadline.</p>
                         </div>
                         <x-backend.input type="text" name="expected_delivery_date" label="Expected Delivery Date"
                                          x-model="expectedDeliveryDate" x-ref="expectedDeliveryInput"
@@ -435,14 +533,16 @@
                         @php($vtDirect = $visibilityTypes->firstWhere('code', 'direct'))
                         @if($vtDirect)
                             <div class="rounded-xl border transition-all"
-                                 :class="getVisibilityCode() === 'direct'
-                                     ? 'border-indigo-500 bg-white ring-1 ring-indigo-500/30 shadow-xs'
-                                     : 'border-gray-200 bg-white hover:border-gray-300'">
+                                 :class="showStepError && getVisibilityCode() === 'direct' && !directSupplier
+                                     ? 'border-red-400 bg-white ring-1 ring-red-300'
+                                     : (getVisibilityCode() === 'direct'
+                                         ? 'border-indigo-500 bg-white ring-1 ring-indigo-500/30 shadow-xs'
+                                         : 'border-gray-200 bg-white hover:border-gray-300')">
 
                                 {{-- Radio Accordion Header --}}
-                                <div @click="selectVisibilityType({{ $vtDirect->id }})"
+                                <div @click="handleVisibilityHeaderClick('direct', {{ $vtDirect->id }})"
                                      class="flex items-center justify-between p-3.5 cursor-pointer select-none transition-colors"
-                                     :class="getVisibilityCode() === 'direct' ? 'bg-indigo-50/40 border-b border-indigo-100/60 rounded-t-xl' : 'bg-white hover:bg-gray-50/60 rounded-xl'">
+                                     :class="expandedVisibilityCode === 'direct' ? 'bg-indigo-50/40 border-b border-indigo-100/60 rounded-t-xl' : 'bg-white hover:bg-gray-50/60 rounded-xl'">
                                     <div class="flex items-center gap-3 min-w-0">
                                         <input type="radio" name="_vt_radio" :checked="getVisibilityCode() === 'direct'"
                                                @change="selectVisibilityType({{ $vtDirect->id }})"
@@ -462,12 +562,12 @@
                                             <span class="max-w-[120px] truncate" x-text="directSupplier ? directSupplier.name : ''"></span>
                                         </span>
                                         <i class="fa-solid fa-chevron-down text-xs text-gray-400 transition-transform duration-200"
-                                           :class="getVisibilityCode() === 'direct' ? 'rotate-180 text-indigo-600' : ''"></i>
+                                           :class="expandedVisibilityCode === 'direct' ? 'rotate-180 text-indigo-600' : ''"></i>
                                     </div>
                                 </div>
 
                                 {{-- Accordion Body --}}
-                                <div x-show="getVisibilityCode() === 'direct'" x-cloak class="p-4 bg-white space-y-3 rounded-b-xl">
+                                <div x-show="expandedVisibilityCode === 'direct'" x-cloak class="p-4 bg-white space-y-3 rounded-b-xl">
                                     {{-- Selected Supplier Preview Card --}}
                                     <div x-show="directSupplier" class="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
                                         <div class="flex items-center gap-3 min-w-0">
@@ -544,14 +644,16 @@
                         @php($vtInvited = $visibilityTypes->firstWhere('code', 'invited'))
                         @if($vtInvited)
                             <div class="rounded-xl border transition-all"
-                                 :class="getVisibilityCode() === 'invited'
-                                     ? 'border-indigo-500 bg-white ring-1 ring-indigo-500/30 shadow-xs'
-                                     : 'border-gray-200 bg-white hover:border-gray-300'">
+                                 :class="showStepError && getVisibilityCode() === 'invited' && multipleSuppliers.length === 0
+                                     ? 'border-red-400 bg-white ring-1 ring-red-300'
+                                     : (getVisibilityCode() === 'invited'
+                                         ? 'border-indigo-500 bg-white ring-1 ring-indigo-500/30 shadow-xs'
+                                         : 'border-gray-200 bg-white hover:border-gray-300')">
 
                                 {{-- Radio Accordion Header --}}
-                                <div @click="selectVisibilityType({{ $vtInvited->id }})"
+                                <div @click="handleVisibilityHeaderClick('invited', {{ $vtInvited->id }})"
                                      class="flex items-center justify-between p-3.5 cursor-pointer select-none transition-colors"
-                                     :class="getVisibilityCode() === 'invited' ? 'bg-indigo-50/40 border-b border-indigo-100/60 rounded-t-xl' : 'bg-white hover:bg-gray-50/60 rounded-xl'">
+                                     :class="expandedVisibilityCode === 'invited' ? 'bg-indigo-50/40 border-b border-indigo-100/60 rounded-t-xl' : 'bg-white hover:bg-gray-50/60 rounded-xl'">
                                     <div class="flex items-center gap-3 min-w-0">
                                         <input type="radio" name="_vt_radio" :checked="getVisibilityCode() === 'invited'"
                                                @change="selectVisibilityType({{ $vtInvited->id }})"
@@ -570,12 +672,12 @@
                                               :class="multipleSuppliers.length > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500'"
                                               x-text="multipleSuppliers.length + ' selected'"></span>
                                         <i class="fa-solid fa-chevron-down text-xs text-gray-400 transition-transform duration-200"
-                                           :class="getVisibilityCode() === 'invited' ? 'rotate-180 text-indigo-600' : ''"></i>
+                                           :class="expandedVisibilityCode === 'invited' ? 'rotate-180 text-indigo-600' : ''"></i>
                                     </div>
                                 </div>
 
                                 {{-- Accordion Body --}}
-                                <div x-show="getVisibilityCode() === 'invited'" x-cloak class="p-4 bg-white space-y-3.5 rounded-b-xl">
+                                <div x-show="expandedVisibilityCode === 'invited'" x-cloak class="p-4 bg-white space-y-3.5 rounded-b-xl">
                                     <div class="space-y-2">
                                         <div class="flex items-center justify-between">
                                             <label class="text-xs font-semibold text-gray-700">Add Suppliers <span class="text-red-500">*</span></label>
@@ -664,14 +766,16 @@
                         @php($vtOpen = $visibilityTypes->firstWhere('code', 'open_matching'))
                         @if($vtOpen)
                             <div class="rounded-xl border transition-all"
-                                 :class="getVisibilityCode() === 'open_matching'
-                                     ? 'border-indigo-500 bg-white ring-1 ring-indigo-500/30 shadow-xs'
-                                     : 'border-gray-200 bg-white hover:border-gray-300'">
+                                 :class="showStepError && getVisibilityCode() === 'open_matching' && !targetFilterLocationSelected()
+                                     ? 'border-red-400 bg-white ring-1 ring-red-300'
+                                     : (getVisibilityCode() === 'open_matching'
+                                         ? 'border-indigo-500 bg-white ring-1 ring-indigo-500/30 shadow-xs'
+                                         : 'border-gray-200 bg-white hover:border-gray-300')">
 
                                 {{-- Radio Accordion Header --}}
-                                <div @click="selectVisibilityType({{ $vtOpen->id }})"
+                                <div @click="handleVisibilityHeaderClick('open_matching', {{ $vtOpen->id }})"
                                      class="flex items-center justify-between p-3.5 cursor-pointer select-none transition-colors"
-                                     :class="getVisibilityCode() === 'open_matching' ? 'bg-indigo-50/40 border-b border-indigo-100/60 rounded-t-xl' : 'bg-white hover:bg-gray-50/60 rounded-xl'">
+                                     :class="expandedVisibilityCode === 'open_matching' ? 'bg-indigo-50/40 border-b border-indigo-100/60 rounded-t-xl' : 'bg-white hover:bg-gray-50/60 rounded-xl'">
                                     <div class="flex items-center gap-3 min-w-0">
                                         <input type="radio" name="_vt_radio" :checked="getVisibilityCode() === 'open_matching'"
                                                @change="selectVisibilityType({{ $vtOpen->id }})"
@@ -679,9 +783,9 @@
                                         <div class="min-w-0">
                                             <div class="flex items-center gap-2">
                                                 <span class="text-sm font-bold text-gray-900">All Eligible Suppliers</span>
-                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Automated</span>
+                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Broadcast</span>
                                             </div>
-                                            <p class="text-xs text-gray-500 mt-0.5">Automatically match suppliers based on category and location.</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">Notify all active verified suppliers on EduShopify to maximize quotation responses.</p>
                                         </div>
                                     </div>
 
@@ -690,26 +794,29 @@
                                             Open Matching
                                         </span>
                                         <i class="fa-solid fa-chevron-down text-xs text-gray-400 transition-transform duration-200"
-                                           :class="getVisibilityCode() === 'open_matching' ? 'rotate-180 text-indigo-600' : ''"></i>
+                                           :class="expandedVisibilityCode === 'open_matching' ? 'rotate-180 text-indigo-600' : ''"></i>
                                     </div>
                                 </div>
 
                                 {{-- Accordion Body: Matching Rules --}}
-                                <div x-show="getVisibilityCode() === 'open_matching'" x-cloak class="p-4 bg-white space-y-4">
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Match by Category</label>
-                                        <select name="target_filter[category_id]" x-model="targetFilter.category_id"
-                                                class="focus-accent w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
-                                            <option value="">Any category (all eligible suppliers)</option>
-                                            @foreach($categories as $category)
-                                                <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                            @endforeach
-                                        </select>
-                                        <p class="text-[11px] text-gray-400 mt-1">Recommended — restricts matching to suppliers registered in this category.</p>
+                                <div x-show="expandedVisibilityCode === 'open_matching'" x-cloak class="p-4 bg-white space-y-4 rounded-b-xl">
+                                    {{-- Broadcast Info Banner --}}
+                                    <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 flex items-start gap-3.5">
+                                        <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                                            <i class="fa-solid fa-bullhorn text-sm"></i>
+                                        </div>
+                                        <div class="text-xs text-indigo-950 space-y-1">
+                                            <span class="font-bold text-indigo-900 block">Open Broadcast to All Suppliers</span>
+                                            <p class="text-indigo-700 leading-relaxed text-[11px]">
+                                                This RFQ will be notified to all active, verified suppliers on EduShopify without category restrictions. Suppliers can review your required items and technical specifications in their portal and submit competitive quotations.
+                                            </p>
+                                        </div>
                                     </div>
+                                    <input type="hidden" name="target_filter[category_id]" value="">
 
                                     <div>
-                                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Match by Supplier Location</label>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">Supplier Location Preference (Optional)</label>
+                                        <p class="text-[11px] text-gray-400 mb-2.5">Leave as "Anywhere" to notify all suppliers nationwide and globally, or select a level to restrict to suppliers in your region.</p>
                                         <div class="flex flex-wrap gap-2 mb-2">
                                             @foreach(['none' => 'Anywhere', 'country' => 'Country', 'state' => 'State', 'city' => 'City'] as $level => $levelLabel)
                                                 <label class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-colors"
@@ -846,6 +953,7 @@
             state: config.state,
             city: config.city,
             categoryMap: config.categoryMap || {},
+            categoryNodes: config.categoryNodes || [],
             states: [],
             cities: [],
             supplierQuery: '',
@@ -864,6 +972,10 @@
             invitedSupplierLimitNotice: '',
             switchNotice: '',
             _switchNoticeTimer: null,
+            // Which visibility panel is visually expanded — independent of
+            // visibilityTypeId (the actual selection). Lets the buyer collapse
+            // the currently-selected panel without losing/changing their choice.
+            expandedVisibilityCode: '',
 
             targetFilter: config.targetFilter,
             targetStates: [],
@@ -876,7 +988,6 @@
             budgetMax: config.budgetMax,
             deliveryAddress: config.deliveryAddress,
             quotationDeadline: config.quotationDeadline,
-            qnaDeadline: config.qnaDeadline,
             expectedDeliveryDate: config.expectedDeliveryDate,
             allowPartialQuotation: config.allowPartialQuotation,
             allowAlternativeProducts: config.allowAlternativeProducts,
@@ -890,6 +1001,10 @@
             saveError: null,
 
             currentStep: config.initialStep || 1,
+            // Forward-only ratchet: the furthest step tab a buyer may jump
+            // straight to. Step 1 is always reachable; anything beyond this
+            // stays locked until goNext() advances past it.
+            maxCompletedStep: config.maxCompletedStep || 1,
             showStepError: false,
             stepDefs: [
                 { num: 1, label: 'Items' },
@@ -898,10 +1013,18 @@
                 { num: 4, label: 'Review & Submit' },
             ],
 
+            isStepLocked(n) {
+                return n !== 1 && n > this.maxCompletedStep;
+            },
+            get completionPercent() {
+                return Math.round((Math.min(this.maxCompletedStep, this.stepDefs.length) / this.stepDefs.length) * 100);
+            },
+
             stepValid(n) {
                 if (n === 1) {
                     return this.items.length > 0 && this.items.every(i =>
                         (i.item_name || '').toString().trim() !== '' && parseFloat(i.quantity) > 0
+                        && this.requiredAttributesValid(i)
                     );
                 }
                 if (n === 2) {
@@ -909,7 +1032,6 @@
                 }
                 if (n === 3) {
                     if (!this.quotationDeadline) return false;
-                    if (this.qnaDeadlineInvalid()) return false;
                     const code = this.getVisibilityCode();
                     if (code === 'direct') {
                         return !!this.directSupplier;
@@ -935,20 +1057,125 @@
                 if (lvl === 'city') return !!this.targetFilter.city_id;
                 return true;
             },
-            /*
-             * Q&A deadline is optional, but the backend rejects it (422, no
-             * field highlighted client-side) when it isn't strictly BEFORE
-             * the quotation deadline (Illuminate's `before:` rule). Both
-             * values are native datetime-local strings ("YYYY-MM-DDTHH:MM"),
-             * which sort lexicographically the same as chronologically.
-             */
-            qnaDeadlineInvalid() {
-                return !!(this.qnaDeadline && this.quotationDeadline && this.qnaDeadline >= this.quotationDeadline);
+            // Specific, itemized reasons a step isn't valid yet — same checks
+            // as stepValid(n), just spelled out per-field so the "what do I
+            // fix" SweetAlert can name each one instead of a single generic line.
+            stepErrorMessages(n) {
+                const errors = [];
+                if (n === 1) {
+                    if (this.items.length === 0) {
+                        errors.push('Add at least one item.');
+                    }
+                    this.items.forEach((item, idx) => {
+                        const label = 'Item ' + (idx + 1) + (item.item_name ? ' ("' + item.item_name + '")' : '');
+                        if (!(item.item_name || '').toString().trim()) {
+                            errors.push(label + ': name is required.');
+                        }
+                        if (!(parseFloat(item.quantity) > 0)) {
+                            errors.push(label + ': quantity must be greater than 0.');
+                        }
+                        (item._attrGroups || []).forEach(group => {
+                            group.attributes.forEach(attr => {
+                                if (attr.is_required && !this.isAttrFilled(item, attr)) {
+                                    errors.push(label + ': "' + attr.name + '" is required.');
+                                }
+                            });
+                        });
+                    });
+                }
+                if (n === 2) {
+                    if (!(this.title || '').toString().trim()) {
+                        errors.push('RFQ Title is required.');
+                    }
+                }
+                if (n === 3) {
+                    if (!this.quotationDeadline) {
+                        errors.push('Quotation Deadline is required.');
+                    }
+                    const code = this.getVisibilityCode();
+                    if (code === 'direct' && !this.directSupplier) {
+                        errors.push('Search and select a supplier under "Specific Supplier".');
+                    } else if (code === 'invited' && this.multipleSuppliers.length === 0) {
+                        errors.push('Add at least one supplier to the "Selected Suppliers" shortlist.');
+                    } else if (code === 'open_matching' && !this.targetFilterLocationSelected()) {
+                        errors.push('Select a location for the chosen match level, or switch it back to "Anywhere".');
+                    }
+                }
+                return errors;
+            },
+            // Surfaces stepErrorMessages(n) as a SweetAlert popup — the inline
+            // red text/borders show WHERE the problem is on the page, this
+            // tells the buyer WHAT it is without having to hunt for it.
+            showStepErrorAlert(n) {
+                const errors = this.stepErrorMessages(n);
+                if (typeof Swal === 'undefined' || errors.length === 0) return;
+
+                // Auto-expand any collapsed items that have errors, and auto-open
+                // their specifications drawer if a required attribute is missing.
+                if (n === 1) {
+                    this.items.forEach(item => {
+                        const hasNameOrQtyError = !(item.item_name || '').toString().trim() || !(parseFloat(item.quantity) > 0);
+                        let hasSpecError = false;
+                        (item._attrGroups || []).forEach(group => {
+                            group.attributes.forEach(attr => {
+                                if (attr.is_required && !this.isAttrFilled(item, attr)) {
+                                    hasSpecError = true;
+                                }
+                            });
+                        });
+
+                        if (hasNameOrQtyError || hasSpecError) {
+                            item._collapsed = false;
+                        }
+                        if (hasSpecError) {
+                            item._specsOpen = true;
+                        }
+                    });
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Please fix the highlighted fields',
+                    html: '<ul style="text-align:left;margin:0;padding-left:1.25em;">'
+                        + errors.map(e => '<li>' + e.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</li>').join('')
+                        + '</ul>',
+                    confirmButtonText: 'OK, let me fix it',
+                    confirmButtonColor: '#4f46e5',
+                }).then(() => {
+                    this.$nextTick(() => {
+                        const firstErrorEl = document.querySelector('.border-red-500');
+                        if (firstErrorEl) {
+                            firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            if (typeof firstErrorEl.focus === 'function') {
+                                firstErrorEl.focus();
+                            }
+                        }
+                    });
+                });
+            },
+
+            // item.custom_attributes is the buyer-visible specs list (the
+            // wizard deliberately hides __is_requirement/__category_ids from
+            // it) — re-attach those reserved markers before submitting so a
+            // requirement item's own save doesn't erase what made it one.
+            // (RfqService::syncItems() also re-attaches them server-side as
+            // a second line of defence, but the payload should already be
+            // correct rather than relying on the server silently patching it.)
+            buildItemSpecs(item) {
+                const specs = (item.custom_attributes || []).slice();
+                if (item._mode === 'requirement' || item.is_requirement) {
+                    specs.push({ name: '__is_requirement', value: '1' });
+                    if (item.category_ids && item.category_ids.length > 1) {
+                        specs.push({ name: '__category_ids', value: item.category_ids.join(',') });
+                    }
+                }
+                return specs;
             },
 
             buildPayload() {
                 return {
                     current_step: this.currentStep,
+                    max_completed_step: this.maxCompletedStep,
                     title: this.title,
                     description: this.description,
                     currency_code: this.currencyCode,
@@ -961,7 +1188,6 @@
                     allow_partial_quotation: this.allowPartialQuotation,
                     allow_alternative_products: this.allowAlternativeProducts,
                     quotation_deadline: this.quotationDeadline,
-                    qna_deadline: this.qnaDeadline,
                     expected_delivery_date: this.expectedDeliveryDate,
                     visibility_type_id: this.visibilityTypeId,
                     selected_supplier_ids: this.getActiveSupplierIds(),
@@ -975,7 +1201,7 @@
                         unit_id: i.unit_id, custom_unit: i.custom_unit, estimated_unit_price: i.estimated_unit_price,
                         attribute_values: i.attribute_values,
                         custom_attributes: i.custom_attributes || [],
-                        specs: i.custom_attributes || [],
+                        specs: this.buildItemSpecs(i),
                     })),
                 };
             },
@@ -1047,6 +1273,7 @@
             },
             setStep(step) {
                 if (this.currentStep === step) return;
+                if (this.isStepLocked(step)) return;
                 this.currentStep = step;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 if (this.rfqId && !this.isEditingPublished) {
@@ -1056,10 +1283,12 @@
             async goNext(n) {
                 if (n < 4 && !this.stepValid(n)) {
                     this.showStepError = true;
+                    this.showStepErrorAlert(n);
                     return;
                 }
                 this.showStepError = false;
                 this.currentStep = n + 1;
+                this.maxCompletedStep = Math.max(this.maxCompletedStep, n + 1);
                 const saved = await this.autosave();
                 if (!saved) {
                     this.currentStep = n;
@@ -1086,6 +1315,8 @@
             },
 
             init() {
+                this.restoreFromMarketplaceSelector();
+                this.expandedVisibilityCode = this.getVisibilityCode();
                 if (this.country) this.loadStates(this.country, false);
                 if (this.state) this.loadCities(this.state, false);
                 if (this.targetFilter.country_id) this.loadTargetStates(this.targetFilter.country_id);
@@ -1109,10 +1340,8 @@
                     this.multipleSuppliers = config.suppliers.map(s => ({ ...s }));
                 }
 
-                // If open_matching and category not set, prefill from first item with a category
-                if (!this.targetFilter.category_id && this.items.length > 0 && this.items[0].category_id) {
-                    this.targetFilter.category_id = this.items[0].category_id;
-                }
+                // Open matching broadcasts to all suppliers without category restriction
+                this.targetFilter.category_id = null;
 
                 // Keep URL query string ?step= synchronized with currentStep
                 this.$watch('currentStep', () => {
@@ -1148,23 +1377,7 @@
                 // way its own .set() calls do, so passing null here was capping
                 // every field at today (new Date(null) == the Unix epoch, which
                 // flatpickr's fallback then read back as "now").
-                const qnaConfig = { enableTime: true, time_24hr: true, dateFormat: 'Y-m-d H:i' };
-                if (this.qnaDeadline) qnaConfig.defaultDate = this.qnaDeadline;
-                if (this.quotationDeadline) qnaConfig.maxDate = this.quotationDeadline;
-                const qnaFp = flatpickr(this.$refs.qnaDeadlineInput, qnaConfig);
-
-                const quotationConfig = {
-                    enableTime: true,
-                    time_24hr: true,
-                    dateFormat: 'Y-m-d H:i',
-                    onChange: (selectedDates, dateStr) => {
-                        if (dateStr) {
-                            qnaFp.set('maxDate', dateStr);
-                        } else {
-                            qnaFp.set('maxDate', '');
-                        }
-                    },
-                };
+                const quotationConfig = { enableTime: true, time_24hr: true, dateFormat: 'Y-m-d H:i' };
                 if (this.quotationDeadline) quotationConfig.defaultDate = this.quotationDeadline;
                 flatpickr(this.$refs.quotationDeadlineInput, quotationConfig);
 
@@ -1219,49 +1432,232 @@
                 this.addCustomItem();
             },
             addCustomItem() {
+                // Accordion behaviour: collapse whatever's already there so the
+                // newly added item is the one thing left open to work on.
+                this.collapseAllItems();
                 this.items.push({
                     id: null, item_type: 'product', listing_id: null, category_id: null, category_name: null,
                     item_name: '', description: '',
                     quantity: '1', unit_id: null, custom_unit: null, estimated_unit_price: null,
                     attribute_values: {}, custom_attributes: [],
                     _attrLoading: false, _attrGroups: [], _listingQuery: '', _listingResults: [],
+                    _categorySearch: '', _categoryPickerOpen: false,
                     _mode: 'custom',
                     _specsOpen: true,
+                    _collapsed: false,
                     listing_image_url: null,
                 });
             },
-            removeItem(index) {
+            async removeItem(index) {
+                const item = this.items[index];
+                const label = (item.item_name || '').toString().trim() || ('Item ' + (index + 1));
+                const result = await Swal.fire({
+                    icon: 'warning',
+                    title: 'Remove this item?',
+                    text: '"' + label + '" will be removed from this RFQ.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, remove it',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc2626',
+                });
+                if (!result.isConfirmed) return;
+
                 this.items.splice(index, 1);
                 if (this.items.length === 0) {
                     this.addCustomItem();
+                } else if (this.items.length === 1) {
+                    this.items[0]._collapsed = false;
                 }
+            },
+            collapseAllItems() {
+                this.items.forEach(i => { i._collapsed = true; });
+            },
+            expandAllItems() {
+                this.items.forEach(i => { i._collapsed = false; });
             },
 
             sourceTypeLabel(item) {
+                if (item._mode === 'requirement' || item.is_requirement) return 'Requirement (Quotation Only)';
                 if (item._mode === 'initial_marketplace') return 'Marketplace Product';
                 if (item._mode === 'marketplace' || item.listing_id) return 'Marketplace Product';
-                return 'Custom Item';
+                return 'Custom Product';
             },
 
-            // Adds a new blank item and marks it as a marketplace-linked item so the
-            // left panel's search box is contextually highlighted for the buyer.
-            addMarketplaceItem() {
-                this.items.push({
-                    id: null, item_type: 'product', listing_id: null, category_id: null, category_name: null,
-                    item_name: '', description: '',
-                    quantity: '1', unit_id: null, custom_unit: null, estimated_unit_price: null,
-                    attribute_values: {}, custom_attributes: [],
-                    _attrLoading: false, _attrGroups: [],
-                    _listingQuery: '', _listingResults: [],
-                    _mode: 'marketplace',
-                    _specsOpen: true, // open defaultly
-                    listing_image_url: null,
-                    _focusSearch: true,
-                });
-                this.$nextTick(() => {
-                    const inputs = document.querySelectorAll('[placeholder*="marketplace"]');
-                    if (inputs.length > 0) inputs[inputs.length - 1].focus();
-                });
+            // itemId: pass an existing requirement item's id to reopen the
+            // full add-requirement page in edit mode (from the item card's
+            // "Edit" button) instead of starting a blank one.
+            async openRequirementPage(itemId = null) {
+                try {
+                    const rawItems = (window.Alpine && window.Alpine.raw) ? window.Alpine.raw(this.items) : this.items;
+                    sessionStorage.setItem('rfqCreateItemsSnapshot', JSON.stringify(rawItems));
+                } catch (e) {}
+
+                // If user already has filled items (e.g. marketplace or custom product),
+                // autosave first so an RFQ draft exists in the database with ALL current items!
+                const hasFilledItems = this.items.some(i => (i.item_name || '').trim() !== '');
+                if (hasFilledItems) {
+                    try {
+                        await this.autosave();
+                    } catch (e) {}
+                }
+
+                const returnUrl = window.location.href.split('#')[0];
+                let targetUrl = config.addRequirementUrl + '?return_url=' + encodeURIComponent(returnUrl);
+                if (this.rfqId) {
+                    targetUrl += '&rfq_id=' + this.rfqId;
+                }
+                if (itemId) {
+                    targetUrl += '&item_id=' + itemId;
+                }
+                window.location.href = targetUrl;
+            },
+
+            // "Add from Marketplace" sends the buyer to the product selector page.
+            async openMarketplaceSelector() {
+                try {
+                    const rawItems = (window.Alpine && window.Alpine.raw) ? window.Alpine.raw(this.items) : this.items;
+                    sessionStorage.setItem('rfqCreateItemsSnapshot', JSON.stringify(rawItems));
+                } catch (e) {}
+
+                const hasFilledItems = this.items.some(i => (i.item_name || '').trim() !== '');
+                if (hasFilledItems) {
+                    try {
+                        await this.autosave();
+                    } catch (e) {}
+                }
+
+                const returnUrl = window.location.href.split('#')[0];
+                window.location.href = config.selectProductsUrl + '?return_url=' + encodeURIComponent(returnUrl);
+            },
+            // Mirror image of openMarketplaceSelector() and openRequirementPage():
+            // restores the snapshotted items (if any) and turns any listing ids
+            // or newly created requirement ids into real item cards.
+            restoreFromMarketplaceSelector() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const hasRestoreParam = urlParams.get('restore_items') === '1';
+                const hasSavedSnapshot = !this.rfqId && !!sessionStorage.getItem('rfqCreateItemsSnapshot');
+
+                if (!hasRestoreParam && !hasSavedSnapshot) return;
+
+                const urlRfqId = parseInt(urlParams.get('rfq_id'), 10);
+                if (urlRfqId && !this.rfqId) {
+                    this.rfqId = urlRfqId;
+                }
+
+                try {
+                    const saved = sessionStorage.getItem('rfqCreateItemsSnapshot');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            this.items = parsed;
+                        }
+                    }
+                } catch (e) {}
+                sessionStorage.removeItem('rfqCreateItemsSnapshot');
+
+                const newRequirementId = parseInt(urlParams.get('new_requirement_id'), 10);
+                const editedRequirementId = parseInt(urlParams.get('edited_requirement_id'), 10);
+                const ids = (urlParams.get('selected_listings') || '')
+                    .split(',').map(v => parseInt(v, 10)).filter(v => !!v);
+
+                urlParams.delete('restore_items');
+                urlParams.delete('selected_listings');
+                urlParams.delete('new_requirement_id');
+                urlParams.delete('edited_requirement_id');
+                urlParams.delete('rfq_id');
+                const cleanQuery = urlParams.toString();
+                window.history.replaceState({}, '', window.location.pathname + (cleanQuery ? '?' + cleanQuery : ''));
+
+                // Accordion behaviour: whatever was already on the page collapses,
+                // and only the item(s) just brought in from the requirement/
+                // marketplace-selector round trip stay expanded. Marking the
+                // objects themselves (rather than recording a count/index)
+                // keeps this correct even after the blank-placeholder filter
+                // below splices an item out and shifts every index.
+                this.items.forEach(i => { i._wasPreExisting = true; });
+                const collapsePreExisting = () => {
+                    this.items.forEach(i => {
+                        i._collapsed = !!i._wasPreExisting;
+                        delete i._wasPreExisting;
+                    });
+                };
+
+                if (newRequirementId) {
+                    fetch(config.requirementDataUrlBase + '/' + newRequirementId + '/data')
+                        .then(r => r.json())
+                        .then(data => {
+                            if (this.items.length >= 1) {
+                                this.items = this.items.filter(i => !(i._mode === 'custom' && !i.item_name && !i.listing_id
+                                    && (!i.custom_attributes || i.custom_attributes.length === 0)));
+                            }
+                            if (!this.items.some(i => i.id === data.id && (i._mode === 'requirement' || i.is_requirement))) {
+                                this.items.push(Object.assign({ _collapsed: false }, data));
+                            }
+                            collapsePreExisting();
+                            if (this.rfqId) {
+                                this.autosave();
+                            }
+                        })
+                        .catch(() => {});
+                }
+
+                // Returning from editing an existing requirement (via the item
+                // card's "Edit" button) — replace that item in place with the
+                // freshly-saved data instead of appending a duplicate.
+                if (editedRequirementId) {
+                    fetch(config.requirementDataUrlBase + '/' + editedRequirementId + '/data')
+                        .then(r => r.json())
+                        .then(data => {
+                            const idx = this.items.findIndex(i => i.id === data.id);
+                            if (idx !== -1) {
+                                this.items[idx] = Object.assign({ _collapsed: false }, data);
+                            } else {
+                                this.items.push(Object.assign({ _collapsed: false }, data));
+                            }
+                            collapsePreExisting();
+                            if (this.rfqId) {
+                                this.autosave();
+                            }
+                        })
+                        .catch(() => {});
+                }
+
+                if (ids.length > 0) {
+                    Promise.all(ids.map(id => this.addItemFromListing(id))).then(() => {
+                        // Drop the untouched blank starter item once real items have been added.
+                        if (this.items.length > 1) {
+                            this.items = this.items.filter(i => !(i._mode === 'custom' && !i.item_name && !i.listing_id
+                                && (!i.custom_attributes || i.custom_attributes.length === 0)));
+                        }
+                        if (this.items.length === 0) this.addCustomItem();
+                        collapsePreExisting();
+                        if (this.rfqId) {
+                            this.autosave();
+                        }
+                    });
+                }
+            },
+            addItemFromListing(listingId) {
+                return fetch(config.listingsPrefillUrl + '/' + listingId + '/prefill')
+                    .then(r => r.json())
+                    .then(data => {
+                        const item = Object.assign({
+                            id: null,
+                            custom_unit: null,
+                            _collapsed: false,
+                            attribute_values: data.attribute_values || {},
+                            custom_attributes: data.item.custom_attributes || [],
+                            _attrLoading: false,
+                            _attrGroups: data.category_attributes ? (data.category_attributes.groups || []) : [],
+                            _listingQuery: '', _listingResults: [],
+                            _mode: 'marketplace',
+                            _specsOpen: true,
+                        }, data.item);
+                        item.quantity = String(data.item.quantity || 1);
+                        item._attrCategoryId = item.category_id;
+                        this.items.push(item);
+                    })
+                    .catch(() => {});
             },
 
             addCustomAttribute(item) {
@@ -1278,6 +1674,71 @@
             },
             getCategoryName(catId) {
                 return (this.categoryMap && this.categoryMap[catId]) ? this.categoryMap[catId] : '';
+            },
+            // Requirement items can carry multiple categories (category_ids/
+            // category_names, populated server-side and by itemData()) —
+            // falls back to the single category_name/category_id every
+            // other item mode still uses.
+            categoryBadgeNames(item) {
+                if (item.category_names && item.category_names.length > 0) {
+                    return item.category_names;
+                }
+                const single = item.category_name || this.getCategoryName(item.category_id);
+                return single ? [single] : ['General Category'];
+            },
+            // Step 4 review card thumbnail — the linked listing's own image,
+            // or the first image among the item's attached reference files.
+            reviewThumbnail(item) {
+                if (item.listing_image_url) return item.listing_image_url;
+                const img = (item.attachments || []).find(a => a.is_image);
+                return img ? img.url : null;
+            },
+
+            // ── Searchable hierarchy-path category picker for "Add Custom Product"
+            //    (same categoryNodes shape — id/name/path/depth/attributes_count —
+            //    the supplier catalog listing wizard uses for its category tree) ──
+            filteredCategoryNodesFor(item) {
+                const q = (item._categorySearch || '').trim().toLowerCase();
+                if (!q) return this.categoryNodes;
+                return this.categoryNodes.filter(n =>
+                    n.name.toLowerCase().includes(q) || (n.path && n.path.toLowerCase().includes(q))
+                );
+            },
+            getCategoryNodePath(catId) {
+                if (!catId) return '';
+                const node = this.categoryNodes.find(n => n.id == catId);
+                return node ? node.path : (this.getCategoryName(catId) || '');
+            },
+            // Reopening the picker on an item that already has a category
+            // keeps the FULL list visible (nothing pre-filtered out) but
+            // scrolls straight to the already-selected row — already
+            // highlighted via the `item.category_id == node.id` class below
+            // — so the buyer sees what's selected without hunting for it.
+            reopenCategoryPicker(item, event) {
+                item._categorySearch = '';
+                item._categoryPickerOpen = true;
+                this.$nextTick(() => {
+                    if (!item.category_id) return;
+                    const wrapper = event.currentTarget.closest('.relative');
+                    const row = wrapper && wrapper.querySelector('[data-node-id="' + item.category_id + '"]');
+                    if (row) row.scrollIntoView({ block: 'center' });
+                });
+            },
+            selectCategoryNode(item, node) {
+                item.category_id = node.id;
+                item.category_name = node.name;
+                item._categorySearch = '';
+                item._categoryPickerOpen = false;
+                this.onItemCategoryChange(item);
+            },
+            clearCategoryForItem(item) {
+                item.category_id = null;
+                item.category_name = null;
+                item._categorySearch = '';
+                item._categoryPickerOpen = false;
+                item._attrCategoryId = null;
+                item.attribute_values = {};
+                item._attrGroups = [];
             },
 
             // Returns a human-readable display string for an attribute value.
@@ -1389,6 +1850,40 @@
                 const idx = val.value_json.indexOf(value);
                 if (idx === -1) val.value_json.push(value); else val.value_json.splice(idx, 1);
             },
+            // Whether a standard category-attribute already has a usable
+            // value, per its input_type — same shape stepValid(1)/
+            // stepErrorMessages(1) check against and _item-attributes.blade.php
+            // uses to decide whether to draw that field red.
+            isAttrFilled(item, attr) {
+                const val = this.getAttrVal(item, attr.id);
+                switch (attr.input_type) {
+                    case 'text':
+                    case 'textarea':
+                        return !!(val.value_text || '').toString().trim();
+                    case 'number':
+                        return val.value_number !== null && val.value_number !== '' && val.value_number !== undefined;
+                    case 'select':
+                    case 'color':
+                        return val.attribute_value_id === '__other__'
+                            ? !!(val.custom_value || '').toString().trim()
+                            : !!val.attribute_value_id;
+                    case 'multi_select':
+                        return (Array.isArray(val.value_json) && val.value_json.length > 0)
+                            || !!(val.custom_value || '').toString().trim();
+                    case 'boolean':
+                        return val.value_boolean === 0 || val.value_boolean === 1 || val.value_boolean === '0' || val.value_boolean === '1';
+                    case 'date':
+                        return !!val.value_date;
+                    default:
+                        return true;
+                }
+            },
+            requiredAttributesValid(item) {
+                if (!item._attrGroups || item._attrGroups.length === 0) return true;
+                return item._attrGroups.every(group =>
+                    group.attributes.every(attr => !attr.is_required || this.isAttrFilled(item, attr))
+                );
+            },
 
             onCountryChange() {
                 this.state = 0; this.city = 0; this.cities = [];
@@ -1416,8 +1911,23 @@
                 const vt = this.visibilityTypes.find(t => t.id == this.visibilityTypeId);
                 return vt ? vt.code : '';
             },
+            // Header click on a panel: collapse it if it's already the
+            // selected + expanded one, otherwise select (and expand) it.
+            // Kept separate from the radio's own @change so re-selecting the
+            // same option (e.g. re-expanding after collapsing it) still works
+            // even though selectVisibilityType() no-ops on an unchanged id.
+            handleVisibilityHeaderClick(code, vtId) {
+                if (this.getVisibilityCode() === code && this.expandedVisibilityCode === code) {
+                    this.expandedVisibilityCode = '';
+                    return;
+                }
+                this.selectVisibilityType(vtId);
+            },
             selectVisibilityType(vtId) {
-                if (this.visibilityTypeId == vtId) return;
+                if (this.visibilityTypeId == vtId) {
+                    this.expandedVisibilityCode = this.getVisibilityCode();
+                    return;
+                }
 
                 const prevCode = this.getVisibilityCode();
                 let hadData = false;
@@ -1440,6 +1950,7 @@
                 }
 
                 this.visibilityTypeId = vtId;
+                this.expandedVisibilityCode = this.getVisibilityCode();
                 this.showStepError = false;
             },
 

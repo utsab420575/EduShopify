@@ -126,10 +126,22 @@
                                                 {{ $loop->iteration }}
                                             </span>
                                             <p class="text-base font-bold text-gray-900 leading-tight">{{ $item->item_name }}</p>
-                                            <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
-                                                <i class="fa-solid {{ $item->listing_id ? 'fa-store text-emerald-600' : 'fa-pen-to-square text-gray-400' }} text-[9px] mr-0.5"></i>
-                                                {{ $item->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
-                                            </span>
+                                            @if($item->isRequirement())
+                                                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300">
+                                                    <i class="fa-solid fa-file-invoice text-amber-700 text-[9px] mr-0.5"></i>
+                                                    Requirement (Quotation Only)
+                                                </span>
+                                            @elseif($item->listing_id)
+                                                <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <i class="fa-solid fa-store text-emerald-600 text-[9px] mr-0.5"></i>
+                                                    Marketplace Product
+                                                </span>
+                                            @else
+                                                <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                                                    <i class="fa-solid fa-box-open text-gray-400 text-[9px] mr-0.5"></i>
+                                                    Custom Product
+                                                </span>
+                                            @endif
                                             @if($item->listing_id)
                                                 <span class="text-[10px] text-gray-400 font-mono">ID #{{ $item->listing_id }}</span>
                                             @endif
@@ -192,18 +204,40 @@
                             @endif
 
                             {{-- Buyer's Custom Specifications --}}
-                            @if(!empty($specs))
+                            @php($customSpecs = is_array($item->specs) ? array_filter($item->specs, fn($s) => is_array($s) && ($s['name'] ?? '') !== '__is_requirement') : [])
+                            @if(!empty($customSpecs))
                                 <div class="mt-3.5 pt-3.5 border-t border-gray-100">
                                     <p class="text-[11px] font-bold text-indigo-900 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                         <i class="fa-solid fa-sliders text-indigo-500 text-xs"></i>
                                         Buyer's Custom Specifications:
                                     </p>
                                     <div class="flex flex-wrap gap-2">
-                                        @foreach($specs as $spec)
+                                        @foreach($customSpecs as $spec)
                                             <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-950 font-medium shadow-2xs">
                                                 <span class="text-indigo-600 font-bold">{{ $spec['name'] ?? 'Spec' }}:</span>
                                                 <span class="font-bold text-gray-900">{{ $spec['value'] ?? '—' }}</span>
                                             </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Buyer's Reference Attachments --}}
+                            @if($item->getMedia('attachments')->isNotEmpty())
+                                <div class="mt-3.5 pt-3.5 border-t border-gray-100">
+                                    <p class="text-[11px] font-bold text-amber-900 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-paperclip text-amber-600 text-xs"></i>
+                                        Buyer's Reference Files &amp; Drawings ({{ $item->getMedia('attachments')->count() }}):
+                                    </p>
+                                    <div class="flex flex-wrap gap-2.5">
+                                        @foreach($item->getMedia('attachments') as $att)
+                                            <a href="{{ $att->getUrl() }}" target="_blank"
+                                               class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:border-amber-400 text-xs text-gray-800 hover:text-amber-950 shadow-2xs transition-colors">
+                                                <i class="fa-solid {{ str_starts_with($att->mime_type ?? '', 'image/') ? 'fa-file-image text-emerald-600' : 'fa-file-pdf text-red-600' }} text-sm"></i>
+                                                <span class="font-semibold">{{ $att->file_name }}</span>
+                                                <span class="text-[10px] text-gray-400 font-mono">({{ $att->human_readable_size }})</span>
+                                                <i class="fa-solid fa-download text-[10px] text-gray-400 ml-1"></i>
+                                            </a>
                                         @endforeach
                                     </div>
                                 </div>

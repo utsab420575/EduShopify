@@ -77,10 +77,23 @@ class RfqService
                 'delivery_address'           => $data['delivery_address'] ?? null,
                 'allow_partial_quotation'    => $data['allow_partial_quotation'] ?? true,
                 'allow_alternative_products' => $data['allow_alternative_products'] ?? true,
-                'quotation_deadline'         => $data['quotation_deadline'] ?? $rfq?->quotation_deadline,
-                'qna_deadline'               => $data['qna_deadline'] ?? null,
+                'quotation_deadline'         => $quotationDeadline = $data['quotation_deadline'] ?? $rfq?->quotation_deadline,
+                // No longer buyer-facing (RFQ questions/answers cover that
+                // need now) — keep whatever's already stored, or derive a
+                // sensible default from the quotation deadline the first
+                // time one is set, instead of leaving it null forever.
+                'qna_deadline'               => ! empty($data['qna_deadline'])
+                    ? $data['qna_deadline']
+                    : ($rfq?->qna_deadline ?? $this->defaultQnaDeadline($quotationDeadline)),
                 'expected_delivery_date'     => $data['expected_delivery_date'] ?? null,
                 'current_step'               => isset($data['current_step']) ? (int) $data['current_step'] : ($rfq?->current_step ?? 1),
+                // Forward-only — never let an autosave regress this even if
+                // the client sends a lower value (e.g. a stale tab reloaded
+                // after the buyer progressed further in another tab).
+                'max_completed_step'         => max(
+                    isset($data['max_completed_step']) ? (int) $data['max_completed_step'] : 1,
+                    $rfq?->max_completed_step ?? 1
+                ),
             ];
 
             if ($rfq) {
@@ -193,8 +206,10 @@ class RfqService
                 'delivery_address' => array_key_exists('delivery_address', $data) ? $data['delivery_address'] : $rfq->delivery_address,
                 'allow_partial_quotation' => $data['allow_partial_quotation'] ?? $rfq->allow_partial_quotation,
                 'allow_alternative_products' => $data['allow_alternative_products'] ?? $rfq->allow_alternative_products,
-                'quotation_deadline' => $data['quotation_deadline'] ?? $rfq->quotation_deadline,
-                'qna_deadline' => array_key_exists('qna_deadline', $data) ? $data['qna_deadline'] : $rfq->qna_deadline,
+                'quotation_deadline' => $quotationDeadline = $data['quotation_deadline'] ?? $rfq->quotation_deadline,
+                'qna_deadline' => ! empty($data['qna_deadline'])
+                    ? $data['qna_deadline']
+                    : ($rfq->qna_deadline ?? $this->defaultQnaDeadline($quotationDeadline)),
                 'expected_delivery_date' => array_key_exists('expected_delivery_date', $data) ? $data['expected_delivery_date'] : $rfq->expected_delivery_date,
             ];
 
@@ -447,6 +462,38 @@ class RfqService
         }
     }
 
+    /**
+     * Q&A deadline is no longer buyer-facing (the RFQ's own Q&A/messaging
+     * covers that need), but rfq_questions still needs *some* cutoff to
+     * mean anything — default to one day before the quotation deadline,
+     * or skip it if that would already be in the past.
+     */
+    private function defaultQnaDeadline(mixed $quotationDeadline): ?string
+    {
+        if (! $quotationDeadline) {
+            return null;
+        }
+
+        $deadline = $quotationDeadline instanceof \Carbon\Carbon
+            ? $quotationDeadline->copy()
+            : \Carbon\Carbon::parse($quotationDeadline);
+
+        $default = $deadline->subDay();
+
+        return $default->isFuture() ? $default->toDateTimeString() : null;
+    }
+
+    /**
+     * specs[] entries the wizard writes for its own bookkeeping (which item
+     * modes/pages, like requirement items or their extra categories, this
+     * item belongs to) rather than as a buyer-visible custom specification.
+     * The "Add Custom Product"/"Custom Specifications" UI deliberately never
+     * shows or resubmits these, so syncItems() must re-attach whichever of
+     * them already existed instead of letting an unrelated autosave/edit
+     * silently erase them (see RequirementController::buildSpecs()).
+     */
+    private const RESERVED_SPEC_NAMES = ['__is_requirement', '__category_ids'];
+
     private function syncItems(Rfq $rfq, array $items): void
     {
         $keepIds = [];
@@ -459,6 +506,22 @@ class RfqService
                     $rawSpecs,
                     fn ($s) => is_array($s) && (!empty(trim((string) ($s['name'] ?? ''))) || !empty(trim((string) ($s['value'] ?? ''))))
                 ));
+            }
+
+            $row = null;
+
+            if (! empty($item['id'])) {
+                $row = RfqItem::where('rfq_id', $rfq->id)->find($item['id']);
+            }
+
+            if ($row && is_array($row->specs)) {
+                $incomingNames = collect($cleanSpecs ?? [])->pluck('name')->all();
+                foreach ($row->specs as $existingSpec) {
+                    $name = is_array($existingSpec) ? ($existingSpec['name'] ?? '') : '';
+                    if (in_array($name, self::RESERVED_SPEC_NAMES, true) && ! in_array($name, $incomingNames, true)) {
+                        $cleanSpecs[] = $existingSpec;
+                    }
+                }
             }
 
             $attributes = [
@@ -475,12 +538,6 @@ class RfqService
                 'specs'                 => !empty($cleanSpecs) ? $cleanSpecs : null,
                 'sort_order'            => $i,
             ];
-
-            $row = null;
-
-            if (! empty($item['id'])) {
-                $row = RfqItem::where('rfq_id', $rfq->id)->find($item['id']);
-            }
 
             if ($row) {
                 $row->update($attributes);

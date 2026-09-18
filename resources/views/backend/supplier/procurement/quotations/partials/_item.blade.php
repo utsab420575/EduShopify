@@ -23,8 +23,8 @@
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700">Buyer Requested</span>
                 <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                      :class="rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200'"
-                      x-text="rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'Marketplace Product' : 'Custom Requirement'">
+                      :class="rfqItemsById[item.rfq_item_id]?.is_requirement ? 'bg-amber-50 text-amber-900 border border-amber-300' : (rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200')"
+                      x-text="rfqItemsById[item.rfq_item_id]?.is_requirement ? 'Requirement (Quotation Only)' : (rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'Marketplace Product' : 'Custom Product')">
                 </span>
             </div>
             <div class="text-right shrink-0 bg-white px-2.5 py-1 rounded-md border border-slate-200/80 shadow-2xs">
@@ -94,6 +94,26 @@
                             <span class="text-indigo-600 font-semibold" x-text="(spec.name || 'Spec') + ':'"></span>
                             <span class="font-bold text-gray-900" x-text="spec.value || '—'"></span>
                         </span>
+                    </template>
+                </div>
+            </div>
+        {{-- Buyer's Reference Attachments --}}
+        <template x-if="rfqItemsById[item.rfq_item_id]?.attachments && rfqItemsById[item.rfq_item_id]?.attachments.length > 0">
+            <div class="mt-2.5 pt-2.5 border-t border-slate-200/60">
+                <p class="text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-paperclip text-amber-600 text-[11px]"></i>
+                    Buyer's Reference Files &amp; Drawings:
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="att in rfqItemsById[item.rfq_item_id]?.attachments" :key="att.id">
+                        <a :href="att.url" target="_blank"
+                           class="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md bg-white border border-gray-200 text-gray-700 hover:border-amber-400 hover:text-amber-950 shadow-2xs transition-colors">
+                            <i class="fa-solid text-xs text-gray-400"
+                               :class="att.is_image ? 'fa-file-image text-emerald-500' : 'fa-file-pdf text-red-500'"></i>
+                            <span class="font-medium text-gray-800" x-text="att.name"></span>
+                            <span class="text-[10px] text-gray-400 font-mono" x-text="'(' + att.size + ')'"></span>
+                            <i class="fa-solid fa-download text-[9px] text-gray-400 ml-0.5"></i>
+                        </a>
                     </template>
                 </div>
             </div>

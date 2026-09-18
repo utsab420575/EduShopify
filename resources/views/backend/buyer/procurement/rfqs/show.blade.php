@@ -85,7 +85,7 @@
                             </div>
                             @if($vt?->code === 'open_matching' && $rfq->targetFilters->first())
                                 @php($tf = $rfq->targetFilters->first())
-                                <div class="flex justify-between"><dt class="text-gray-500">Category Filter</dt><dd class="text-gray-900 font-medium">{{ $tf->category?->name ?? 'Any category' }}</dd></div>
+                                <div class="flex justify-between"><dt class="text-gray-500">Category Filter</dt><dd class="text-gray-900 font-medium">{{ $tf->category?->name ?? 'All Categories (Open Broadcast)' }}</dd></div>
                                 <div class="flex justify-between">
                                     <dt class="text-gray-500">Location Match</dt>
                                     <dd class="text-gray-900 font-medium">
@@ -142,9 +142,22 @@
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
-                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 {{ $item->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
-                                        {{ $item->listing_id ? 'Marketplace Product' : 'Custom Requirement' }}
-                                    </span>
+                                    @if($item->isRequirement())
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-amber-50 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                            <i class="fa-solid fa-file-invoice text-amber-700 text-[9px]"></i>
+                                            Requirement (Quotation Only)
+                                        </span>
+                                    @elseif($item->listing_id)
+                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                            <i class="fa-solid fa-store text-emerald-600 text-[9px]"></i>
+                                            Marketplace Product
+                                        </span>
+                                    @else
+                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-gray-100 text-gray-700 border border-gray-200 flex items-center gap-1">
+                                            <i class="fa-solid fa-box-open text-gray-400 text-[9px]"></i>
+                                            Custom Product
+                                        </span>
+                                    @endif
                                 </div>
                                 <p class="text-xs text-gray-400 mt-0.5">{{ $item->category?->name ?? 'No category selected' }}</p>
                                 @if($item->description)<p class="text-xs text-gray-500 mt-1.5">{{ $item->description }}</p>@endif
@@ -161,7 +174,7 @@
                                 <p class="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Est. / Unit</p>
                             </div>
                             <div class="text-center">
-                                <p class="text-sm font-bold text-gray-900">{{ $item->attributeValues->count() }}</p>
+                                <p class="text-sm font-bold text-gray-900">{{ $item->attributeValues->count() + count(is_array($item->specs) ? array_filter($item->specs, fn($s) => ($s['name'] ?? '') !== '__is_requirement') : []) }}</p>
                                 <p class="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Specs</p>
                             </div>
                         </div>
@@ -174,6 +187,38 @@
                                         <span class="text-gray-900 font-medium text-right truncate">{{ $value->formattedValue() }}</span>
                                     </div>
                                 @endforeach
+                            </div>
+                        @endif
+
+                        @if(is_array($item->specs))
+                            @php($customSpecs = array_filter($item->specs, fn($s) => is_array($s) && ($s['name'] ?? '') !== '__is_requirement'))
+                            @if(!empty($customSpecs))
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
+                                    @foreach($customSpecs as $cs)
+                                        <div class="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-gray-50">
+                                            <span class="text-gray-500 truncate">{{ $cs['name'] ?? '' }}</span>
+                                            <span class="text-gray-900 font-medium text-right truncate">{{ $cs['value'] ?? '' }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @endif
+
+                        @if($item->relationLoaded('media') ? $item->media->isNotEmpty() : $item->getMedia('attachments')->isNotEmpty())
+                            <div class="mt-3 pt-3 border-t border-gray-100">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-paperclip text-amber-600"></i> Reference Attachments ({{ $item->getMedia('attachments')->count() }})
+                                </p>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($item->getMedia('attachments') as $media)
+                                        <a href="{{ $media->getUrl() }}" target="_blank"
+                                           class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 border border-gray-200 hover:border-amber-400 text-xs text-gray-700 hover:text-amber-900 transition-colors">
+                                            <i class="fa-solid {{ str_starts_with($media->mime_type ?? '', 'image/') ? 'fa-file-image text-emerald-600' : 'fa-file-pdf text-red-600' }} text-[11px]"></i>
+                                            <span class="truncate max-w-[140px]">{{ $media->file_name }}</span>
+                                            <span class="text-[10px] text-gray-400 font-mono">({{ $media->human_readable_size }})</span>
+                                        </a>
+                                    @endforeach
+                                </div>
                             </div>
                         @endif
                     </div>
