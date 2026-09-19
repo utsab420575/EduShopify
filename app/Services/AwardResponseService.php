@@ -7,6 +7,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\User;
 use App\Notifications\DashboardNotification;
+use App\Services\QuotationActivityService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,10 @@ use Illuminate\Validation\ValidationException;
  */
 class AwardResponseService
 {
+    public function __construct(private QuotationActivityService $quotationActivities)
+    {
+    }
+
     public function accept(Award $award, ?string $note = null): Award
     {
         return DB::transaction(function () use ($award, $note) {
@@ -39,6 +44,8 @@ class AwardResponseService
 
             $award->rfq()->update(['status' => 'awarded', 'awarded_at' => now()]);
             $award->quotation()->update(['status' => 'awarded', 'decision_at' => now()]);
+
+            $this->quotationActivities->record($award->quotation()->first(), 'accepted', $note);
 
             $this->createPurchaseOrder($award);
 

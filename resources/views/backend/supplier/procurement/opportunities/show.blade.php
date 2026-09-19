@@ -9,11 +9,11 @@
         <x-slot:actions>
             @if($existingQuotation)
                 <a href="{{ route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-invoice"></i> View My Quotation ({{ $existingQuotation->quotation_number }})
+                    <i class="fa-solid fa-sack-dollar"></i> View My Quotation ({{ $existingQuotation->quotation_number }})
                 </a>
             @else
                 <a href="{{ route('supplier.quotations.create', $rfq) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5">
-                    <i class="fa-solid fa-paper-plane"></i> Submit Quotation
+                    <i class="fa-solid fa-sack-dollar"></i> Submit Quotation
                 </a>
                 @if($queueRow && $queueRow->status !== 'ignored')
                     <button x-data @click="$dispatch('open-modal-decline-opportunity')" class="text-xs font-semibold px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
@@ -288,27 +288,27 @@
             <x-backend.form-card title="Take Action">
                 @if($existingQuotation && $existingQuotation->status === 'draft')
                     <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
-                        <i class="fa-solid fa-file-pen text-gray-500 text-2xl mb-2"></i>
+                        <i class="fa-solid fa-sack-dollar text-amber-500 text-2xl mb-2"></i>
                         <h4 class="text-sm font-bold text-gray-900">Draft In Progress</h4>
                         <p class="text-xs text-gray-600 mt-1 mb-3">Continue and submit your quotation before the deadline.</p>
-                        <a href="{{ route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg inline-block">
-                            Continue Draft
+                        <a href="{{ route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-sack-dollar"></i> Continue Draft
                         </a>
                     </div>
                 @elseif($existingQuotation)
                     <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-200 text-center">
-                        <i class="fa-solid fa-circle-check text-indigo-600 text-2xl mb-2"></i>
+                        <i class="fa-solid fa-sack-dollar text-emerald-600 text-2xl mb-2"></i>
                         <h4 class="text-sm font-bold text-gray-900">Quotation Submitted</h4>
                         <p class="text-xs text-gray-600 mt-1 mb-3">You quoted {{ $existingQuotation->currency_code }} {{ number_format($existingQuotation->grand_total, 2) }}</p>
-                        <a href="{{ route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg inline-block">
-                            View Quotation
+                        <a href="{{ route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-sack-dollar"></i> View Quotation
                         </a>
                     </div>
                 @else
                     <div class="text-center p-4">
                         <p class="text-xs text-gray-500 mb-4">Review all specifications and submit your best price proposal before the deadline.</p>
                         <a href="{{ route('supplier.quotations.create', $rfq) }}" class="btn-primary text-sm font-bold w-full py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm">
-                            <i class="fa-solid fa-paper-plane"></i> Submit Quotation
+                            <i class="fa-solid fa-sack-dollar"></i> Submit Quotation
                         </a>
                     </div>
                 @endif

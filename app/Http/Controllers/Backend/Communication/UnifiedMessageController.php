@@ -10,8 +10,12 @@ use App\Http\Requests\Messaging\UpdatePreferencesRequest;
 use App\Models\Account;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Quotation;
+use App\Models\Rfq;
 use App\Models\UserMessagingPreference;
 use App\Services\MessagingService;
+use App\Services\QuotationActivityService;
+use App\Services\SupplierRfqActionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -20,8 +24,44 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class UnifiedMessageController extends Controller
 {
     public function __construct(
-        protected MessagingService $messaging
+        protected MessagingService $messaging,
+        protected SupplierRfqActionService $rfqActions,
+        protected QuotationActivityService $quotationActivities,
     ) {}
+
+    /**
+     * Logs the RFQ/quotation-side engagement signal a message implies —
+     * a supplier messaging about an RFQ ("messaged"), or either party
+     * messaging about a quotation ("buyer_messaged"/"supplier_replied").
+     * Every other conversation context (general/listing/support/purchase
+     * order) is untouched.
+     */
+    private function recordRfqOrQuotationMessageActivity(Conversation $conversation, Account $senderAccount): void
+    {
+        if ($conversation->context_type === 'rfq' && $conversation->context_id) {
+            if ($senderAccount->hasActiveCapability('supplier')) {
+                $rfq = Rfq::find($conversation->context_id);
+                if ($rfq) {
+                    $this->rfqActions->record($rfq, $senderAccount, 'messaged');
+                }
+            }
+
+            return;
+        }
+
+        if ($conversation->context_type === 'quotation' && $conversation->context_id) {
+            $quotation = Quotation::with('rfq')->find($conversation->context_id);
+            if (! $quotation) {
+                return;
+            }
+
+            if ($senderAccount->id === $quotation->supplier_account_id) {
+                $this->quotationActivities->record($quotation, 'supplier_replied');
+            } elseif ($senderAccount->id === $quotation->rfq->buyer_account_id) {
+                $this->quotationActivities->record($quotation, 'buyer_messaged');
+            }
+        }
+    }
 
     /**
      * Display the main messaging interface or return JSON list of conversations.
@@ -132,6 +172,8 @@ class UnifiedMessageController extends Controller
                 $request->string('initial_message')->toString()
             );
         }
+
+        $this->recordRfqOrQuotationMessageActivity($conversation, $account);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -251,6 +293,8 @@ class UnifiedMessageController extends Controller
             $request->file('attachments') ?: [],
             $request->integer('reply_to_message_id') ?: null
         );
+
+        $this->recordRfqOrQuotationMessageActivity($conversation, $account);
 
         $serialized = $this->serializeSingleMessage($message, $user->id, $account->id);
 

@@ -10,12 +10,28 @@ use App\Models\User;
 
 class RfqOpportunityService
 {
+    public function __construct(private SupplierRfqActionService $actions)
+    {
+    }
+
     public function markSeen(Rfq $rfq, Account $supplierAccount): void
     {
         RfqSupplierQueue::where('rfq_id', $rfq->id)
             ->where('supplier_account_id', $supplierAccount->id)
             ->whereNull('seen_at')
             ->update(['seen_at' => now(), 'status' => 'seen']);
+
+        $this->actions->record($rfq, $supplierAccount, 'viewed');
+    }
+
+    /**
+     * Supplier flags active interest in an RFQ (spec's "Interested" action).
+     * Purely a tracking signal — unlike decline(), it does not touch
+     * rfq_supplier_queue's gating status.
+     */
+    public function markInterested(Rfq $rfq, Account $supplierAccount): void
+    {
+        $this->actions->record($rfq, $supplierAccount, 'interested');
     }
 
     public function askQuestion(Rfq $rfq, Account $supplierAccount, User $user, string $question, bool $isPublic = true): RfqQuestion
@@ -40,5 +56,7 @@ class RfqOpportunityService
         RfqSupplierQueue::where('rfq_id', $rfq->id)
             ->where('supplier_account_id', $supplierAccount->id)
             ->update(['status' => 'ignored', 'decline_reason' => $reason]);
+
+        $this->actions->record($rfq, $supplierAccount, 'not_interested', $reason);
     }
 }

@@ -51,6 +51,7 @@ class EnsureSupplierHasPlan
             return $next($request);
         }
 
-        return redirect()->route('supplier.pricing');
+        return redirect()->route('supplier.pricing')
+            ->with('warning', 'Choose a subscription plan to view RFQ opportunities and submit quotations.');
     }
 }

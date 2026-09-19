@@ -17,6 +17,8 @@ use App\Models\Rfq;
 use App\Models\RfqSupplierQueue;
 use App\Models\User;
 use App\Notifications\DashboardNotification;
+use App\Services\QuotationActivityService;
+use App\Services\SupplierRfqActionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -37,6 +39,12 @@ use Illuminate\Validation\ValidationException;
  */
 class QuotationService
 {
+    public function __construct(
+        private SupplierRfqActionService $supplierRfqActions,
+        private QuotationActivityService $quotationActivities,
+    ) {
+    }
+
     public function saveDraft(Rfq $rfq, Account $supplierAccount, User $user, array $data, ?Quotation $quotation = null): Quotation
     {
         return DB::transaction(function () use ($rfq, $supplierAccount, $user, $data, $quotation) {
@@ -117,6 +125,9 @@ class QuotationService
                 ->where('supplier_account_id', $quotation->supplier_account_id)
                 ->update(['status' => 'quotation_submitted']);
 
+            $this->supplierRfqActions->record($rfq, $quotation->supplierAccount, 'quoted');
+            $this->quotationActivities->record($quotation, 'submitted');
+
             $this->notifyBuyer($rfq, "New quotation received for \"{$rfq->title}\".", $this->buyerRfqUrl($rfq));
 
             return $quotation;
@@ -172,6 +183,8 @@ class QuotationService
 
             $quotation = $quotation->fresh(['items.attributeValues']);
             $this->snapshotRevision($quotation, $user ?? $quotation->submittedBy, $data['change_summary'] ?? null);
+
+            $this->quotationActivities->record($quotation, 'quotation_updated', $data['change_summary'] ?? null);
 
             $this->notifyBuyer($quotation->rfq, "The quotation for \"{$quotation->rfq->title}\" was revised by the supplier.", $this->buyerRfqUrl($quotation->rfq));
 

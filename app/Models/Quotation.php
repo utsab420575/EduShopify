@@ -103,6 +103,14 @@ class Quotation extends Model
         return $this->hasMany(QuotationRevisionRequest::class, 'quotation_id');
     }
 
+    /**
+     * Append-only lifecycle/communication timeline — see [[quotation_activities]].
+     */
+    public function activities(): HasMany
+    {
+        return $this->hasMany(QuotationActivity::class, 'quotation_id');
+    }
+
     public function revisions(): HasMany
     {
         return $this->hasMany(QuotationRevision::class, 'quotation_id');

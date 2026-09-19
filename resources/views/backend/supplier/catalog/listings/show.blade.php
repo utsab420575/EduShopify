@@ -1,7 +1,7 @@
 @extends('backend.layouts.supplier')
 
 @section('title', $listing->name)
-@section('breadcrumb', 'Catalog / Listing Details')
+@section('breadcrumb', 'My Products / Product Details')
 
 @section('body')
 
@@ -11,12 +11,12 @@
     @endphp
 
     {{-- Page Header --}}
-    <x-backend.page-header title="{{ $listing->name }}" subtitle="Listing ID: {{ $listing->listing_number }}">
+    <x-backend.page-header title="{{ $listing->name }}" subtitle="Product ID: {{ $listing->listing_number }}">
         <x-slot:actions>
             <div class="flex items-center gap-2">
                 <a href="{{ route('supplier.catalog.listings.index') }}"
                    class="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition">
-                    <i class="fa-solid fa-arrow-left text-[10px]"></i> All Listings
+                    <i class="fa-solid fa-arrow-left text-[10px]"></i> All Products
                 </a>
 
                 @if($isLivePublic)
@@ -25,7 +25,7 @@
                         <i class="fa-solid fa-arrow-up-right-from-square"></i> View as Buyer
                     </a>
                 @else
-                    <button type="button" disabled title="Preview available once this listing is approved and published"
+                    <button type="button" disabled title="Preview available once this product is approved and published"
                             class="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-400 cursor-not-allowed flex items-center gap-1.5">
                         <i class="fa-solid fa-arrow-up-right-from-square"></i> View as Buyer
                     </button>
@@ -43,7 +43,7 @@
 
                 <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
                    class="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition">
-                    <i class="fa-solid fa-pen-to-square"></i> Edit Listing
+                    <i class="fa-solid fa-pen-to-square"></i> Edit Product
                 </a>
             </div>
         </x-slot:actions>
@@ -56,8 +56,8 @@
                 <i class="fa-solid fa-circle-info text-indigo-600 text-sm"></i>
             </div>
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-indigo-900">This listing is a draft</p>
-                <p class="text-xs text-indigo-700 mt-0.5">Complete your listing setup and click <strong>Submit for Approval</strong> when you're ready. It will then be reviewed by the platform team.</p>
+                <p class="text-sm font-semibold text-indigo-900">This product is a draft</p>
+                <p class="text-xs text-indigo-700 mt-0.5">Complete your product setup and click <strong>Submit for Approval</strong> when you're ready. It will then be reviewed by the platform team.</p>
             </div>
             <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
                class="flex-shrink-0 text-xs font-semibold text-indigo-700 hover:text-indigo-900 px-3 py-1.5 rounded-lg border border-indigo-300 hover:bg-indigo-100 transition">

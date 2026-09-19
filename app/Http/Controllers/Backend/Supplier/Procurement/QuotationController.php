@@ -12,6 +12,7 @@ use App\Models\Quotation;
 use App\Models\Rfq;
 use App\Models\Unit;
 use App\Services\QuotationService;
+use App\Services\SupplierRfqActionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -61,7 +62,7 @@ class QuotationController extends Controller
         ]);
     }
 
-    public function create(Rfq $rfq)
+    public function create(Rfq $rfq, SupplierRfqActionService $actions)
     {
         $this->authorize('create', [Quotation::class, $rfq]);
 
@@ -71,6 +72,8 @@ class QuotationController extends Controller
         if ($existing) {
             return redirect()->route('supplier.quotations.show', $existing);
         }
+
+        $actions->record($rfq, $account, 'preparing_quote');
 
         $rfq->load([
             'items.unit', 'items.category', 'items.listing.attributeValues.attribute', 'items.listing.media', 'items.media',

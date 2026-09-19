@@ -1,14 +1,14 @@
 @extends('backend.layouts.supplier')
 
-@section('title', 'Catalog Listings')
-@section('breadcrumb', 'Catalog / All Listings')
+@section('title', 'My Products')
+@section('breadcrumb', 'My Products / All Products')
 
 @section('body')
 
-    <x-backend.page-header title="Catalog Listings" subtitle="Manage your educational product and service listings, pricing, and availability.">
+    <x-backend.page-header title="My Products" subtitle="Manage your educational products and services, pricing, and availability.">
         <x-slot:actions>
             <a href="{{ route('supplier.catalog.listings.create') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> Add Listing
+                <i class="fa-solid fa-plus"></i> Add Product
             </a>
         </x-slot:actions>
     </x-backend.page-header>
@@ -18,7 +18,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
                 {{-- Left: Record Badge & Utility Actions --}}
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold text-gray-900">Listings</span>
+                    <span class="text-sm font-bold text-gray-900">Products</span>
                     <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{{ $listings->total() }} total</span>
                     <button type="button" onclick="window.print()" class="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 ml-2 transition">
                         <i class="fa-solid fa-print text-gray-500"></i> Print
@@ -60,10 +60,10 @@
 
         @if($listings->isEmpty())
             <x-slot:empty>
-                <x-backend.empty-state icon="fa-box-open" title="No listings found" description="Create your first catalog listing to start selling to institutions.">
+                <x-backend.empty-state icon="fa-box-open" title="No products found" description="Add your first product or service to start selling to institutions.">
                     <x-slot:actions>
                         <a href="{{ route('supplier.catalog.listings.create') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg inline-flex items-center gap-2">
-                            <i class="fa-solid fa-plus"></i> Add Listing
+                            <i class="fa-solid fa-plus"></i> Add Product
                         </a>
                     </x-slot:actions>
                 </x-backend.empty-state>
@@ -72,7 +72,7 @@
             <x-slot:head>
                 <tr>
                     <th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-12 text-center">SL</th>
-                    <x-backend.sortable-th column="name" label="Listing" :current-sort="$sort" :current-direction="$direction" />
+                    <x-backend.sortable-th column="name" label="Product" :current-sort="$sort" :current-direction="$direction" />
                     <x-backend.sortable-th column="type" label="Type" :current-sort="$sort" :current-direction="$direction" />
                     <x-backend.sortable-th column="category" label="Category" :current-sort="$sort" :current-direction="$direction" />
                     <x-backend.sortable-th column="price" label="Price" :current-sort="$sort" :current-direction="$direction" />
@@ -120,12 +120,12 @@
                             <a href="{{ route('supplier.catalog.listings.show', $item) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition" title="View details">
                                 <i class="fa-regular fa-eye text-xs"></i>
                             </a>
-                            <a href="{{ route('supplier.catalog.listings.edit', $item) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition" title="Edit listing">
+                            <a href="{{ route('supplier.catalog.listings.edit', $item) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition" title="Edit product">
                                 <i class="fa-regular fa-pen-to-square text-xs"></i>
                             </a>
-                            <form method="POST" action="{{ route('supplier.catalog.listings.destroy', $item) }}" onsubmit="return confirm('Are you sure you want to delete this listing?')">
+                            <form method="POST" action="{{ route('supplier.catalog.listings.destroy', $item) }}" onsubmit="return confirm('Are you sure you want to delete this product?')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 transition" title="Delete listing">
+                                <button type="submit" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 transition" title="Delete product">
                                     <i class="fa-regular fa-trash-can text-xs"></i>
                                 </button>
                             </form>

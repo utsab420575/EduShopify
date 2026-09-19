@@ -1,11 +1,11 @@
 @extends('backend.layouts.supplier')
 
-@section('title', 'Add Catalog Listing')
-@section('breadcrumb', 'Catalog / Add Listing')
+@section('title', 'Add Product')
+@section('breadcrumb', 'My Products / Add Product')
 
 @section('body')
 
-    <x-backend.page-header title="Add Listing" subtitle="Create a new product or service listing for the EduShopify education marketplace." />
+    <x-backend.page-header title="Add Product" subtitle="Create a new product or service for the EduShopify education marketplace." />
 
     @include('backend.supplier.catalog.listings.wizard', [
         'listing'         => null,

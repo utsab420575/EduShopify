@@ -41,15 +41,15 @@
         <div x-data="{ open: <?php echo e($groupActive(['supplier.catalog.*']) ? 'true' : 'false'); ?> }">
             <button @click="open = !open" class="sidebar-menu-item <?php echo e($groupActive(['supplier.catalog.*']) ? 'active' : ''); ?> w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 <?php echo e($groupActive(['supplier.catalog.*']) ? '' : 'border-transparent'); ?>">
                 <i class="fa-solid fa-box-open sidebar-menu-icon w-5 text-center"></i>
-                <span class="ml-3 flex-1 text-sm font-medium text-left">Catalog</span>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">My Products</span>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
             </button>
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
                 <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->any(['listing.view', 'supplier.catalog.listings.index'])): ?>
-                    <a href="<?php echo e(route('supplier.catalog.listings.index')); ?>" class="sidebar-submenu-item <?php echo e(($isActive('supplier.catalog.listings.*') && !$isActive('supplier.catalog.listings.create')) ? 'active' : ''); ?> block px-3 py-2 text-sm rounded-md">All Listings</a>
+                    <a href="<?php echo e(route('supplier.catalog.listings.index')); ?>" class="sidebar-submenu-item <?php echo e(($isActive('supplier.catalog.listings.*') && !$isActive('supplier.catalog.listings.create')) ? 'active' : ''); ?> block px-3 py-2 text-sm rounded-md">All Products</a>
                 <?php endif; ?>
                 <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->any(['listing.create', 'supplier.catalog.listings.create'])): ?>
-                    <a href="<?php echo e(route('supplier.catalog.listings.create')); ?>" class="sidebar-submenu-item <?php echo e($isActive('supplier.catalog.listings.create') ? 'active' : ''); ?> block px-3 py-2 text-sm rounded-md">Add Listing</a>
+                    <a href="<?php echo e(route('supplier.catalog.listings.create')); ?>" class="sidebar-submenu-item <?php echo e($isActive('supplier.catalog.listings.create') ? 'active' : ''); ?> block px-3 py-2 text-sm rounded-md">Add Product</a>
                 <?php endif; ?>
                 <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->any(['listing.view', 'listing.create', 'supplier.catalog.suggestions.index'])): ?>
                     <a href="<?php echo e(route('supplier.catalog.suggestions.index')); ?>" class="sidebar-submenu-item <?php echo e($isActive('supplier.catalog.suggestions.*') ? 'active' : ''); ?> block px-3 py-2 text-sm rounded-md">Suggestions</a>

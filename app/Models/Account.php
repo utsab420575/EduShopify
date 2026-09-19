@@ -299,6 +299,11 @@ class Account extends Model
         return $this->hasMany(RfqSupplierQueue::class, 'supplier_account_id');
     }
 
+    public function rfqActions(): HasMany
+    {
+        return $this->hasMany(SupplierRfqAction::class, 'supplier_account_id');
+    }
+
     public function receivedReviews(): HasMany
     {
         return $this->hasMany(Review::class, 'supplier_account_id');

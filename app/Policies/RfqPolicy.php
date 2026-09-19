@@ -182,4 +182,13 @@ class RfqPolicy
     {
         return $rfq->acceptsQuotations() && $this->viewAsOpportunity($user, $rfq);
     }
+
+    /**
+     * Marking interest reuses the same gate as decline() — a tracking signal,
+     * not a new capability.
+     */
+    public function markInterested(User $user, Rfq $rfq): bool
+    {
+        return $rfq->acceptsQuotations() && $this->viewAsOpportunity($user, $rfq);
+    }
 }

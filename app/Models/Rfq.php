@@ -212,6 +212,15 @@ class Rfq extends Model
         return $this->hasMany(RfqSupplierQueue::class, 'rfq_id');
     }
 
+    /**
+     * Full supplier-engagement history (viewed/interested/messaged/etc) —
+     * see [[supplier_rfq_actions]] / SupplierRfqAction.
+     */
+    public function supplierActions(): HasMany
+    {
+        return $this->hasMany(SupplierRfqAction::class, 'rfq_id');
+    }
+
     /* ── Interaction ────────────────────────────────────────────────────── */
 
     public function questions(): HasMany
@@ -265,11 +274,45 @@ class Rfq extends Model
         return $this->hasMany(Review::class, 'rfq_id');
     }
 
+    /**
+     * How far ahead of quotation_deadline an open RFQ counts as "expiring
+     * soon" for the supplier-facing lifecycle bucket below. Shared by
+     * scopeInLifecycleBucket() (DB-side, bulk filtering/counts) and
+     * lifecycleBucket() (PHP-side, single-row display) — keep both in sync
+     * if this changes.
+     */
+    public const LIFECYCLE_EXPIRING_SOON_HOURS = 120; // 5 days
+
     /* ── Scopes ─────────────────────────────────────────────────────────── */
 
     public function scopeOpen(Builder $query): Builder
     {
         return $query->where('status', 'open');
+    }
+
+    /**
+     * Supplier-facing lifecycle bucket, independent of anything a supplier
+     * has done with the RFQ: active / expiring_soon / expired / cancelled /
+     * closed. "Closed" groups every terminal non-expired, non-cancelled
+     * state (closed/awarded/award_pending/completed) since suppliers only
+     * care that it's no longer actionable, not which terminal state it's in.
+     */
+    public function scopeInLifecycleBucket(Builder $query, string $bucket): Builder
+    {
+        $soonCutoff = now()->addHours(self::LIFECYCLE_EXPIRING_SOON_HOURS);
+
+        return match ($bucket) {
+            'active' => $query->where('status', 'open')
+                ->where(fn ($q) => $q->whereNull('quotation_deadline')->orWhere('quotation_deadline', '>', $soonCutoff)),
+            'expiring_soon' => $query->where('status', 'open')
+                ->whereNotNull('quotation_deadline')
+                ->whereBetween('quotation_deadline', [now(), $soonCutoff]),
+            'expired' => $query->where(fn ($q) => $q->where('status', 'expired')
+                ->orWhere(fn ($q2) => $q2->where('status', 'open')->where('quotation_deadline', '<', now()))),
+            'cancelled' => $query->where('status', 'cancelled'),
+            'closed' => $query->whereIn('status', ['closed', 'awarded', 'award_pending', 'completed']),
+            default => $query,
+        };
     }
 
     public function scopeGlobalVisibility(Builder $query): Builder
@@ -326,6 +369,36 @@ class Rfq extends Model
     public function deadlinePassed(): bool
     {
         return $this->quotation_deadline !== null && $this->quotation_deadline->isPast();
+    }
+
+    /**
+     * Single-row mirror of scopeInLifecycleBucket() — see that scope's
+     * docblock for what each bucket means and the shared soon-threshold.
+     */
+    public function lifecycleBucket(): string
+    {
+        if ($this->status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        if (in_array($this->status, ['closed', 'awarded', 'award_pending', 'completed'], true)) {
+            return 'closed';
+        }
+
+        if ($this->status === 'expired' || ($this->status === 'open' && $this->deadlinePassed())) {
+            return 'expired';
+        }
+
+        if ($this->status === 'open') {
+            $soonCutoff = now()->addHours(self::LIFECYCLE_EXPIRING_SOON_HOURS);
+            if ($this->quotation_deadline !== null && $this->quotation_deadline->between(now(), $soonCutoff)) {
+                return 'expiring_soon';
+            }
+
+            return 'active';
+        }
+
+        return $this->status;
     }
 
     public function qnaClosed(): bool

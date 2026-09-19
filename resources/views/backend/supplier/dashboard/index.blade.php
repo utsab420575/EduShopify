@@ -52,7 +52,7 @@
         <x-backend.page-header title="Welcome back, {{ $user->name }}" subtitle="Here's your supplier activity overview.">
             <x-slot:actions>
                 <a href="{{ route('supplier.catalog.listings.create') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Add Listing
+                    <i class="fa-solid fa-plus"></i> Add Product
                 </a>
             </x-slot:actions>
         </x-backend.page-header>
@@ -70,9 +70,9 @@
             </div>
         @endif
 
-        {{-- Row 1: Catalog & Opportunities --}}
+        {{-- Row 1: Products & Opportunities --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <x-backend.stat-card label="Total Listings" :value="$totalListings" icon="fa-box-open" :href="route('supplier.catalog.listings.index')" />
+            <x-backend.stat-card label="Total Products" :value="$totalListings" icon="fa-box-open" :href="route('supplier.catalog.listings.index')" />
             <x-backend.stat-card label="Published" :value="$publishedListings" tone="success" icon="fa-circle-check" :href="route('supplier.catalog.listings.index', ['status' => 'approved'])" />
             <x-backend.stat-card label="Pending Approval" :value="$pendingListings" tone="warning" icon="fa-hourglass-half" :href="route('supplier.catalog.listings.index', ['status' => 'pending'])" />
             <x-backend.stat-card label="Available RFQs" :value="$availableOpportunities" tone="info" icon="fa-magnifying-glass-chart" :href="route('supplier.opportunities.index')" />

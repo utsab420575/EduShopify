@@ -114,6 +114,7 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::get('/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'show'])->name('show');
             Route::post('/{rfq}/questions', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'askQuestion'])->name('questions.store');
             Route::post('/{rfq}/decline', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'decline'])->name('decline');
+            Route::post('/{rfq}/interested', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'interested'])->name('interested');
         });
 
         // ── Quotations ────────────────────────────────────────────────────

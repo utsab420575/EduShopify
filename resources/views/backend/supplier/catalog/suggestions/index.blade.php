@@ -1,7 +1,7 @@
 @extends('backend.layouts.supplier')
 
 @section('title', 'Category & Attribute Suggestions')
-@section('breadcrumb', 'Catalog / Suggestions')
+@section('breadcrumb', 'My Products / Suggestions')
 
 @section('body')
 

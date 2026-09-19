@@ -18,6 +18,17 @@
     html, body { font-family: 'Inter', sans-serif; }
     [x-cloak] { display: none !important; }
     body { background: var(--page-bg); }
+    .fa-light, .fal {
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-font-smoothing: antialiased;
+        display: var(--fa-display, inline-block);
+        font-style: normal;
+        font-variant: normal;
+        line-height: 1;
+        text-rendering: auto;
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", sans-serif !important;
+        font-weight: 400 !important;
+    }
 </style>
 <?php echo $__env->yieldPushContent('styles'); ?>
 </head>

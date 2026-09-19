@@ -8,6 +8,7 @@ use App\Models\QuotationRevisionRequest;
 use App\Models\RfqShortlist;
 use App\Models\User;
 use App\Notifications\DashboardNotification;
+use App\Services\QuotationActivityService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +19,10 @@ use Illuminate\Validation\ValidationException;
  */
 class QuotationDecisionService
 {
+    public function __construct(private QuotationActivityService $quotationActivities)
+    {
+    }
+
     public function shortlist(Quotation $quotation, Account $buyerAccount, User $user, ?string $notes = null): RfqShortlist
     {
         $shortlist = RfqShortlist::updateOrCreate(
@@ -54,6 +59,8 @@ class QuotationDecisionService
 
             $quotation->update(['status' => 'revision_requested']);
 
+            $this->quotationActivities->record($quotation, 'buyer_requested_revision', $requestedChanges);
+
             $this->notifySupplier($quotation, "The buyer requested changes to your quotation {$quotation->quotation_number}.", route('supplier.quotations.revision.create', $quotation));
 
             return $request;
@@ -72,6 +79,8 @@ class QuotationDecisionService
             'rejected_at'        => now(),
         ]);
 
+        $this->quotationActivities->record($quotation, 'rejected', $reason);
+
         $this->notifySupplier($quotation, "Your quotation {$quotation->quotation_number} was not selected by the buyer.");
 
         return $quotation;
@@ -81,6 +90,7 @@ class QuotationDecisionService
     {
         if ($quotation->buyer_viewed_at === null) {
             $quotation->update(['buyer_viewed_at' => now()]);
+            $this->quotationActivities->record($quotation, 'viewed_by_buyer');
         }
     }
 
