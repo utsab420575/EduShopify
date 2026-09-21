@@ -2037,6 +2037,94 @@ instead of always using generic `Search...`.
 
 ---
 
+## 17.1 AJAX Live-Filtered Table (Tabs + Dropdown Checkbox Filters)
+
+A heavier variant of Section 17, for an index page with **more than one independent filter dimension** where reloading the whole page on every change feels sluggish. Reference implementations: `resources/views/backend/supplier/procurement/opportunities/` (source tabs + Status/Activity dropdowns) and `resources/views/backend/buyer/procurement/rfqs/` (visibility-type tabs + Status dropdown). Both share the exact same structure below — copy one of these two as the starting point rather than building from scratch.
+
+This is still **server-side, real `paginate()`** underneath (unlike §18.1's fully-client-loaded pattern) — only the *transport* is different: instead of a full page reload per filter change, the page fetches just the table via `fetch()` and swaps it in place.
+
+### Structure
+
+1. **Tabs row** — exactly one filter dimension, single-select, always visible, no "Apply" step:
+   ```text
+   bg-white rounded-xl border border-gray-200 p-3 mb-4
+   ```
+   Active tab: `btn-primary`. Inactive: `bg-gray-100 text-gray-700 hover:bg-gray-200`. Tabs carry the *other* filters' current values in their `href` (so switching tabs doesn't silently drop an active search/checkbox filter) but are otherwise plain links — not part of the AJAX form.
+
+2. **Filter bar** — one `<form>`, one AJAX-live surface, everything in it updates the table with no "Apply" button:
+   ```text
+   bg-white rounded-xl border border-gray-200 p-3.5 mb-4 shadow-xs
+   ```
+   Contents, left to right: a flexible search input (debounced 400ms), one or two dropdown checkbox-filter panels (see below), a "Clear Filters" button (hidden unless something's active), a spinner (hidden unless a request is in flight).
+
+3. **Dropdown checkbox filter** — for a multi-select dimension (status, activity, etc.), not a native `<select>`:
+   - Trigger button shows the dimension name plus a small `bg-indigo-600 text-white rounded-full` count badge (hidden at 0).
+   - Panel: `absolute z-20 mt-2 ... bg-white border border-gray-200 rounded-lg shadow-lg p-3`, one checkbox per option with a `data-live-filter` attribute (so the shared `change` listener catches it) and a right-aligned live count in a `data-count="{group}.{key}"` span.
+   - Panel footer: a `data-clear-group="{group}"` Clear link, plus a small "Updates instantly" hint.
+   - Toggle via a **local** `x-data="{ open: false }"` + `@click.outside="open = false"` — this is the one place per-filter Alpine state is appropriate (§0.3.3); it never needs to talk to anything outside itself.
+
+4. **Applied-filters pill strip** — directly below the filter bar, only visible when at least one filter is active: one pill per active search/checkbox value (`bg-{color}-50 text-{color}-700 border-{color}-200`, one color per filter *type* so they're visually distinguishable at a glance), each with its own `×` (`data-remove-filter="{type}" data-value="{value}"`), plus a single "Clear all" action on the right.
+
+5. **Table container** — a bare `<div id="{page}-results">` wrapping an `@include` of a **separate, self-contained table partial** (own `<table>`, own thead/tbody, own pagination footer). This partial must render correctly both on normal page load *and* as a bare AJAX fragment — never reference `$request`-derived Blade variables from the parent view; recompute badge/label maps locally in the partial itself (see both reference partials' `@php` block at the top).
+
+6. **Sortable column header inside the table partial** — same single-column toggle convention as elsewhere, but the link needs `data-ajax-link` so the shared delegated click handler intercepts it instead of a full navigation:
+   ```blade
+   <a href="{{ request()->fullUrlWithQuery(['sort' => $sortToggle, 'page' => null]) }}" data-ajax-link>
+   ```
+   Pagination links need the same treatment — wrap the `<x-backend.pagination>` block in a `data-ajax-link` div rather than tagging every link individually.
+
+### Controller contract
+
+One `index()` action serves both the full page and the AJAX fragment from the same query-building code — do not duplicate the filter logic into a second method:
+
+```php
+public function index(Request $request)
+{
+    // ...build $query from filter/status[]/q/sort exactly as for a normal page...
+
+    $counts = (clone $query)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+    // ^ counts computed BEFORE applying the checkbox filter itself — so ticking
+    //   a box never changes the numbers shown next to the OTHER boxes in the
+    //   same dropdown (supplier opportunities & buyer RFQs both do this).
+
+    $query->when(!empty($selectedStatuses), fn ($q) => $q->whereIn('status', $selectedStatuses));
+    $items = $query->paginate(10)->withQueryString();
+
+    if ($request->ajax()) {
+        return response()->json([
+            'table_html' => view('....partials._table', ['items' => $items, 'sort' => $sort])->render(),
+            'status_counts' => $counts,
+        ]);
+    }
+
+    return view('....index', [...] + compact('items', 'sort', 'counts', /* filter option arrays, selected values */));
+}
+```
+
+`$request->ajax()` checks the `X-Requested-With: XMLHttpRequest` header — the page's own `fetch()` call must set it explicitly; a plain browser navigation never sends it, so a direct link to a filtered URL still renders the full page correctly.
+
+### JS contract (vanilla, no Alpine.data() — this is page-level, not component state)
+
+One IIFE per page, attached to the filter `<form>`:
+
+- `change` on any `[data-live-filter]` checkbox → refresh immediately.
+- `input` on the search field → debounce 400ms → refresh.
+- Form `submit` (Enter key) → prevent default, refresh immediately (no debounce).
+- `fetch()` sets `X-Requested-With: XMLHttpRequest`, aborts any in-flight request first (`AbortController`), swaps `results.innerHTML = data.table_html`, applies fresh counts from `data.{group}_counts` into every `[data-count]` element, and does `history.replaceState` with the new URL — never a real navigation.
+- A delegated click listener on the results container catches `a[data-ajax-link]` (sort header, pagination links) and routes them through the same `navigate()` function instead of letting them reload the page.
+- Applied-filter pills and their `×` buttons, the per-dropdown "Clear", and the top-level "Clear Filters"/"Clear all" all mutate the form's checkboxes/search value directly, then call the same `refresh()` — there is no separate code path for "filter changed via a pill" vs "filter changed via a checkbox."
+
+### When table rows themselves need local Alpine state
+
+A per-row control (e.g. a mobile "More actions" dropdown) can use its own `x-data="{ menuOpen: false }"` directly inside the table partial. Alpine's own `MutationObserver` auto-initializes any new `x-data`/directives introduced by the `innerHTML` swap — no manual `Alpine.initTree()` call needed — as long as the swapped container stays a descendant of whatever outer `x-data` scope the row's action buttons need to reach (e.g. a page-level modal-controller component wrapping the whole page). The buyer RFQ table relies on exactly this: its per-row "Statistics" button calls a method on a page-level `x-data` from inside AJAX-swapped rows — this is standard, documented Alpine v3 behavior, but verify it in-browser after copying the pattern rather than assuming.
+
+### When NOT to use this pattern
+
+- Only one filter dimension and no live/instant requirement → plain Section 17 (full reload) is simpler and sufficient.
+- The full dataset is small and already loaded client-side for another reason (typeahead, duplicate-detection) → §18.1 instead.
+
+---
+
 # 18. Pagination
 
 Use the static reference pattern:

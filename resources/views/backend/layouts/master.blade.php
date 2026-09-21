@@ -38,22 +38,22 @@
 </head>
 <body class="min-h-screen text-gray-900 antialiased" x-data="{ mobileSidebar:false, notifOpen:false, profileOpen:false }">
 
-    <div class="fixed inset-0 flex overflow-hidden" style="background:var(--page-bg)">
+    <div class="flex min-h-screen" style="background:var(--page-bg)">
 
         <div x-show="mobileSidebar" x-transition.opacity @click="mobileSidebar=false"
              class="fixed inset-0 bg-gray-900/40 z-30 lg:hidden" x-cloak></div>
 
         @yield('sidebar')
 
-        <div class="flex-1 flex flex-col min-w-0 min-h-0">
+        <div class="flex-1 flex flex-col min-w-0">
 
             @yield('topbar')
 
-            <main class="flex-1 overflow-y-auto p-4 lg:p-6" style="background:var(--page-bg)">
+            <main class="flex-1 p-4 lg:p-6" style="background:var(--page-bg)">
                 @yield('content')
             </main>
 
-            <footer class="bg-white border-t px-4 lg:px-6 py-3 text-center shrink-0" style="border-color:var(--topbar-border)">
+            <footer class="bg-white border-t px-4 lg:px-6 py-3 text-center" style="border-color:var(--topbar-border)">
                 <p class="text-xs text-gray-400">&copy; {{ now()->year }} EduShopify. All rights reserved.</p>
             </footer>
 

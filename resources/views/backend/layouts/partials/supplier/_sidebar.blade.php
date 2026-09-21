@@ -5,7 +5,7 @@
     $user = $user ?? auth()->user();
 @endphp
 
-<aside class="w-64 flex flex-col border-r fixed lg:static inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:translate-x-0 bg-white"
+<aside class="w-64 flex flex-col border-r fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:translate-x-0 bg-white"
        style="border-color:var(--sidebar-border)"
        :class="mobileSidebar ? 'translate-x-0' : '-translate-x-full'">
 
@@ -67,8 +67,16 @@
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
             </button>
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
-                <a href="{{ route('supplier.opportunities.index') }}" class="sidebar-submenu-item {{ ($isActive('supplier.opportunities.index') && request('filter') !== 'invited') || $isActive('supplier.opportunities.show') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Available RFQs</a>
-                <a href="{{ route('supplier.opportunities.index', ['filter' => 'invited']) }}" class="sidebar-submenu-item {{ $isActive('supplier.opportunities.index') && request('filter') === 'invited' ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Invited RFQs</a>
+                @php
+                    $hasInterestedActivity = in_array('interested', (array) request('activity', []));
+                    $isOpportunitiesIndex = $isActive('supplier.opportunities.index');
+                    $isInterestedActive = $isOpportunitiesIndex && $hasInterestedActivity;
+                    $isInvitedActive = $isOpportunitiesIndex && request('filter') === 'invited' && !$hasInterestedActivity;
+                    $isAvailableActive = ($isOpportunitiesIndex && request('filter') !== 'invited' && !$hasInterestedActivity) || $isActive('supplier.opportunities.show');
+                @endphp
+                <a href="{{ route('supplier.opportunities.index') }}" class="sidebar-submenu-item {{ $isAvailableActive ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Available RFQs</a>
+                <a href="{{ route('supplier.opportunities.index', ['filter' => 'invited']) }}" class="sidebar-submenu-item {{ $isInvitedActive ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Invited RFQs</a>
+                <a href="{{ route('supplier.opportunities.index') }}?filter=all&sort=published_desc&activity%5B%5D=interested" class="sidebar-submenu-item {{ $isInterestedActive ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Interested RFQ</a>
             </div>
         </div>
         @endcanany

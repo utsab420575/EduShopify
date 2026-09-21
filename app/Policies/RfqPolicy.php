@@ -111,6 +111,35 @@ class RfqPolicy
             && ! in_array($rfq->status, ['cancelled', 'completed']);
     }
 
+    /**
+     * A draft never went anywhere — safe to delete outright. Anything past
+     * that has already been fanned out to suppliers (queue rows, possibly
+     * quotations) and goes through cancel() instead, which keeps a record.
+     */
+    public function delete(User $user, Rfq $rfq): bool
+    {
+        if (! $this->checkBuyerAccess($user, 'rfq.update_draft')) {
+            return false;
+        }
+
+        return $rfq->buyer_account_id === $user->accountMember?->account_id
+            && $rfq->status === 'draft';
+    }
+
+    /**
+     * Start a new draft pre-filled from an existing RFQ's items/details —
+     * available from any status the buyer owns, same gate as creating a
+     * brand new RFQ.
+     */
+    public function duplicate(User $user, Rfq $rfq): bool
+    {
+        if (! $this->checkBuyerAccess($user, 'rfq.create')) {
+            return false;
+        }
+
+        return $rfq->buyer_account_id === $user->accountMember?->account_id;
+    }
+
     public function compare(User $user, Rfq $rfq): bool
     {
         if (! $this->checkBuyerAccess($user, 'quotation.compare')) {

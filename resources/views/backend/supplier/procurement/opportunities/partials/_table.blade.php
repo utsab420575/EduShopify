@@ -67,9 +67,14 @@
                     @endphp
                     <tr class="hover:bg-gray-50/60 align-top">
                         <td class="px-4 py-3 whitespace-nowrap">
-                            <a href="{{ route('supplier.opportunities.show', $rfq) }}" class="text-xs font-mono font-bold text-indigo-600 hover:underline">
-                                {{ $rfq->rfq_number }}
-                            </a>
+                            <div class="flex items-center gap-1.5">
+                                <a href="{{ route('supplier.opportunities.show', $rfq) }}" class="text-xs font-mono font-bold text-indigo-600 hover:underline">
+                                    {{ $rfq->rfq_number }}
+                                </a>
+                                @if($statusBucket === 'expiring_soon')
+                                    <i class="fa-solid fa-clock animate-pulse text-yellow-500" title="Expiring soon"></i>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 max-w-[240px]">
                             <a href="{{ route('supplier.opportunities.show', $rfq) }}" class="text-sm font-semibold text-gray-900 hover:text-indigo-600 line-clamp-2">

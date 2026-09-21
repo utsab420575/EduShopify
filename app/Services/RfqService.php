@@ -778,7 +778,7 @@ class RfqService
         }
     }
 
-    private function generateRfqNumber(): string
+    public function generateRfqNumber(): string
     {
         $year   = date('Y');
         $latest = Rfq::withTrashed()->where('rfq_number', 'like', "RFQ-{$year}-%")->count();

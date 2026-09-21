@@ -11,7 +11,7 @@
         && $account->capabilityStatus('buyer') !== 'draft';
 @endphp
 
-<header class="h-20 shrink-0 bg-white border-b flex items-center justify-between px-4 lg:px-6" style="border-color:var(--topbar-border)">
+<header class="h-20 shrink-0 bg-white border-b flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20" style="border-color:var(--topbar-border)">
     <div class="flex items-center gap-3 min-w-0">
         <button @click="mobileSidebar = true" class="lg:hidden text-gray-500 p-2 -ml-2">
             <i class="fa-solid fa-bars"></i>

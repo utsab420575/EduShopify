@@ -122,11 +122,14 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'index'])->name('index');
             Route::get('/create/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'create'])->name('create');
             Route::post('/create/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'store'])->name('store');
+            Route::get('/create/{rfq}/auto-match', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'autoMatchListings'])->name('listings.auto-match');
             Route::get('/categories/{category}/attributes', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'categoryAttributes'])->name('category-attributes');
             Route::get('/listings/search', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'searchListings'])->name('listings.search');
             Route::get('/listings/{listing}/prefill', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'listingPrefill'])->name('listings.prefill');
+            Route::post('/create/{rfq}/autosave', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'autosaveCreate'])->name('autosave.create');
             Route::get('/{quotation}/edit', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'edit'])->name('edit');
             Route::put('/{quotation}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'update'])->name('update');
+            Route::put('/{quotation}/autosave', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'autosaveUpdate'])->name('autosave.update');
             Route::get('/{quotation}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'show'])->name('show');
             Route::post('/{quotation}/submit', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'submit'])->name('submit');
             Route::post('/{quotation}/withdraw', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'withdraw'])->name('withdraw');

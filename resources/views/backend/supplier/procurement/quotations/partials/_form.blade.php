@@ -2,6 +2,9 @@
     $quotation = $quotation ?? null;
     $revisionRequest = $revisionRequest ?? null;
     $isRevision = $isRevision ?? false;
+    $previousQuotations = $previousQuotations ?? collect();
+    $cloneSource = $cloneSource ?? null;
+    $cloneMatches = $cloneMatches ?? [];
     $isEdit = $quotation?->exists ?? false;
     $action = $isRevision
         ? route('supplier.quotations.revision.store', $quotation)
@@ -26,7 +29,31 @@
         'value_json' => $v->value_json,
     ];
 
-    $rfqItemsById = $rfq->items->keyBy('id')->map(function ($i) use ($toRawAttrValue) {
+    $allCategoryIds = collect($rfq->items)->flatMap(function ($i) {
+        $ids = [];
+        if (! empty($i->category_id)) {
+            $ids[] = (int) $i->category_id;
+        }
+        if (is_array($i->specs)) {
+            foreach ($i->specs as $s) {
+                if (is_array($s) && ($s['name'] ?? '') === '__category_ids') {
+                    foreach (explode(',', (string) ($s['value'] ?? '')) as $cid) {
+                        $cid = (int) trim($cid);
+                        if ($cid) {
+                            $ids[] = $cid;
+                        }
+                    }
+                }
+            }
+        }
+        return $ids;
+    })->unique()->filter()->values()->all();
+
+    $categoryNameMap = ! empty($allCategoryIds)
+        ? \App\Models\Category::whereIn('id', $allCategoryIds)->pluck('name', 'id')->all()
+        : [];
+
+    $rfqItemsById = $rfq->items->keyBy('id')->map(function ($i) use ($toRawAttrValue, $categoryNameMap) {
         $attrs = collect();
         // Plain array, not a Collection — attribute_id keys are integers, and
         // Collection::merge() runs them through array_merge(), which
@@ -59,10 +86,40 @@
             ?? $i->listing?->getFirstMediaUrl('gallery')
             ?: null;
 
+        $itemCategoryIds = [];
+        if (! empty($i->category_id)) {
+            $itemCategoryIds[] = (int) $i->category_id;
+        }
+        if (is_array($i->specs)) {
+            foreach ($i->specs as $s) {
+                if (is_array($s) && ($s['name'] ?? '') === '__category_ids') {
+                    foreach (explode(',', (string) ($s['value'] ?? '')) as $cid) {
+                        $cid = (int) trim($cid);
+                        if ($cid && ! in_array($cid, $itemCategoryIds, true)) {
+                            $itemCategoryIds[] = $cid;
+                        }
+                    }
+                }
+            }
+        }
+        $categoryNames = collect($itemCategoryIds)
+            ->map(fn ($cid) => $categoryNameMap[$cid] ?? null)
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($categoryNames)) {
+            $fallbackName = $i->category?->name ?? $i->listing?->mainCategory?->name;
+            if ($fallbackName) {
+                $categoryNames = [$fallbackName];
+            }
+        }
+
         return [
             'item_name' => $i->item_name,
             'category_id' => $i->category_id,
-            'category_name' => $i->category?->name ?? $i->listing?->mainCategory?->name,
+            'category_name' => $categoryNames[0] ?? ($i->category?->name ?? $i->listing?->mainCategory?->name),
+            'category_names' => $categoryNames,
             'quantity' => rtrim(rtrim((string) $i->quantity, '0'), '.'),
             'unit' => $i->unit?->symbol ?? $i->unit?->name ?? $i->custom_unit ?? $i->listing?->unit?->symbol ?? $i->listing?->unit?->name,
             'unit_id' => $i->unit_id,
@@ -78,7 +135,7 @@
                 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
             ])->values() : [],
             'estimated_unit_price' => $i->estimated_unit_price ? number_format((float)$i->estimated_unit_price, 2) : ($i->listing?->base_price ? number_format((float)$i->listing->base_price, 2) : null),
-            'specs' => is_array($i->specs) ? array_values(array_filter($i->specs, fn($s) => is_array($s) && ($s['name'] ?? '') !== '__is_requirement' && (!empty(trim((string)($s['name'] ?? ''))) || !empty(trim((string)($s['value'] ?? '')))))) : [],
+            'specs' => is_array($i->specs) ? array_values(array_filter($i->specs, fn($s) => is_array($s) && !in_array($s['name'] ?? '', ['__is_requirement', '__category_ids'], true) && (!empty(trim((string)($s['name'] ?? ''))) || !empty(trim((string)($s['value'] ?? '')))))) : [],
             'attributes' => $attrs->values(),
             'attributes_by_id' => $i->attributeValues->mapWithKeys(fn ($v) => [$v->attribute_id => $v->formattedValue()]),
             'attribute_values_raw' => $attrsRawById,
@@ -87,7 +144,7 @@
 
     if ($isEdit || $isRevision) {
         $existingRfqItemIds = $quotation->items->pluck('rfq_item_id')->filter()->all();
-        $initialItems = $quotation->items->where('is_optional_addon', false)->values()->map(fn ($item) => [
+        $initialItems = $quotation->items->where('is_optional_addon', false)->values()->map(fn ($item, $idx) => [
             'id' => $item->id, 'rfq_item_id' => $item->rfq_item_id,
             'offered_listing_id' => $item->offered_listing_id, 'offered_variant_id' => $item->offered_variant_id,
             'is_alternative' => (bool) $item->is_alternative,
@@ -100,7 +157,9 @@
                 'value_text' => $v->value_text, 'value_number' => $v->value_number,
                 'value_boolean' => $v->value_boolean, 'value_date' => $v->value_date, 'value_json' => $v->value_json,
             ]])->all(),
-            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [],
+            '_offerType' => $item->is_alternative ? 'alternative' : ($item->offered_listing_id ? 'existing' : 'custom'),
+            '_collapsed' => $idx > 0 && !$errors->has("items.$idx.*"), '_advancedOpen' => false,
+            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [], '_suggestedListing' => null,
         ])->values();
 
         $newRfqItems = $rfq->items->whereNotIn('id', $existingRfqItemIds)->map(fn ($item) => [
@@ -110,7 +169,9 @@
             'unit_id' => $item->unit_id, 'custom_unit' => $item->custom_unit,
             'unit_price' => null, 'tax_rate' => null, 'discount_amount' => null, 'lead_time_days' => null,
             'attribute_values' => (object) [],
-            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [],
+            '_offerType' => 'custom',
+            '_collapsed' => true, '_advancedOpen' => false,
+            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [], '_suggestedListing' => null,
         ]);
         $initialItems = $initialItems->concat($newRfqItems)->values();
 
@@ -121,15 +182,25 @@
             'lead_time_days' => $item->lead_time_days,
         ])->values();
     } else {
-        $initialItems = $rfq->items->map(fn ($item) => [
-            'id' => null, 'rfq_item_id' => $item->id,
-            'offered_listing_id' => null, 'offered_variant_id' => null, 'is_alternative' => false,
-            'item_name' => $item->item_name, 'description' => null, 'quantity' => (string) $item->quantity,
-            'unit_id' => $item->unit_id, 'custom_unit' => $item->custom_unit,
-            'unit_price' => null, 'tax_rate' => null, 'discount_amount' => null, 'lead_time_days' => null,
-            'attribute_values' => (object) [],
-            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [],
-        ])->values();
+        // "Start from a previous quotation" (?clone_from=) overlays matched
+        // pricing/terms onto the item seed below — name/quantity/category
+        // always stay tied to THIS rfq's own item, never copied from the source.
+        $initialItems = $rfq->items->values()->map(function ($item, $idx) use ($cloneMatches, $errors) {
+            $clone = $cloneMatches[$item->id] ?? null;
+
+            return [
+                'id' => null, 'rfq_item_id' => $item->id,
+                'offered_listing_id' => null, 'offered_variant_id' => null, 'is_alternative' => false,
+                'item_name' => $item->item_name, 'description' => $clone['description'] ?? null, 'quantity' => (string) $item->quantity,
+                'unit_id' => $item->unit_id, 'custom_unit' => $item->custom_unit,
+                'unit_price' => $clone['unit_price'] ?? null, 'tax_rate' => $clone['tax_rate'] ?? null,
+                'discount_amount' => $clone['discount_amount'] ?? null, 'lead_time_days' => $clone['lead_time_days'] ?? null,
+                'attribute_values' => (object) ($clone['attribute_values'] ?? []),
+                '_offerType' => 'custom',
+                '_collapsed' => $idx > 0 && !$errors->has("items.$idx.*"), '_advancedOpen' => false,
+                '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [], '_suggestedListing' => null,
+            ];
+        })->values();
 
         $initialAddons = collect();
     }
@@ -143,18 +214,28 @@
         addons: {{ $initialAddons->toJson() }},
         rfqItemsById: {{ $rfqItemsById->toJson() }},
         allowAlternativeProducts: {{ $rfq->allow_alternative_products ? 'true' : 'false' }},
-        currencyCode: '{{ old('currency_code', $quotation?->currency_code ?? $rfq->currency_code ?? 'USD') }}',
+        currencyCode: '{{ old('currency_code', $quotation?->currency_code ?? $cloneSource?->currency_code ?? $rfq->currency_code ?? 'USD') }}',
         shippingCharge: {{ (float) old('shipping_charge', $quotation?->shipping_charge ?? 0) }},
         categoryAttributesUrl: '{{ url('/supplier/quotations/categories') }}',
         listingsSearchUrl: '{{ route('supplier.quotations.listings.search') }}',
         listingsPrefillUrl: '{{ url('/supplier/quotations/listings') }}',
+        autoMatchUrl: '{{ route('supplier.quotations.listings.auto-match', $rfq) }}',
+        quotationId: {{ $isEdit ? $quotation->id : 'null' }},
+        isRevision: {{ $isRevision ? 'true' : 'false' }},
+        autosaveCreateUrl: '{{ route('supplier.quotations.autosave.create', $rfq) }}',
+        autosaveUpdateUrlBase: '{{ url('/supplier/quotations') }}',
+        csrfToken: '{{ csrf_token() }}',
+        initialStep: {{ $isEdit ? ($quotation->current_step ?? 1) : 1 }},
+        maxCompletedStep: {{ $isEdit ? ($quotation->max_completed_step ?? 1) : 1 }},
     })"
     x-init="init()"
 >
     @csrf
     @if($isRevision || $isEdit) @method('PUT') @endif
+    <input type="hidden" name="current_step" :value="currentStep">
+    <input type="hidden" name="max_completed_step" :value="maxCompletedStep">
 
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
         <div class="xl:col-span-8 space-y-6">
 
@@ -167,49 +248,163 @@
                 </div>
             @endif
 
-            <x-backend.form-card title="Requested Items" description="Respond to each RFQ item — use one of your listings, offer an alternative, or create a fully custom offer.">
-                <template x-for="(item, index) in items" :key="index">
-                    @include('backend.supplier.procurement.quotations.partials._item')
-                </template>
+            {{-- Buyer's overall deadlines — visible on every step, not just per-item --}}
+            <div class="flex items-center flex-wrap gap-x-5 gap-y-1 bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-xs">
+                <span class="flex items-center gap-1.5 text-gray-600">
+                    <i class="fa-regular fa-clock text-amber-500"></i>
+                    Quotation Deadline: <span class="font-semibold text-gray-900">{{ $rfq->quotation_deadline?->format('d M Y, h:i A') ?? '—' }}</span>
+                </span>
+                @if($rfq->expected_delivery_date)
+                    <span class="flex items-center gap-1.5 text-gray-600">
+                        <i class="fa-solid fa-truck-fast text-indigo-500"></i>
+                        Expected Delivery: <span class="font-semibold text-gray-900">{{ $rfq->expected_delivery_date->format('d M Y') }}</span>
+                    </span>
+                @endif
+            </div>
 
-                <button type="button" @click="addItem()" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Add Another Item
-                </button>
-            </x-backend.form-card>
+            {{-- ═══ Step tab bar ═══ --}}
+            @php
+                $quoteSteps = [
+                    1 => ['label' => 'Price Items', 'icon' => 'fa-tags'],
+                    2 => ['label' => 'Refine & Add-Ons', 'icon' => 'fa-sliders'],
+                    3 => ['label' => 'Terms & Submit', 'icon' => 'fa-circle-check'],
+                ];
+            @endphp
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div class="border-b border-gray-200 px-2">
+                    <nav class="flex gap-0 -mb-px overflow-x-auto" aria-label="Quotation steps">
+                        @foreach($quoteSteps as $num => $step)
+                            <button type="button" @click="setStep({{ $num }})"
+                                    :disabled="isStepLocked({{ $num }})"
+                                    :title="isStepLocked({{ $num }}) ? 'Complete the earlier steps first' : ''"
+                                    class="flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors focus:outline-none disabled:cursor-not-allowed"
+                                    :class="isStepLocked({{ $num }})
+                                        ? 'border-transparent text-gray-300'
+                                        : (currentStep === {{ $num }}
+                                            ? 'border-indigo-600 text-indigo-600'
+                                            : (stepValid({{ $num }}) ? 'border-emerald-500 text-emerald-600 hover:text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'))">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors"
+                                      :class="isStepLocked({{ $num }})
+                                          ? 'bg-gray-100 text-gray-300'
+                                          : (stepValid({{ $num }})
+                                              ? 'bg-emerald-500 text-white'
+                                              : (currentStep === {{ $num }} ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'))">
+                                    <i class="fa-solid fa-lock" x-show="isStepLocked({{ $num }})" x-cloak style="font-size:7px"></i>
+                                    <i class="fa-solid fa-check" x-show="!isStepLocked({{ $num }}) && stepValid({{ $num }})" x-cloak style="font-size:8px"></i>
+                                    <span x-show="!isStepLocked({{ $num }}) && !stepValid({{ $num }})">{{ $num }}</span>
+                                </span>
+                                <i class="fa-solid {{ $step['icon'] }} text-xs"></i>
+                                <span>{{ $step['label'] }}</span>
+                            </button>
+                        @endforeach
 
-            <x-backend.form-card title="Optional Add-Ons" description="Products or services you'd like to offer that the buyer didn't request — shown separately and never treated as a response to an RFQ item.">
-                <template x-for="(addon, index) in addons" :key="index">
-                    @include('backend.supplier.procurement.quotations.partials._addon')
-                </template>
-
-                <button type="button" @click="addAddon()" class="text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Add Optional Item
-                </button>
-            </x-backend.form-card>
-
-            <x-backend.form-card title="Commercial Proposal &amp; Terms">
-                <div class="space-y-4">
-                    @if($isRevision)
-                        <x-backend.textarea name="change_summary" label="What changed in this revision?" required :value="old('change_summary')" />
-                    @endif
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <x-backend.select name="currency_code" label="Currency" placeholder="Select currency">
-                            @foreach($currencies as $currency)
-                                <option value="{{ $currency->code }}" @selected(old('currency_code', $quotation?->currency_code ?? $rfq->currency_code) === $currency->code)>{{ $currency->code }} — {{ $currency->name }}</option>
-                            @endforeach
-                        </x-backend.select>
-                        <x-backend.input type="number" name="lead_time_days" label="Overall Lead Time (Days)" :value="old('lead_time_days', $quotation?->lead_time_days)" />
-                        <x-backend.input type="date" name="valid_until" label="Quotation Validity Date" :value="old('valid_until', optional($quotation?->valid_until)->format('Y-m-d'))" />
-                    </div>
-                    <x-backend.input type="number" name="shipping_charge" label="Shipping Charge" step="0.01" min="0" :value="old('shipping_charge', $quotation?->shipping_charge ?? 0)" />
-                    <x-backend.textarea name="proposal" label="Executive Summary / Proposal" :value="old('proposal', $quotation?->proposal)" placeholder="Explain your proposal, brand advantages, quality assurances..." />
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <x-backend.input name="warranty_terms" label="Warranty Terms" :value="old('warranty_terms', $quotation?->warranty_terms)" placeholder="e.g. 1 Year Standard" />
-                        <x-backend.input name="support_terms" label="Support Terms" :value="old('support_terms', $quotation?->support_terms)" placeholder="e.g. 24/7 Phone Support" />
-                        <x-backend.input name="payment_terms" label="Payment Terms" :value="old('payment_terms', $quotation?->payment_terms)" placeholder="e.g. Net 30" />
-                    </div>
+                        <div class="flex-1 flex items-center justify-end px-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-gray-50 border border-gray-200" x-show="quotationId || isSaving" x-cloak>
+                                <span class="w-1.5 h-1.5 rounded-full" :class="isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'"></span>
+                                <span x-text="isSaving ? 'Saving…' : 'Draft saved'"></span>
+                            </span>
+                            <p x-show="saveError" x-cloak class="text-xs text-red-600 ml-3" x-text="saveError"></p>
+                        </div>
+                    </nav>
                 </div>
-            </x-backend.form-card>
+
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-300" :style="'width:' + completionPercent + '%; background:var(--theme-primary, #4f46e5)'"></div>
+                    </div>
+                    <span class="text-xs font-bold text-gray-700 shrink-0" x-text="completionPercent + '% Complete'"></span>
+                </div>
+            </div>
+
+            {{-- ═══════ STEP 1 — Price Items ═══════ --}}
+            <div x-show="currentStep === 1" x-cloak class="space-y-6">
+                <x-backend.form-card title="Requested Items" description="Respond to each RFQ item — use one of your listings, offer an alternative, or create a fully custom offer. Only Unit Price is required; everything else can wait.">
+                    <div x-show="items.length > 1" x-cloak class="flex items-center gap-3 mb-4 -mt-1">
+                        <button type="button" @click="collapseAllItems()" class="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-compress"></i> Collapse All
+                        </button>
+                        <button type="button" @click="expandAllItems()" class="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-expand"></i> Expand All
+                        </button>
+                    </div>
+
+                    <template x-for="(item, index) in items" :key="index">
+                        @include('backend.supplier.procurement.quotations.partials._item')
+                    </template>
+
+                    <button type="button" @click="addItem()" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add Another Item
+                    </button>
+                </x-backend.form-card>
+
+                <div class="flex justify-end">
+                    <button type="button" @click="goNext(1)" class="btn-primary text-sm font-semibold px-5 py-2.5 rounded-lg flex items-center gap-2">
+                        Next: Refine &amp; Add-Ons <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            {{-- ═══════ STEP 2 — Refine & Add-Ons ═══════ --}}
+            <div x-show="currentStep === 2" x-cloak class="space-y-6">
+                <x-backend.form-card title="Refine Your Offer" description="Every item's already priced — optionally fine-tune specs, offer type, or bulk-fill from the buyer's own requirements before moving on.">
+                    <button type="button" @click="copyBuyerRequirementsToAll()" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
+                        <i class="fa-solid fa-copy"></i> Copy buyer's requirements to all items
+                    </button>
+                    <p class="text-xs text-gray-400 mt-2">Each item's "Advanced" section (offer type, listing, specifications) is still available on the Price Items step if you'd like to adjust it further.</p>
+                </x-backend.form-card>
+
+                <x-backend.form-card title="Optional Add-Ons" description="Products or services you'd like to offer that the buyer didn't request — shown separately and never treated as a response to an RFQ item.">
+                    <template x-for="(addon, index) in addons" :key="index">
+                        @include('backend.supplier.procurement.quotations.partials._addon')
+                    </template>
+
+                    <button type="button" @click="addAddon()" class="text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add Optional Item
+                    </button>
+                </x-backend.form-card>
+
+                <div class="flex justify-between">
+                    <button type="button" @click="setStep(1)" class="text-sm font-semibold px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left text-xs"></i> Back
+                    </button>
+                    <button type="button" @click="goNext(2)" class="btn-primary text-sm font-semibold px-5 py-2.5 rounded-lg flex items-center gap-2">
+                        Next: Terms &amp; Submit <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            {{-- ═══════ STEP 3 — Terms & Submit ═══════ --}}
+            <div x-show="currentStep === 3" x-cloak class="space-y-6">
+                <x-backend.form-card title="Commercial Proposal &amp; Terms">
+                    <div class="space-y-4">
+                        @if($isRevision)
+                            <x-backend.textarea name="change_summary" label="What changed in this revision?" required :value="old('change_summary')" />
+                        @endif
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <x-backend.select name="currency_code" label="Currency" placeholder="Select currency">
+                                @foreach($currencies as $currency)
+                                    <option value="{{ $currency->code }}" @selected(old('currency_code', $quotation?->currency_code ?? $cloneSource?->currency_code ?? $rfq->currency_code) === $currency->code)>{{ $currency->code }} — {{ $currency->name }}</option>
+                                @endforeach
+                            </x-backend.select>
+                            <x-backend.input type="number" name="lead_time_days" label="Overall Lead Time (Days)" :value="old('lead_time_days', $quotation?->lead_time_days ?? $cloneSource?->lead_time_days)" />
+                            <x-backend.input type="date" name="valid_until" label="Quotation Validity Date" :value="old('valid_until', optional($quotation?->valid_until)->format('Y-m-d'))" />
+                        </div>
+                        <x-backend.input type="number" name="shipping_charge" label="Shipping Charge" step="0.01" min="0" :value="old('shipping_charge', $quotation?->shipping_charge ?? 0)" />
+                        <x-backend.textarea name="proposal" label="Executive Summary / Proposal" :value="old('proposal', $quotation?->proposal ?? $cloneSource?->proposal)" placeholder="Explain your proposal, brand advantages, quality assurances..." />
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <x-backend.input name="warranty_terms" label="Warranty Terms" :value="old('warranty_terms', $quotation?->warranty_terms ?? $cloneSource?->warranty_terms)" placeholder="e.g. 1 Year Standard" />
+                            <x-backend.input name="support_terms" label="Support Terms" :value="old('support_terms', $quotation?->support_terms ?? $cloneSource?->support_terms)" placeholder="e.g. 24/7 Phone Support" />
+                            <x-backend.input name="payment_terms" label="Payment Terms" :value="old('payment_terms', $quotation?->payment_terms ?? $cloneSource?->payment_terms)" placeholder="e.g. Net 30" />
+                        </div>
+                    </div>
+                </x-backend.form-card>
+
+                <div class="flex justify-start">
+                    <button type="button" @click="setStep(2)" class="text-sm font-semibold px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left text-xs"></i> Back
+                    </button>
+                </div>
+            </div>
 
         </div>
 
@@ -250,12 +445,122 @@
             currencyCode: config.currencyCode,
             shippingCharge: config.shippingCharge,
 
+            quotationId: config.quotationId,
+            isSaving: false,
+            saveError: null,
+            currentStep: config.initialStep || 1,
+            // Forward-only ratchet: the furthest step tab reachable directly.
+            // Step 1 is always reachable; anything beyond stays locked until
+            // goNext() advances past it.
+            maxCompletedStep: config.maxCompletedStep || 1,
+            stepDefs: [{ num: 1 }, { num: 2 }, { num: 3 }],
+
+            isStepLocked(n) {
+                return n !== 1 && n > this.maxCompletedStep;
+            },
+            get completionPercent() {
+                return Math.round((Math.min(this.maxCompletedStep, this.stepDefs.length) / this.stepDefs.length) * 100);
+            },
+            stepValid(n) {
+                if (n === 1) {
+                    return this.items.length > 0 && this.items.every(i => parseFloat(i.unit_price) >= 0 && i.unit_price !== null && i.unit_price !== '');
+                }
+                if (n === 2) return true;
+                if (n === 3) return this.stepValid(1) && this.stepValid(2);
+                return true;
+            },
+            setStep(step) {
+                if (this.currentStep === step) return;
+                if (this.isStepLocked(step)) return;
+                this.currentStep = step;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (this.quotationId) this.autosave();
+            },
+            async goNext(n) {
+                if (!this.stepValid(n)) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'warning', title: 'Not quite ready', text: 'Every item needs a Unit Price before moving on.' });
+                    }
+                    this.items.forEach(item => {
+                        if (item.unit_price === null || item.unit_price === '') item._collapsed = false;
+                    });
+                    return;
+                }
+                this.currentStep = n + 1;
+                this.maxCompletedStep = Math.max(this.maxCompletedStep, n + 1);
+                const saved = await this.autosave();
+                if (!saved) {
+                    this.currentStep = n;
+                    return;
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+            // Every autosave/submit always serializes the *complete* items +
+            // addons arrays (never a "just this step" subset) — syncItems()
+            // on the backend deletes any QuotationItem row not present in the
+            // payload, so a partial send would silently drop other items.
+            async autosave() {
+                if (this.isRevision) return true;
+                this.isSaving = true;
+                this.saveError = null;
+                try {
+                    const url = this.quotationId ? (config.autosaveUpdateUrlBase + '/' + this.quotationId + '/autosave') : config.autosaveCreateUrl;
+                    const res = await fetch(url, {
+                        method: this.quotationId ? 'PUT' : 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrfToken, 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            items: this.items, addons: this.addons,
+                            currency_code: this.currencyCode, shipping_charge: this.shippingCharge,
+                            current_step: this.currentStep, max_completed_step: this.maxCompletedStep,
+                        }),
+                    });
+                    if (!res.ok) {
+                        this.saveError = 'Could not save your progress — check your connection and try again.';
+                        return false;
+                    }
+                    const data = await res.json();
+                    if (!this.quotationId && data.id) this.quotationId = data.id;
+                    return true;
+                } catch (e) {
+                    this.saveError = 'Could not save your progress — check your connection and try again.';
+                    return false;
+                } finally {
+                    this.isSaving = false;
+                }
+            },
+
             init() {
                 this.items.forEach(item => {
                     const buyerItem = this.rfqItemsById[item.rfq_item_id];
                     if (buyerItem) this.fetchItemAttributes(item, buyerItem.category_id);
                 });
+                this.loadAutoMatches();
             },
+
+            // One bulk lookup suggesting the supplier's own best-matching
+            // listing per RFQ item. Only offered as a suggestion the
+            // supplier accepts via "Use it" — never applied automatically —
+            // and only onto items still untouched (no price/listing yet),
+            // so a late-arriving response can't clobber in-progress edits.
+            loadAutoMatches() {
+                fetch(config.autoMatchUrl)
+                    .then(r => r.json())
+                    .then(matches => {
+                        this.items.forEach(item => {
+                            const match = matches[item.rfq_item_id];
+                            if (match && !item.offered_listing_id && !item.unit_price) {
+                                item._suggestedListing = match;
+                            }
+                        });
+                    })
+                    .catch(() => {});
+            },
+            useSuggestedListing(item) {
+                if (!item._suggestedListing) return;
+                this.selectListingForItem(item, { id: item._suggestedListing.listing_id, name: item._suggestedListing.name });
+                item._suggestedListing = null;
+            },
+            dismissSuggestedListing(item) { item._suggestedListing = null; },
 
             // "Copy buyer's specifications" checkbox above one item's
             // Specifications Comparison — fills that item's name,
@@ -288,26 +593,47 @@
                 });
             },
 
+            copyBuyerRequirementsToAll() {
+                this.items.forEach(item => this.applyCopyBuyerRequirements(item));
+            },
+
             addItem() {
+                // Accordion behaviour: collapse whatever's already there so the
+                // newly added item is the one thing left open to work on.
+                this.collapseAllItems();
                 this.items.push({
                     id: null, rfq_item_id: null, offered_listing_id: null, offered_variant_id: null, is_alternative: false,
                     item_name: '', description: '', quantity: '1', unit_id: null, custom_unit: null,
                     unit_price: null, tax_rate: null, discount_amount: null, lead_time_days: null,
-                    attribute_values: {}, _attrLoading: false, _attrGroups: [], _listingQuery: '', _listingResults: [], _variants: [],
+                    attribute_values: {}, _offerType: 'custom', _collapsed: false, _advancedOpen: false,
+                    _attrLoading: false, _attrGroups: [], _listingQuery: '', _listingResults: [], _variants: [], _suggestedListing: null,
                 });
             },
-            removeItem(index) { this.items.splice(index, 1); },
+            removeItem(index) {
+                this.items.splice(index, 1);
+                if (this.items.length === 1) this.items[0]._collapsed = false;
+            },
+
+            collapseAllItems() { this.items.forEach(i => { i._collapsed = true; }); },
+            expandAllItems() { this.items.forEach(i => { i._collapsed = false; }); },
 
             addAddon() {
                 this.addons.push({ id: null, item_name: '', description: '', quantity: '1', unit_id: null, unit_price: null, tax_rate: null, discount_amount: null, lead_time_days: null });
             },
             removeAddon(index) { this.addons.splice(index, 1); },
 
+            // _offerType is the explicit source of truth for which pill is
+            // selected — it used to be derived purely from is_alternative/
+            // offered_listing_id, which meant clicking "Use Existing Listing"
+            // was a no-op until a listing was actually picked (nothing set
+            // offered_listing_id yet), so the pill could never highlight and
+            // the search box never appeared. Storing intent directly fixes
+            // that; offered_listing_id is still what actually gets submitted.
             getOfferType(item) {
-                if (item.is_alternative) return 'alternative';
-                return item.offered_listing_id ? 'existing' : 'custom';
+                return item._offerType || (item.is_alternative ? 'alternative' : (item.offered_listing_id ? 'existing' : 'custom'));
             },
             setOfferType(item, type) {
+                item._offerType = type;
                 item.is_alternative = (type === 'alternative');
                 if (type === 'custom') {
                     item.offered_listing_id = null;

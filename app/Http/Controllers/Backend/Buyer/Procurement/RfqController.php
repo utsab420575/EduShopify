@@ -19,37 +19,79 @@ use App\Models\Unit;
 use App\Services\RfqService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class RfqController extends Controller
 {
     use InteractsWithBuyerAccount;
 
+    /**
+     * Visibility-type tabs — how the buyer chose to reach suppliers.
+     * Mirrors the supplier opportunities page's source tabs (§17.1 in
+     * docs/AI/design.md), just from the authoring side of the same
+     * visibility_type concept instead of the receiving side.
+     */
+    private const VISIBILITY_FILTER_OPTIONS = [
+        'all' => 'All',
+        'direct' => 'Direct',
+        'invited' => 'Invited',
+        'open_matching' => 'Open Matching',
+        'broadcast_all' => 'Broadcast',
+    ];
+
+    private const VALID_SORTS = ['created_desc', 'deadline_asc', 'deadline_desc'];
+
     public function index(Request $request)
     {
         $account = $this->currentAccount();
+        $filter = in_array($request->get('filter'), array_keys(self::VISIBILITY_FILTER_OPTIONS), true) ? $request->get('filter') : 'all';
+        $search = trim((string) $request->get('q', ''));
+        $sort = in_array($request->get('sort'), self::VALID_SORTS, true) ? $request->get('sort') : 'created_desc';
+        $selectedStatuses = array_intersect((array) $request->query('status', []), array_keys($this->statusOptions()));
 
-        $sort = in_array($request->string('sort')->toString(), ['title', 'quotation_deadline', 'created_at'], true)
-            ? $request->string('sort')->toString()
-            : null;
-        $direction = $request->string('direction') === 'asc' ? 'asc' : 'desc';
-
-        $rfqs = $account->rfqs()
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->string('search');
+        $rfqsQuery = $account->rfqs()
+            ->when($filter !== 'all', fn ($q) => $q->whereHas('visibilityType', fn ($q2) => $q2->where('code', $filter)))
+            ->when($search !== '', function ($q) use ($search) {
                 $q->where(fn ($q2) => $q2->where('title', 'like', "%{$search}%")->orWhere('rfq_number', 'like', "%{$search}%"));
-            })
-            ->withCount('quotations')
-            ->when($sort, fn ($q) => $q->orderBy($sort, $direction), fn ($q) => $q->latest())
-            ->paginate(10)
-            ->withQueryString();
+            });
 
-        return view('backend.buyer.procurement.rfqs.index', [
-            'rfqs' => $rfqs,
-            'status' => $request->string('status')->toString(),
-            'search' => $request->string('search')->toString(),
+        // Counts reflect the tab + search only, not the status checkboxes
+        // themselves being counted — ticking a box must never change the
+        // numbers next to the OTHER boxes in the same dropdown.
+        $statusCounts = (clone $rfqsQuery)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+
+        $rfqsQuery->when(! empty($selectedStatuses), fn ($q) => $q->whereIn('status', $selectedStatuses))
+            ->withCount('quotations')
+            ->with('latestAward');
+
+        match ($sort) {
+            'deadline_asc' => $rfqsQuery->orderBy('quotation_deadline', 'asc'),
+            'deadline_desc' => $rfqsQuery->orderByDesc('quotation_deadline'),
+            default => $rfqsQuery->latest(),
+        };
+
+        $rfqs = $rfqsQuery->paginate(10)->withQueryString();
+
+        $tableData = ['rfqs' => $rfqs, 'sort' => $sort];
+
+        // Live filtering/search/sort/pagination all hit this same GET route
+        // via fetch() — only the table (not the whole page) needs to come
+        // back, plus the dropdown counts so they never go stale client-side.
+        if ($request->ajax()) {
+            return response()->json([
+                'table_html' => view('backend.buyer.procurement.rfqs.partials._table', $tableData)->render(),
+                'status_counts' => $statusCounts,
+            ]);
+        }
+
+        return view('backend.buyer.procurement.rfqs.index', $tableData + [
+            'filter' => $filter,
+            'search' => $search,
+            'filterOptions' => self::VISIBILITY_FILTER_OPTIONS,
             'statusOptions' => $this->statusOptions(),
+            'selectedStatuses' => $selectedStatuses,
+            'statusCounts' => $statusCounts,
         ]);
     }
 
@@ -424,7 +466,207 @@ class RfqController extends Controller
             'deadlineExtensions.extendedBy',
         ])->loadCount('quotations');
 
-        return view('backend.buyer.procurement.rfqs.show', ['rfq' => $rfq]);
+        $statistics = $this->computeStatistics($rfq);
+
+        return view('backend.buyer.procurement.rfqs.show', [
+            'rfq' => $rfq,
+            'statistics' => $statistics,
+            'supplierEngagement' => $this->computeSupplierEngagement($rfq),
+            'engagementFunnel' => $this->computeEngagementFunnel($rfq, $statistics),
+            'activityTimeline' => $this->computeActivityTimeline($rfq),
+            'recommendations' => $this->computeRecommendations($rfq, $statistics),
+        ]);
+    }
+
+    /**
+     * Per-supplier engagement breakdown for the show page's Statistics
+     * tab — who's opened it, expressed interest, messaged the buyer, or
+     * already quoted. Suppliers who were notified but never did anything
+     * are deliberately excluded — a wall of "—/—/—/—" rows for every
+     * matched supplier buries the ones actually worth the buyer's
+     * attention (spec: "Do not show all suppliers who have no activity").
+     */
+    private function computeSupplierEngagement(Rfq $rfq): array
+    {
+        $actionsBySupplier = \App\Models\SupplierRfqAction::where('rfq_id', $rfq->id)
+            ->get()
+            ->groupBy('supplier_account_id');
+
+        $quotationsBySupplier = \App\Models\Quotation::where('rfq_id', $rfq->id)->get()->keyBy('supplier_account_id');
+
+        return \App\Models\RfqSupplierQueue::where('rfq_id', $rfq->id)
+            ->with('supplierAccount.supplierProfile')
+            ->orderByDesc('seen_at')
+            ->get()
+            ->map(function (\App\Models\RfqSupplierQueue $row) use ($actionsBySupplier, $quotationsBySupplier) {
+                $actions = $actionsBySupplier->get($row->supplier_account_id, collect());
+                $quotation = $quotationsBySupplier->get($row->supplier_account_id);
+                $profile = $row->supplierAccount?->supplierProfile;
+                $interested = $actions->contains('action_type', 'interested');
+                $messageCount = $actions->where('action_type', 'messaged')->count();
+
+                return [
+                    'account' => $row->supplierAccount,
+                    'name' => $profile?->display_name ?? ('Supplier #'.$row->supplier_account_id),
+                    'logo_url' => $profile?->logo
+                        ? asset('storage/'.$profile->logo)
+                        : 'https://ui-avatars.com/api/?name='.urlencode($profile?->display_name ?? 'S').'&background=eef2ff&color=4f46e5',
+                    'seen_at' => $row->seen_at,
+                    'interested' => $interested,
+                    'message_count' => $messageCount,
+                    'quotation_status' => $quotation?->status,
+                    'has_activity' => (bool) ($row->seen_at || $interested || $messageCount > 0 || $quotation),
+                ];
+            })
+            ->filter(fn (array $row) => $row['has_activity'])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Suppliers Notified → Viewed → Interested → Quotation Submitted, with
+     * a percentage of the notified count at each later stage — the classic
+     * conversion-funnel shape, computed from the same numbers
+     * computeStatistics() already has so the two can never disagree.
+     */
+    private function computeEngagementFunnel(Rfq $rfq, array $statistics): array
+    {
+        $notified = $statistics['total_notified'];
+        $pct = fn (int $value) => $notified > 0 ? (int) round($value / $notified * 100) : 0;
+
+        return [
+            ['label' => 'Notified', 'count' => $notified, 'percent' => 100],
+            ['label' => 'Viewed', 'count' => $statistics['viewed'], 'percent' => $pct($statistics['viewed'])],
+            ['label' => 'Interested', 'count' => $statistics['interested'], 'percent' => $pct($statistics['interested'])],
+            ['label' => 'Quoted', 'count' => $statistics['quotations_received'], 'percent' => $pct($statistics['quotations_received'])],
+        ];
+    }
+
+    /**
+     * Merges queue "viewed" timestamps, the SupplierRfqAction engagement
+     * log, and quotation submissions into one chronological feed — three
+     * different tables, one timeline, newest first.
+     */
+    private function computeActivityTimeline(Rfq $rfq, int $limit = 25): array
+    {
+        $supplierNames = \App\Models\RfqSupplierQueue::where('rfq_id', $rfq->id)
+            ->with('supplierAccount.supplierProfile')
+            ->get()
+            ->mapWithKeys(fn (\App\Models\RfqSupplierQueue $row) => [
+                $row->supplier_account_id => $row->supplierAccount?->supplierProfile?->display_name ?? ('Supplier #'.$row->supplier_account_id),
+            ]);
+
+        $events = collect();
+
+        $actionMeta = [
+            'viewed' => ['label' => 'viewed this RFQ', 'icon' => 'fa-eye', 'color' => 'text-gray-500 bg-gray-100'],
+            'interested' => ['label' => 'marked this RFQ as Interested', 'icon' => 'fa-hand-point-up', 'color' => 'text-blue-600 bg-blue-100'],
+            'not_interested' => ['label' => 'marked this RFQ as Not Interested', 'icon' => 'fa-ban', 'color' => 'text-gray-500 bg-gray-100'],
+            'messaged' => ['label' => 'sent a message', 'icon' => 'fa-comment-dots', 'color' => 'text-purple-600 bg-purple-100'],
+            'preparing_quote' => ['label' => 'started preparing a quotation', 'icon' => 'fa-file-pen', 'color' => 'text-amber-600 bg-amber-100'],
+            'quoted' => ['label' => 'submitted a quotation', 'icon' => 'fa-sack-dollar', 'color' => 'text-emerald-600 bg-emerald-100'],
+        ];
+
+        $suppliersWithViewedAction = [];
+
+        foreach (\App\Models\SupplierRfqAction::where('rfq_id', $rfq->id)->get() as $action) {
+            $meta = $actionMeta[$action->action_type] ?? ['label' => $action->action_type, 'icon' => 'fa-circle-info', 'color' => 'text-gray-500 bg-gray-100'];
+            $events->push([
+                'supplier' => $supplierNames->get($action->supplier_account_id, 'A supplier'),
+                'action' => $meta['label'],
+                'icon' => $meta['icon'], 'color' => $meta['color'],
+                'at' => $action->created_at,
+            ]);
+
+            if ($action->action_type === 'viewed') {
+                $suppliersWithViewedAction[$action->supplier_account_id] = true;
+            }
+        }
+
+        // RfqOpportunityService normally logs a matching SupplierRfqAction
+        // ('viewed') whenever it sets seen_at, but some rows predate that
+        // (or were touched by another path) and have seen_at with no
+        // action-log entry — fall back to seen_at for those only, so a
+        // real view never goes missing without duplicating the common case.
+        foreach (\App\Models\RfqSupplierQueue::where('rfq_id', $rfq->id)->whereNotNull('seen_at')->get() as $row) {
+            if (isset($suppliersWithViewedAction[$row->supplier_account_id])) {
+                continue;
+            }
+
+            $events->push([
+                'supplier' => $supplierNames->get($row->supplier_account_id, 'A supplier'),
+                'action' => $actionMeta['viewed']['label'],
+                'icon' => $actionMeta['viewed']['icon'], 'color' => $actionMeta['viewed']['color'],
+                'at' => $row->seen_at,
+            ]);
+        }
+
+        foreach (\App\Models\Quotation::where('rfq_id', $rfq->id)->whereNotNull('submitted_at')->get() as $quotation) {
+            $events->push([
+                'supplier' => $supplierNames->get($quotation->supplier_account_id, 'A supplier'),
+                'action' => 'submitted a quotation',
+                'icon' => 'fa-sack-dollar', 'color' => 'text-emerald-600 bg-emerald-100',
+                'at' => $quotation->submitted_at,
+            ]);
+        }
+
+        return $events->sortByDesc('at')->take($limit)->values()->all();
+    }
+
+    /**
+     * Simple rule-based nudges when engagement looks weak — not machine
+     * learning, just thresholds a buyer would reasonably act on. Only
+     * computed once an RFQ has actually reached suppliers (draft/
+     * pending_approval have nothing meaningful to recommend yet).
+     */
+    private function computeRecommendations(Rfq $rfq, array $statistics): array
+    {
+        if (in_array($rfq->status, ['draft', 'pending_approval'], true)) {
+            return [];
+        }
+
+        $recommendations = [];
+        $notified = $statistics['total_notified'];
+        $daysRemaining = $statistics['days_remaining'];
+        $isOpen = $rfq->status === 'open';
+
+        if ($notified === 0) {
+            $recommendations[] = [
+                'title' => 'No suppliers reached yet',
+                'description' => 'This RFQ hasn\'t matched or been sent to any suppliers. Widen its targeting or invite suppliers directly.',
+                'icon' => 'fa-user-plus', 'action_label' => 'Edit RFQ', 'action_href' => route('buyer.rfqs.edit', $rfq),
+            ];
+        } elseif ($statistics['viewed'] === 0) {
+            $recommendations[] = [
+                'title' => 'No suppliers have viewed this RFQ yet',
+                'description' => 'It can take suppliers a little time to open new opportunities — if this continues, consider inviting more suppliers.',
+                'icon' => 'fa-eye-slash', 'action_label' => 'Edit RFQ', 'action_href' => route('buyer.rfqs.edit', $rfq),
+            ];
+        } elseif ($notified > 0 && ($statistics['viewed'] / $notified) < 0.4) {
+            $recommendations[] = [
+                'title' => 'Low view rate',
+                'description' => 'Fewer than 4 in 10 notified suppliers have opened this RFQ. Inviting more suppliers can improve your odds of a good quotation.',
+                'icon' => 'fa-chart-line', 'action_label' => 'Invite More Suppliers', 'action_href' => route('buyer.rfqs.edit', $rfq),
+            ];
+        }
+
+        if ($statistics['quotations_received'] === 0 && $isOpen && $daysRemaining !== null && $daysRemaining <= 2) {
+            $recommendations[] = [
+                'title' => 'Deadline is close with no quotations yet',
+                'description' => 'The quotation deadline is only '.$daysRemaining.' day(s) away and nobody has quoted. Extending it gives suppliers more time to respond.',
+                'icon' => 'fa-clock', 'action_label' => 'Extend Deadline', 'action_modal' => 'extend-deadline',
+            ];
+        }
+
+        if ($statistics['viewed'] > 0 && $statistics['interested'] === 0 && $statistics['quotations_received'] === 0) {
+            $recommendations[] = [
+                'title' => 'Viewed but no interest yet',
+                'description' => 'Suppliers are opening this RFQ but not engaging further — double-check the item specs, quantities, and budget are clear and competitive.',
+                'icon' => 'fa-pen-to-square', 'action_label' => 'Edit RFQ', 'action_href' => route('buyer.rfqs.edit', $rfq),
+            ];
+        }
+
+        return $recommendations;
     }
 
     public function publish(Rfq $rfq, RfqService $service)
@@ -481,6 +723,143 @@ class RfqController extends Controller
         ]);
 
         return redirect()->route('buyer.rfqs.show', ['rfq' => $rfq, '_tab' => 'questions'])->with('success', 'Answer submitted.');
+    }
+
+    /**
+     * A draft never went anywhere, so it's safe to delete outright —
+     * RfqPolicy::delete() only allows this while status is still 'draft'.
+     */
+    public function destroy(Rfq $rfq)
+    {
+        $this->authorize('delete', $rfq);
+
+        $rfq->delete();
+
+        return redirect()->route('buyer.rfqs.index')->with('success', 'Draft RFQ deleted.');
+    }
+
+    /**
+     * Clones an existing RFQ's items/details into a brand-new draft — a
+     * quick way to start a similar procurement without rebuilding it from
+     * scratch. Deadlines are deliberately NOT copied; the buyer sets fresh
+     * ones in step 3 before publishing.
+     */
+    public function duplicate(Rfq $rfq, RfqService $service)
+    {
+        $this->authorize('duplicate', $rfq);
+
+        $rfq->load(['items.attributeValues', 'targetFilters']);
+
+        $copy = DB::transaction(function () use ($rfq, $service) {
+            $newRfq = Rfq::create([
+                'rfq_number' => $service->generateRfqNumber(),
+                'buyer_account_id' => $rfq->buyer_account_id,
+                'created_by_user_id' => $this->currentUser()->id,
+                'visibility_type_id' => $rfq->visibility_type_id,
+                'source_listing_id' => $rfq->source_listing_id,
+                'title' => $rfq->title.' (Copy)',
+                'description' => $rfq->description,
+                'currency_code' => $rfq->currency_code,
+                'budget_min' => $rfq->budget_min,
+                'budget_max' => $rfq->budget_max,
+                'delivery_country_id' => $rfq->delivery_country_id,
+                'delivery_state_id' => $rfq->delivery_state_id,
+                'delivery_city_id' => $rfq->delivery_city_id,
+                'delivery_address' => $rfq->delivery_address,
+                'delivery_latitude' => $rfq->delivery_latitude,
+                'delivery_longitude' => $rfq->delivery_longitude,
+                'allow_partial_quotation' => $rfq->allow_partial_quotation,
+                'allow_alternative_products' => $rfq->allow_alternative_products,
+                'status' => 'draft',
+                'current_step' => 1,
+                'max_completed_step' => 1,
+            ]);
+
+            foreach ($rfq->items as $item) {
+                $newItem = $newRfq->items()->create([
+                    'item_type' => $item->item_type,
+                    'listing_id' => $item->listing_id,
+                    'category_id' => $item->category_id,
+                    'item_name' => $item->item_name,
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_id' => $item->unit_id,
+                    'custom_unit' => $item->custom_unit,
+                    'estimated_unit_price' => $item->estimated_unit_price,
+                    'specs' => $item->specs,
+                    'sort_order' => $item->sort_order,
+                ]);
+
+                foreach ($item->attributeValues as $value) {
+                    $newItem->attributeValues()->create([
+                        'attribute_id' => $value->attribute_id,
+                        'attribute_value_id' => $value->attribute_value_id,
+                        'value_text' => $value->value_text,
+                        'value_number' => $value->value_number,
+                        'value_boolean' => $value->value_boolean,
+                        'value_date' => $value->value_date,
+                        'value_json' => $value->value_json,
+                        'custom_value' => $value->custom_value,
+                    ]);
+                }
+            }
+
+            $newRfq->update(['items_count' => $newRfq->items()->count()]);
+
+            foreach ($rfq->targetFilters as $filter) {
+                $newRfq->targetFilters()->create([
+                    'category_id' => $filter->category_id,
+                    'location_match_level' => $filter->location_match_level,
+                    'country_id' => $filter->country_id,
+                    'state_id' => $filter->state_id,
+                    'city_id' => $filter->city_id,
+                ]);
+            }
+
+            return $newRfq;
+        });
+
+        return redirect()->route('buyer.rfqs.edit', $copy)->with('success', 'RFQ duplicated as a new draft — review and publish when ready.');
+    }
+
+    /**
+     * JSON summary for the RFQ list's "Statistics" modal — a lighter-weight
+     * read than the RFQ show page's full Statistics section (same
+     * computeStatistics() data source, so the two never drift apart).
+     */
+    public function statistics(Rfq $rfq)
+    {
+        $this->authorize('view', $rfq);
+
+        return response()->json($this->computeStatistics($rfq));
+    }
+
+    private function computeStatistics(Rfq $rfq): array
+    {
+        $queueRows = \App\Models\RfqSupplierQueue::where('rfq_id', $rfq->id)->get();
+        $actions = \App\Models\SupplierRfqAction::where('rfq_id', $rfq->id)->get();
+
+        $daysRemaining = $rfq->quotation_deadline && now()->lt($rfq->quotation_deadline)
+            ? (int) now()->diffInDays($rfq->quotation_deadline)
+            : ($rfq->quotation_deadline ? 0 : null);
+
+        $lastActivityAt = collect([
+            $queueRows->max('seen_at'),
+            $actions->max('created_at'),
+            $rfq->quotations()->max('submitted_at'),
+        ])->filter()->map(fn ($d) => \Illuminate\Support\Carbon::parse($d))->sort()->last();
+
+        return [
+            'rfq_id' => $rfq->id,
+            'rfq_title' => $rfq->title,
+            'total_notified' => $queueRows->count(),
+            'viewed' => $queueRows->whereNotNull('seen_at')->count(),
+            'interested' => $actions->where('action_type', 'interested')->pluck('supplier_account_id')->unique()->count(),
+            'messaged' => $actions->where('action_type', 'messaged')->count(),
+            'quotations_received' => $rfq->quotations_count,
+            'days_remaining' => $daysRemaining,
+            'last_activity_human' => $lastActivityAt?->diffForHumans(),
+        ];
     }
 
     public function searchSuppliers(Request $request)

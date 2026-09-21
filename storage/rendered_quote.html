@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="UJp1j9gVNMdzBHyLObOaa5KFtgdpQKwDJS6AR2fu">
+<title>Submit Quotation — For DUET — EduShopify</title>
+<link rel="icon" type="image/png" href="http://edushopify.test/images/favicon.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+
+
+<style>
+    :root {
+        --theme-primary: #4f46e5;
+        --theme-primary-hover: #4338ca;
+        --theme-primary-soft: #eef2ff;
+
+        --sidebar-bg: #ffffff;
+        --sidebar-border: #e5e7eb;
+        --sidebar-text: #374151;
+        --sidebar-muted: #9ca3af;
+
+        --sidebar-menu-text: #374151;
+        --sidebar-menu-hover-bg: #f3f4f6;
+        --sidebar-menu-hover-text: #111827;
+        --sidebar-menu-active-bg: #eef2ff;
+        --sidebar-menu-active-text: #4f46e5;
+        --sidebar-menu-active-border: #4f46e5;
+
+        --sidebar-submenu-text: #6b7280;
+        --sidebar-submenu-hover-bg: #f9fafb;
+        --sidebar-submenu-hover-text: #4f46e5;
+        --sidebar-submenu-active-bg: #eef2ff;
+        --sidebar-submenu-active-text: #4f46e5;
+
+        --topbar-bg: #ffffff;
+        --topbar-border: #e5e7eb;
+        --page-bg: #f9fafb;
+        --surface-bg: #ffffff;
+    }
+
+    html, body { font-family: 'Inter', sans-serif; }
+
+    [x-cloak] { display: none !important; }
+
+    .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 9999px; }
+    .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+    .btn-primary { background: var(--theme-primary); color: #ffffff; }
+    .btn-primary:hover { background: var(--theme-primary-hover); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .focus-accent:focus { outline: none; border-color: var(--theme-primary); box-shadow: 0 0 0 3px var(--theme-primary-soft); }
+
+    .sidebar-menu-item { color: var(--sidebar-menu-text); transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+    .sidebar-menu-item:hover { background: var(--sidebar-menu-hover-bg); color: var(--sidebar-menu-hover-text); }
+    .sidebar-menu-item.active { background: var(--sidebar-menu-active-bg); color: var(--sidebar-menu-active-text); border-left-color: var(--sidebar-menu-active-border); }
+    .sidebar-menu-item.active .sidebar-menu-icon { color: var(--sidebar-menu-active-text); }
+
+    .sidebar-submenu { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+    .sidebar-submenu.open { max-height: 1000px; }
+    .sidebar-submenu-item { color: var(--sidebar-submenu-text); display: block; border-radius: .375rem; transition: color .15s ease, background-color .15s ease; }
+    .sidebar-submenu-item:hover { background: var(--sidebar-submenu-hover-bg); color: var(--sidebar-submenu-hover-text); }
+    .sidebar-submenu-item.active { background: var(--sidebar-submenu-active-bg); color: var(--sidebar-submenu-active-text); font-weight: 600; }
+</style>
+<style>
+    html, body { font-family: 'Inter', sans-serif; }
+    [x-cloak] { display: none !important; }
+    body { background: var(--page-bg); }
+    .fa-light, .fal {
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-font-smoothing: antialiased;
+        display: var(--fa-display, inline-block);
+        font-style: normal;
+        font-variant: normal;
+        line-height: 1;
+        text-rendering: auto;
+        font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", sans-serif !important;
+        font-weight: 400 !important;
+    }
+</style>
+</head>
+<body class="min-h-screen text-gray-900 antialiased" x-data="{ mobileSidebar:false, notifOpen:false, profileOpen:false }">
+
+    <div class="fixed inset-0 flex overflow-hidden" style="background:var(--page-bg)">
+
+        <div x-show="mobileSidebar" x-transition.opacity @click="mobileSidebar=false"
+             class="fixed inset-0 bg-gray-900/40 z-30 lg:hidden" x-cloak></div>
+
+            <aside class="w-64 flex flex-col border-r fixed lg:static inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:translate-x-0 bg-white"
+       style="border-color:var(--sidebar-border)"
+       :class="mobileSidebar ? 'translate-x-0' : '-translate-x-full'">
+
+    
+    <div class="h-20 flex items-center px-4 border-b shrink-0" style="border-color:var(--sidebar-border)">
+        <a href="http://edushopify.test" class="flex items-center min-w-0">
+            <div class="w-9 h-9 rounded-lg btn-primary flex items-center justify-center font-bold text-sm shrink-0">ES</div>
+            <div class="ml-3 leading-tight min-w-0">
+                <p class="text-sm font-bold text-gray-900 truncate">EduShopify</p>
+                <p class="text-[11px] text-gray-400">Supplier Dashboard</p>
+            </div>
+        </a>
+    </div>
+
+    <nav class="sidebar-scroll flex-1 overflow-y-auto py-4 px-3 space-y-1">
+
+        
+        <a href="http://edushopify.test/supplier" class="sidebar-menu-item  flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+            <i class="fa-solid fa-gauge sidebar-menu-icon w-5 text-center"></i>
+            <span class="ml-3 flex-1 text-sm font-medium">Dashboard</span>
+        </a>
+
+        
+                <a href="http://edushopify.test/supplier/company/profile" class="sidebar-menu-item  flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+            <i class="fa-solid fa-building sidebar-menu-icon w-5 text-center"></i>
+            <span class="ml-3 flex-1 text-sm font-medium">Business Profile</span>
+        </a>
+        
+        
+                <div x-data="{ open: false }">
+            <button @click="open = !open" class="sidebar-menu-item  w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+                <i class="fa-solid fa-box-open sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">My Products</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                                    <a href="http://edushopify.test/supplier/catalog/listings" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">All Products</a>
+                                                    <a href="http://edushopify.test/supplier/catalog/listings/create" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Add Product</a>
+                                                    <a href="http://edushopify.test/supplier/catalog/suggestions" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Suggestions</a>
+                            </div>
+        </div>
+        
+        
+                <div x-data="{ open: false }">
+            <button @click="open = !open" class="sidebar-menu-item  w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+                <i class="fa-solid fa-magnifying-glass-chart sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">RFQ Opportunities</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                                <a href="http://edushopify.test/supplier/opportunities" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Available RFQs</a>
+                <a href="http://edushopify.test/supplier/opportunities?filter=invited" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Invited RFQs</a>
+                <a href="http://edushopify.test/supplier/opportunities?filter=all&sort=published_desc&activity%5B%5D=interested" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Interested RFQ</a>
+            </div>
+        </div>
+        
+        
+                <div x-data="{ open: false }">
+            <button @click="open = !open" class="sidebar-menu-item  w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+                <i class="fa-solid fa-file-invoice sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">Quotations</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                <a href="http://edushopify.test/supplier/quotations" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">My Quotations</a>
+                <a href="http://edushopify.test/supplier/quotations?status=draft" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Draft Quotations</a>
+                <a href="http://edushopify.test/supplier/quotations?status=revision_requested" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Revision Requests</a>
+            </div>
+        </div>
+        
+        
+                <a href="http://edushopify.test/supplier/awards" class="sidebar-menu-item  flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+            <i class="fa-solid fa-trophy sidebar-menu-icon w-5 text-center"></i>
+            <span class="ml-3 flex-1 text-sm font-medium">Awards</span>
+        </a>
+        
+        
+                <a href="http://edushopify.test/supplier/purchase-orders" class="sidebar-menu-item  flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+            <i class="fa-solid fa-clipboard-list sidebar-menu-icon w-5 text-center"></i>
+            <span class="ml-3 flex-1 text-sm font-medium">Purchase Orders</span>
+        </a>
+        
+        
+                <div x-data="{ open: false }">
+            <button @click="open = !open" class="sidebar-menu-item  w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+                <i class="fa-solid fa-credit-card sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">Subscription &amp; Billing</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                <a href="http://edushopify.test/supplier/subscription/current" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Current Plan</a>
+                <a href="http://edushopify.test/supplier/subscription/plans" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Available Plans</a>
+                <a href="http://edushopify.test/supplier/subscription/payments" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Payment History</a>
+            </div>
+        </div>
+        
+        
+                <div x-data="{ open: false }">
+            <button @click="open = !open" class="sidebar-menu-item  w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+                <i class="fa-solid fa-comments sidebar-menu-icon w-5 text-center"></i>
+                <span class="ml-3 flex-1 text-sm font-medium text-left">Communication</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                <a href="http://edushopify.test/supplier/messages" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Messages</a>
+                <a href="http://edushopify.test/supplier/notifications" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Notifications</a>
+                <a href="http://edushopify.test/supplier/tickets" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Support Tickets</a>
+                <a href="http://edushopify.test/supplier/contact-inquiries" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Contact Inquiries</a>
+            </div>
+        </div>
+        
+        
+                <a href="http://edushopify.test/supplier/reviews" class="sidebar-menu-item  flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+            <i class="fa-solid fa-star sidebar-menu-icon w-5 text-center"></i>
+            <span class="ml-3 flex-1 text-sm font-medium">Reviews</span>
+        </a>
+        
+        
+        
+        
+        <div class="pt-3 mt-3 border-t" style="border-color:var(--sidebar-border)">
+            <div x-data="{ open: false }">
+                <button @click="open = !open" class="sidebar-menu-item  w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 border-transparent">
+                    <i class="fa-solid fa-gear sidebar-menu-icon w-5 text-center"></i>
+                    <span class="ml-3 flex-1 text-sm font-medium text-left">Settings &amp; Account</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+                </button>
+                <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                    <a href="http://edushopify.test/supplier/settings/security" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Personal &amp; Security</a>
+                    <a href="http://edushopify.test/supplier/settings/dashboard-mode" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Dashboard Mode</a>
+                                            <a href="http://edushopify.test/supplier/settings/conversion" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Convert to Organization</a>
+                                                                <a href="http://edushopify.test/supplier/settings/close-account" class="sidebar-submenu-item  block px-3 py-2 text-sm rounded-md">Close Account</a>
+                                    </div>
+            </div>
+        </div>
+
+    </nav>
+
+    
+    <div class="p-3 border-t shrink-0" style="border-color:var(--sidebar-border)">
+        <div class="flex items-center px-2 py-2 rounded-lg" style="background:var(--theme-primary-soft)">
+            <img src="https://ui-avatars.com/api/?name=Utsab&background=4f46e5&color=fff" class="w-8 h-8 rounded-full" alt="">
+            <div class="ml-2 leading-tight min-w-0">
+                <p class="text-xs font-semibold text-gray-900 truncate">Utsab</p>
+                <p class="text-[10px] text-gray-500 truncate">Utsab</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
+        <div class="flex-1 flex flex-col min-w-0 min-h-0">
+
+                <header class="h-20 shrink-0 bg-white border-b flex items-center justify-between px-4 lg:px-6" style="border-color:var(--topbar-border)">
+    <div class="flex items-center gap-3 min-w-0">
+        <button @click="mobileSidebar = true" class="lg:hidden text-gray-500 p-2 -ml-2">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="hidden sm:block min-w-0">
+            <p class="text-xs text-gray-400 truncate">
+                <a href="http://edushopify.test/supplier" class="hover:text-gray-600">Supplier Dashboard</a>
+                                    <i class="fa-solid fa-chevron-right text-[8px] mx-1.5 text-gray-300"></i>
+                    <span class="text-gray-600">Quotations / Submit Quotation</span>
+                            </p>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+        
+        
+        
+        <div class="relative">
+            <button @click="notifOpen = !notifOpen; profileOpen=false" class="relative p-2.5 rounded-xl text-gray-500 hover:bg-gray-100">
+                <i class="fa-regular fa-bell"></i>
+                                    <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-semibold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">11</span>
+                            </button>
+            <div x-show="notifOpen" @click.outside="notifOpen=false" x-transition x-cloak
+                 class="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p class="text-sm font-semibold text-gray-900">Notifications</p>
+                    <a href="http://edushopify.test/supplier/notifications" class="text-xs font-medium" style="color:var(--theme-primary)">View all</a>
+                </div>
+                <div class="max-h-72 overflow-y-auto divide-y divide-gray-100">
+                                            <a href="http://edushopify.test/supplier/notifications" class="flex gap-3 px-4 py-3 hover:bg-gray-50">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background:var(--theme-primary-soft)">
+                                <i class="fa-solid fa-bell text-xs" style="color:var(--theme-primary)"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm text-gray-800 line-clamp-2">New RFQ opportunity: &quot;dafdsa&quot;.</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">1 day ago</p>
+                            </div>
+                        </a>
+                                            <a href="http://edushopify.test/supplier/notifications" class="flex gap-3 px-4 py-3 hover:bg-gray-50">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background:var(--theme-primary-soft)">
+                                <i class="fa-solid fa-bell text-xs" style="color:var(--theme-primary)"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm text-gray-800 line-clamp-2">New RFQ opportunity: &quot;For DUET&quot;.</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">2 days ago</p>
+                            </div>
+                        </a>
+                                            <a href="http://edushopify.test/supplier/notifications" class="flex gap-3 px-4 py-3 hover:bg-gray-50">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background:var(--theme-primary-soft)">
+                                <i class="fa-solid fa-bell text-xs" style="color:var(--theme-primary)"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm text-gray-800 line-clamp-2">New RFQ opportunity: &quot;dsafd&quot;.</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">2 days ago</p>
+                            </div>
+                        </a>
+                                            <a href="http://edushopify.test/supplier/notifications" class="flex gap-3 px-4 py-3 hover:bg-gray-50">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background:var(--theme-primary-soft)">
+                                <i class="fa-solid fa-bell text-xs" style="color:var(--theme-primary)"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm text-gray-800 line-clamp-2">New RFQ opportunity: &quot;dsafd&quot;.</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">2 days ago</p>
+                            </div>
+                        </a>
+                                            <a href="http://edushopify.test/supplier/notifications" class="flex gap-3 px-4 py-3 hover:bg-gray-50">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background:var(--theme-primary-soft)">
+                                <i class="fa-solid fa-bell text-xs" style="color:var(--theme-primary)"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm text-gray-800 line-clamp-2">New RFQ opportunity: &quot;Real Product Create&quot;.</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">2 days ago</p>
+                            </div>
+                        </a>
+                                    </div>
+                <a href="http://edushopify.test/supplier/notifications" class="block text-center text-xs font-medium py-2.5 border-t border-gray-100" style="color:var(--theme-primary)">View all notifications</a>
+            </div>
+        </div>
+
+        
+        <div class="relative">
+            <button @click="profileOpen = !profileOpen; notifOpen=false" class="flex items-center gap-2 pl-2 pr-1 py-1 rounded-xl hover:bg-gray-100">
+                <img src="https://ui-avatars.com/api/?name=Utsab&background=4f46e5&color=fff" class="w-8 h-8 rounded-full" alt="">
+                <span class="hidden sm:block text-left leading-tight">
+                    <span class="block text-xs font-semibold text-gray-900">Utsab</span>
+                    <span class="block text-[10px] text-gray-400">Utsab</span>
+                </span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-gray-400 hidden sm:block"></i>
+            </button>
+            <div x-show="profileOpen" @click.outside="profileOpen=false" x-transition x-cloak
+                 class="absolute right-0 mt-2 w-48 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-gray-200 shadow-lg z-50 py-1">
+                <a href="http://edushopify.test/supplier/company/profile" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"><i class="fa-regular fa-building w-4 text-gray-400"></i>Company Profile</a>
+                <a href="http://edushopify.test/supplier/settings/security" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"><i class="fa-solid fa-gear w-4 text-gray-400"></i>Settings</a>
+                <div class="border-t border-gray-100 my-1"></div>
+                <form method="POST" action="http://edushopify.test/logout">
+                    <input type="hidden" name="_token" value="UJp1j9gVNMdzBHyLObOaa5KFtgdpQKwDJS6AR2fu" autocomplete="off">                    <button type="submit" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><i class="fa-solid fa-arrow-right-from-bracket w-4"></i>Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>
+
+            <main class="flex-1 overflow-y-auto p-4 lg:p-6" style="background:var(--page-bg)">
+                        
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <div class="min-w-0">
+        <h1 class="text-2xl font-bold text-gray-900">Submit Quotation</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">RFQ: RFQ-2026-000037 — For DUET</p>
+            </div>
+
+    </div>
+
+    
+    <form
+    method="POST"
+    action="http://edushopify.test/supplier/quotations/create/43"
+    x-data="quotationForm({
+        items: [{&quot;id&quot;:null,&quot;rfq_item_id&quot;:182,&quot;offered_listing_id&quot;:null,&quot;offered_variant_id&quot;:null,&quot;is_alternative&quot;:false,&quot;item_name&quot;:&quot;I need a computer&quot;,&quot;description&quot;:null,&quot;quantity&quot;:&quot;1.000&quot;,&quot;unit_id&quot;:15,&quot;custom_unit&quot;:null,&quot;unit_price&quot;:null,&quot;tax_rate&quot;:null,&quot;discount_amount&quot;:null,&quot;lead_time_days&quot;:null,&quot;attribute_values&quot;:{},&quot;_offerType&quot;:&quot;custom&quot;,&quot;_collapsed&quot;:false,&quot;_advancedOpen&quot;:false,&quot;_attrLoading&quot;:false,&quot;_attrGroups&quot;:[],&quot;_listingQuery&quot;:&quot;&quot;,&quot;_listingResults&quot;:[],&quot;_variants&quot;:[],&quot;_suggestedListing&quot;:null},{&quot;id&quot;:null,&quot;rfq_item_id&quot;:199,&quot;offered_listing_id&quot;:null,&quot;offered_variant_id&quot;:null,&quot;is_alternative&quot;:false,&quot;item_name&quot;:&quot;Mouse1&quot;,&quot;description&quot;:null,&quot;quantity&quot;:&quot;1.000&quot;,&quot;unit_id&quot;:2,&quot;custom_unit&quot;:null,&quot;unit_price&quot;:null,&quot;tax_rate&quot;:null,&quot;discount_amount&quot;:null,&quot;lead_time_days&quot;:null,&quot;attribute_values&quot;:{},&quot;_offerType&quot;:&quot;custom&quot;,&quot;_collapsed&quot;:true,&quot;_advancedOpen&quot;:false,&quot;_attrLoading&quot;:false,&quot;_attrGroups&quot;:[],&quot;_listingQuery&quot;:&quot;&quot;,&quot;_listingResults&quot;:[],&quot;_variants&quot;:[],&quot;_suggestedListing&quot;:null},{&quot;id&quot;:null,&quot;rfq_item_id&quot;:200,&quot;offered_listing_id&quot;:null,&quot;offered_variant_id&quot;:null,&quot;is_alternative&quot;:false,&quot;item_name&quot;:&quot;Geoffrey Garrison&quot;,&quot;description&quot;:null,&quot;quantity&quot;:&quot;313.000&quot;,&quot;unit_id&quot;:16,&quot;custom_unit&quot;:null,&quot;unit_price&quot;:null,&quot;tax_rate&quot;:null,&quot;discount_amount&quot;:null,&quot;lead_time_days&quot;:null,&quot;attribute_values&quot;:{},&quot;_offerType&quot;:&quot;custom&quot;,&quot;_collapsed&quot;:true,&quot;_advancedOpen&quot;:false,&quot;_attrLoading&quot;:false,&quot;_attrGroups&quot;:[],&quot;_listingQuery&quot;:&quot;&quot;,&quot;_listingResults&quot;:[],&quot;_variants&quot;:[],&quot;_suggestedListing&quot;:null}],
+        addons: [],
+        rfqItemsById: {&quot;182&quot;:{&quot;item_name&quot;:&quot;I need a computer&quot;,&quot;category_id&quot;:19,&quot;category_name&quot;:&quot;Keyboard&quot;,&quot;category_names&quot;:[&quot;Keyboard&quot;,&quot;ASUS&quot;,&quot;Intel&quot;,&quot;Laptop&quot;],&quot;quantity&quot;:&quot;1&quot;,&quot;unit&quot;:&quot;cm&quot;,&quot;unit_id&quot;:15,&quot;description&quot;:&quot;adfsadsa dsafds afdsafds adsafds&quot;,&quot;listing_image_url&quot;:null,&quot;is_marketplace&quot;:false,&quot;is_requirement&quot;:true,&quot;attachments&quot;:[{&quot;id&quot;:45,&quot;name&quot;:&quot;req_182_6aad7a437016a.jpg&quot;,&quot;size&quot;:&quot;2.58 MB&quot;,&quot;url&quot;:&quot;http:\/\/edushopify.test\/storage\/45\/req_182_6aad7a437016a.jpg&quot;,&quot;is_image&quot;:true}],&quot;estimated_unit_price&quot;:&quot;7,000.04&quot;,&quot;specs&quot;:[],&quot;attributes&quot;:[],&quot;attributes_by_id&quot;:[],&quot;attribute_values_raw&quot;:[]},&quot;199&quot;:{&quot;item_name&quot;:&quot;Mouse1&quot;,&quot;category_id&quot;:20,&quot;category_name&quot;:&quot;Mouse&quot;,&quot;category_names&quot;:[&quot;Mouse&quot;],&quot;quantity&quot;:&quot;1&quot;,&quot;unit&quot;:&quot;item&quot;,&quot;unit_id&quot;:2,&quot;description&quot;:null,&quot;listing_image_url&quot;:null,&quot;is_marketplace&quot;:false,&quot;is_requirement&quot;:false,&quot;attachments&quot;:[],&quot;estimated_unit_price&quot;:&quot;200.00&quot;,&quot;specs&quot;:[{&quot;name&quot;:&quot;adfsa&quot;,&quot;value&quot;:&quot;dsfsdaf&quot;},{&quot;name&quot;:&quot;fdsf&quot;,&quot;value&quot;:&quot;dsafdsaf&quot;}],&quot;attributes&quot;:[{&quot;name&quot;:&quot;Model&quot;,&quot;value&quot;:&quot;dfgsdgsda&quot;},{&quot;name&quot;:&quot;Processor&quot;,&quot;value&quot;:&quot;sfds&quot;},{&quot;name&quot;:&quot;Operating System&quot;,&quot;value&quot;:&quot;7\/8\/9\/10&quot;},{&quot;name&quot;:&quot;Color&quot;,&quot;value&quot;:&quot;Green&quot;}],&quot;attributes_by_id&quot;:{&quot;2&quot;:&quot;dfgsdgsda&quot;,&quot;3&quot;:&quot;sfds&quot;,&quot;37&quot;:&quot;7\/8\/9\/10&quot;,&quot;41&quot;:&quot;Green&quot;},&quot;attribute_values_raw&quot;:{&quot;2&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;dfgsdgsda&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;3&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;sfds&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;37&quot;:{&quot;attribute_value_id&quot;:20,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;7\/8\/9\/10&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;41&quot;:{&quot;attribute_value_id&quot;:15,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Green&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null}}},&quot;200&quot;:{&quot;item_name&quot;:&quot;Geoffrey Garrison&quot;,&quot;category_id&quot;:2,&quot;category_name&quot;:&quot;Laptop&quot;,&quot;category_names&quot;:[&quot;Laptop&quot;],&quot;quantity&quot;:&quot;313&quot;,&quot;unit&quot;:&quot;ft&quot;,&quot;unit_id&quot;:16,&quot;description&quot;:&quot;Suscipit qui nobis a&quot;,&quot;listing_image_url&quot;:&quot;http:\/\/edushopify.test\/storage\/product_image\/supplier\/03_09_2026\/5_screencapture-ryans-compare-2026-08-28-19_34_29.png&quot;,&quot;is_marketplace&quot;:true,&quot;is_requirement&quot;:false,&quot;attachments&quot;:[],&quot;estimated_unit_price&quot;:&quot;828.00&quot;,&quot;specs&quot;:[],&quot;attributes&quot;:[{&quot;name&quot;:&quot;Model&quot;,&quot;value&quot;:&quot;Rowan Clemons&quot;},{&quot;name&quot;:&quot;Processor&quot;,&quot;value&quot;:&quot;Jade Booker&quot;},{&quot;name&quot;:&quot;Battery Type&quot;,&quot;value&quot;:&quot;Paloma Tran&quot;},{&quot;name&quot;:&quot;Battery Capacity&quot;,&quot;value&quot;:&quot;Britanney Mason&quot;},{&quot;name&quot;:&quot;Adapter Type&quot;,&quot;value&quot;:&quot;Armand Shepard&quot;},{&quot;name&quot;:&quot;Dimensions&quot;,&quot;value&quot;:&quot;Taylor Lang&quot;},{&quot;name&quot;:&quot;Weight&quot;,&quot;value&quot;:&quot;Marny Tucker&quot;},{&quot;name&quot;:&quot;Body Material&quot;,&quot;value&quot;:&quot;Paloma Ferrell&quot;},{&quot;name&quot;:&quot;Ram&quot;,&quot;value&quot;:&quot;12 GB&quot;},{&quot;name&quot;:&quot;Storage&quot;,&quot;value&quot;:&quot;Hard Disk&quot;},{&quot;name&quot;:&quot;Display&quot;,&quot;value&quot;:&quot;Cora Parrish&quot;},{&quot;name&quot;:&quot;Features&quot;,&quot;value&quot;:&quot;Reprehenderit error&quot;},{&quot;name&quot;:&quot;Processor Brand&quot;,&quot;value&quot;:&quot;Possimus qui quaera&quot;},{&quot;name&quot;:&quot;Processor Model&quot;,&quot;value&quot;:&quot;Adara Larsen&quot;},{&quot;name&quot;:&quot;Processor Frequency&quot;,&quot;value&quot;:&quot;Ebony Petty&quot;},{&quot;name&quot;:&quot;Processor Core&quot;,&quot;value&quot;:&quot;875&quot;},{&quot;name&quot;:&quot;Processor Thread&quot;,&quot;value&quot;:&quot;271&quot;},{&quot;name&quot;:&quot;CPU Cache&quot;,&quot;value&quot;:&quot;Garrison Mcpherson&quot;},{&quot;name&quot;:&quot;Display Size&quot;,&quot;value&quot;:&quot;Maxine Hardy&quot;},{&quot;name&quot;:&quot;Display Resolution&quot;,&quot;value&quot;:&quot;Megan Miranda&quot;},{&quot;name&quot;:&quot;Panel Type&quot;,&quot;value&quot;:&quot;LED&quot;},{&quot;name&quot;:&quot;Display Features&quot;,&quot;value&quot;:&quot;Fitzgerald Sharp&quot;},{&quot;name&quot;:&quot;RAM Type&quot;,&quot;value&quot;:&quot;DDR3&quot;},{&quot;name&quot;:&quot;Removable&quot;,&quot;value&quot;:&quot;Yes&quot;},{&quot;name&quot;:&quot;Total RAM Slot&quot;,&quot;value&quot;:&quot;179&quot;},{&quot;name&quot;:&quot;Storage Capacity&quot;,&quot;value&quot;:&quot;Kessie Huber&quot;},{&quot;name&quot;:&quot;Storage Type&quot;,&quot;value&quot;:&quot;HD&quot;},{&quot;name&quot;:&quot;Storage Upgrade&quot;,&quot;value&quot;:&quot;Harlan Jenkins&quot;},{&quot;name&quot;:&quot;Graphics Model&quot;,&quot;value&quot;:&quot;Hector Moran&quot;},{&quot;name&quot;:&quot;Graphics Memory&quot;,&quot;value&quot;:&quot;Myles Robles&quot;},{&quot;name&quot;:&quot;Keyboard Type&quot;,&quot;value&quot;:&quot;Medium&quot;},{&quot;name&quot;:&quot;TouchPad&quot;,&quot;value&quot;:&quot;Risa Huff&quot;},{&quot;name&quot;:&quot;WebCam&quot;,&quot;value&quot;:&quot;Acton Bates&quot;},{&quot;name&quot;:&quot;Speaker&quot;,&quot;value&quot;:&quot;Cameron Williamson&quot;},{&quot;name&quot;:&quot;Microphone&quot;,&quot;value&quot;:&quot;Naida Morin&quot;},{&quot;name&quot;:&quot;LAN&quot;,&quot;value&quot;:&quot;Steven Warren&quot;},{&quot;name&quot;:&quot;WiFi&quot;,&quot;value&quot;:&quot;Reagan Cote&quot;},{&quot;name&quot;:&quot;Bluetooth&quot;,&quot;value&quot;:&quot;September Bowers&quot;},{&quot;name&quot;:&quot;Fingerprint Sensor&quot;,&quot;value&quot;:&quot;without AI&quot;},{&quot;name&quot;:&quot;Camera Privacy Shutter&quot;,&quot;value&quot;:&quot;Molly Koch&quot;},{&quot;name&quot;:&quot;Security Chip&quot;,&quot;value&quot;:&quot;Ina Mosley&quot;},{&quot;name&quot;:&quot;Operating System&quot;,&quot;value&quot;:&quot;11&quot;},{&quot;name&quot;:&quot;Color&quot;,&quot;value&quot;:&quot;White-Green&quot;}],&quot;attributes_by_id&quot;:{&quot;2&quot;:&quot;Rowan Clemons&quot;,&quot;3&quot;:&quot;Jade Booker&quot;,&quot;4&quot;:&quot;12 GB&quot;,&quot;5&quot;:&quot;Hard Disk&quot;,&quot;6&quot;:&quot;Cora Parrish&quot;,&quot;7&quot;:&quot;Reprehenderit error&quot;,&quot;8&quot;:&quot;Possimus qui quaera&quot;,&quot;9&quot;:&quot;Adara Larsen&quot;,&quot;10&quot;:&quot;Ebony Petty&quot;,&quot;11&quot;:&quot;875&quot;,&quot;12&quot;:&quot;271&quot;,&quot;13&quot;:&quot;Garrison Mcpherson&quot;,&quot;14&quot;:&quot;Maxine Hardy&quot;,&quot;15&quot;:&quot;Megan Miranda&quot;,&quot;16&quot;:&quot;LED&quot;,&quot;17&quot;:&quot;Fitzgerald Sharp&quot;,&quot;18&quot;:&quot;DDR3&quot;,&quot;19&quot;:&quot;Yes&quot;,&quot;20&quot;:&quot;179&quot;,&quot;21&quot;:&quot;Kessie Huber&quot;,&quot;22&quot;:&quot;HD&quot;,&quot;23&quot;:&quot;Harlan Jenkins&quot;,&quot;24&quot;:&quot;Hector Moran&quot;,&quot;25&quot;:&quot;Myles Robles&quot;,&quot;26&quot;:&quot;Medium&quot;,&quot;27&quot;:&quot;Risa Huff&quot;,&quot;28&quot;:&quot;Acton Bates&quot;,&quot;29&quot;:&quot;Cameron Williamson&quot;,&quot;30&quot;:&quot;Naida Morin&quot;,&quot;31&quot;:&quot;Steven Warren&quot;,&quot;32&quot;:&quot;Reagan Cote&quot;,&quot;33&quot;:&quot;September Bowers&quot;,&quot;34&quot;:&quot;without AI&quot;,&quot;35&quot;:&quot;Molly Koch&quot;,&quot;36&quot;:&quot;Ina Mosley&quot;,&quot;37&quot;:&quot;11&quot;,&quot;38&quot;:&quot;Paloma Tran&quot;,&quot;39&quot;:&quot;Britanney Mason&quot;,&quot;40&quot;:&quot;Armand Shepard&quot;,&quot;41&quot;:&quot;White-Green&quot;,&quot;42&quot;:&quot;Taylor Lang&quot;,&quot;43&quot;:&quot;Marny Tucker&quot;,&quot;44&quot;:&quot;Paloma Ferrell&quot;},&quot;attribute_values_raw&quot;:{&quot;2&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Rowan Clemons&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;3&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Jade Booker&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;38&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Paloma Tran&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;39&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Britanney Mason&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;40&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Armand Shepard&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;42&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Taylor Lang&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;43&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Marny Tucker&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;44&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Paloma Ferrell&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;4&quot;:{&quot;attribute_value_id&quot;:3,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;12 GB&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;5&quot;:{&quot;attribute_value_id&quot;:7,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Hard Disk&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;6&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Cora Parrish&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;7&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Reprehenderit error&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;8&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Possimus qui quaera&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;9&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Adara Larsen&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;10&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Ebony Petty&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;11&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:null,&quot;value_number&quot;:&quot;875&quot;,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;12&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:null,&quot;value_number&quot;:&quot;271&quot;,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;13&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Garrison Mcpherson&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;14&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Maxine Hardy&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;15&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Megan Miranda&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;16&quot;:{&quot;attribute_value_id&quot;:8,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;LED&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;17&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Fitzgerald Sharp&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;18&quot;:{&quot;attribute_value_id&quot;:4,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;DDR3&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;19&quot;:{&quot;attribute_value_id&quot;:10,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Yes&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;20&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:null,&quot;value_number&quot;:&quot;179&quot;,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;21&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Kessie Huber&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;22&quot;:{&quot;attribute_value_id&quot;:13,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;HD&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;23&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Harlan Jenkins&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;24&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Hector Moran&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;25&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Myles Robles&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;26&quot;:{&quot;attribute_value_id&quot;:18,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Medium&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;27&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Risa Huff&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;28&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Acton Bates&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;29&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Cameron Williamson&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;30&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Naida Morin&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;31&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Steven Warren&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;32&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Reagan Cote&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;33&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;September Bowers&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;34&quot;:{&quot;attribute_value_id&quot;:23,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;without AI&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;35&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Molly Koch&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;36&quot;:{&quot;attribute_value_id&quot;:null,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;Ina Mosley&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;37&quot;:{&quot;attribute_value_id&quot;:21,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;11&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null},&quot;41&quot;:{&quot;attribute_value_id&quot;:24,&quot;custom_value&quot;:null,&quot;value_text&quot;:&quot;White-Green&quot;,&quot;value_number&quot;:null,&quot;value_boolean&quot;:null,&quot;value_date&quot;:null,&quot;value_json&quot;:null}}}},
+        allowAlternativeProducts: true,
+        currencyCode: 'USD',
+        shippingCharge: 0,
+        categoryAttributesUrl: 'http://edushopify.test/supplier/quotations/categories',
+        listingsSearchUrl: 'http://edushopify.test/supplier/quotations/listings/search',
+        listingsPrefillUrl: 'http://edushopify.test/supplier/quotations/listings',
+        autoMatchUrl: 'http://edushopify.test/supplier/quotations/create/43/auto-match',
+        quotationId: null,
+        isRevision: false,
+        autosaveCreateUrl: 'http://edushopify.test/supplier/quotations/create/43/autosave',
+        autosaveUpdateUrlBase: 'http://edushopify.test/supplier/quotations',
+        csrfToken: 'UJp1j9gVNMdzBHyLObOaa5KFtgdpQKwDJS6AR2fu',
+        initialStep: 1,
+        maxCompletedStep: 1,
+    })"
+    x-init="init()"
+>
+    <input type="hidden" name="_token" value="UJp1j9gVNMdzBHyLObOaa5KFtgdpQKwDJS6AR2fu" autocomplete="off">        <input type="hidden" name="current_step" :value="currentStep">
+    <input type="hidden" name="max_completed_step" :value="maxCompletedStep">
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+        <div class="xl:col-span-8 space-y-6">
+
+            
+            
+            <div class="flex items-center flex-wrap gap-x-5 gap-y-1 bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-xs">
+                <span class="flex items-center gap-1.5 text-gray-600">
+                    <i class="fa-regular fa-clock text-amber-500"></i>
+                    Quotation Deadline: <span class="font-semibold text-gray-900">03 Nov 2026, 12:00 PM</span>
+                </span>
+                                    <span class="flex items-center gap-1.5 text-gray-600">
+                        <i class="fa-solid fa-truck-fast text-indigo-500"></i>
+                        Expected Delivery: <span class="font-semibold text-gray-900">10 Dec 2026</span>
+                    </span>
+                            </div>
+
+            
+                        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div class="border-b border-gray-200 px-2">
+                    <nav class="flex gap-0 -mb-px overflow-x-auto" aria-label="Quotation steps">
+                                                    <button type="button" @click="setStep(1)"
+                                    :disabled="isStepLocked(1)"
+                                    :title="isStepLocked(1) ? 'Complete the earlier steps first' : ''"
+                                    class="flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors focus:outline-none disabled:cursor-not-allowed"
+                                    :class="isStepLocked(1)
+                                        ? 'border-transparent text-gray-300'
+                                        : (currentStep === 1
+                                            ? 'border-indigo-600 text-indigo-600'
+                                            : (stepValid(1) ? 'border-emerald-500 text-emerald-600 hover:text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'))">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors"
+                                      :class="isStepLocked(1)
+                                          ? 'bg-gray-100 text-gray-300'
+                                          : (stepValid(1)
+                                              ? 'bg-emerald-500 text-white'
+                                              : (currentStep === 1 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'))">
+                                    <i class="fa-solid fa-lock" x-show="isStepLocked(1)" x-cloak style="font-size:7px"></i>
+                                    <i class="fa-solid fa-check" x-show="!isStepLocked(1) && stepValid(1)" x-cloak style="font-size:8px"></i>
+                                    <span x-show="!isStepLocked(1) && !stepValid(1)">1</span>
+                                </span>
+                                <i class="fa-solid fa-tags text-xs"></i>
+                                <span>Price Items</span>
+                            </button>
+                                                    <button type="button" @click="setStep(2)"
+                                    :disabled="isStepLocked(2)"
+                                    :title="isStepLocked(2) ? 'Complete the earlier steps first' : ''"
+                                    class="flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors focus:outline-none disabled:cursor-not-allowed"
+                                    :class="isStepLocked(2)
+                                        ? 'border-transparent text-gray-300'
+                                        : (currentStep === 2
+                                            ? 'border-indigo-600 text-indigo-600'
+                                            : (stepValid(2) ? 'border-emerald-500 text-emerald-600 hover:text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'))">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors"
+                                      :class="isStepLocked(2)
+                                          ? 'bg-gray-100 text-gray-300'
+                                          : (stepValid(2)
+                                              ? 'bg-emerald-500 text-white'
+                                              : (currentStep === 2 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'))">
+                                    <i class="fa-solid fa-lock" x-show="isStepLocked(2)" x-cloak style="font-size:7px"></i>
+                                    <i class="fa-solid fa-check" x-show="!isStepLocked(2) && stepValid(2)" x-cloak style="font-size:8px"></i>
+                                    <span x-show="!isStepLocked(2) && !stepValid(2)">2</span>
+                                </span>
+                                <i class="fa-solid fa-sliders text-xs"></i>
+                                <span>Refine &amp; Add-Ons</span>
+                            </button>
+                                                    <button type="button" @click="setStep(3)"
+                                    :disabled="isStepLocked(3)"
+                                    :title="isStepLocked(3) ? 'Complete the earlier steps first' : ''"
+                                    class="flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors focus:outline-none disabled:cursor-not-allowed"
+                                    :class="isStepLocked(3)
+                                        ? 'border-transparent text-gray-300'
+                                        : (currentStep === 3
+                                            ? 'border-indigo-600 text-indigo-600'
+                                            : (stepValid(3) ? 'border-emerald-500 text-emerald-600 hover:text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'))">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors"
+                                      :class="isStepLocked(3)
+                                          ? 'bg-gray-100 text-gray-300'
+                                          : (stepValid(3)
+                                              ? 'bg-emerald-500 text-white'
+                                              : (currentStep === 3 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'))">
+                                    <i class="fa-solid fa-lock" x-show="isStepLocked(3)" x-cloak style="font-size:7px"></i>
+                                    <i class="fa-solid fa-check" x-show="!isStepLocked(3) && stepValid(3)" x-cloak style="font-size:8px"></i>
+                                    <span x-show="!isStepLocked(3) && !stepValid(3)">3</span>
+                                </span>
+                                <i class="fa-solid fa-circle-check text-xs"></i>
+                                <span>Terms &amp; Submit</span>
+                            </button>
+                        
+                        <div class="flex-1 flex items-center justify-end px-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-gray-50 border border-gray-200" x-show="quotationId || isSaving" x-cloak>
+                                <span class="w-1.5 h-1.5 rounded-full" :class="isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'"></span>
+                                <span x-text="isSaving ? 'Saving…' : 'Draft saved'"></span>
+                            </span>
+                            <p x-show="saveError" x-cloak class="text-xs text-red-600 ml-3" x-text="saveError"></p>
+                        </div>
+                    </nav>
+                </div>
+
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-300" :style="'width:' + completionPercent + '%; background:var(--theme-primary, #4f46e5)'"></div>
+                    </div>
+                    <span class="text-xs font-bold text-gray-700 shrink-0" x-text="completionPercent + '% Complete'"></span>
+                </div>
+            </div>
+
+            
+            <div x-show="currentStep === 1" x-cloak class="space-y-6">
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="mb-4">
+            <h3 class="text-sm font-semibold text-gray-900">Requested Items</h3>
+                            <p class="text-xs text-gray-500 mt-1">Respond to each RFQ item — use one of your listings, offer an alternative, or create a fully custom offer. Only Unit Price is required; everything else can wait.</p>
+                    </div>
+    
+    <div x-show="items.length > 1" x-cloak class="flex items-center gap-3 mb-4 -mt-1">
+                        <button type="button" @click="collapseAllItems()" class="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-compress"></i> Collapse All
+                        </button>
+                        <button type="button" @click="expandAllItems()" class="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-expand"></i> Expand All
+                        </button>
+                    </div>
+
+                    <template x-for="(item, index) in items" :key="index">
+                        <div class="border border-gray-200 rounded-lg p-4 mb-4 last:mb-0">
+    <div class="flex items-center gap-2 cursor-pointer select-none" @click="item._collapsed = !item._collapsed">
+        <button type="button" @click.stop="item._collapsed = !item._collapsed" class="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-100 shrink-0">
+            <i class="fa-solid fa-chevron-down text-xs transition-transform" :class="!item._collapsed ? 'rotate-180' : ''"></i>
+        </button>
+        <span class="text-xs font-semibold text-gray-500 shrink-0">Item <span x-text="index + 1"></span></span>
+        <span class="text-sm font-medium text-gray-800 truncate" x-text="item.item_name || 'Untitled item'"></span>
+        <span x-show="item._collapsed" x-cloak class="ml-auto shrink-0 flex items-center gap-1.5">
+            <span x-show="item.unit_price" x-cloak class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full px-2.5 py-1" x-text="formatMoney(lineTotal(item))"></span>
+            <span x-show="!item.unit_price" x-cloak class="text-[11px] text-gray-400 italic">Not priced yet</span>
+        </span>
+        <button type="button" @click.stop="removeItem(index)" class="text-red-500 hover:text-red-700 text-xs shrink-0" :class="item._collapsed ? '' : 'ml-auto'">
+            <i class="fa-solid fa-trash"></i> Remove
+        </button>
+    </div>
+
+    <input type="hidden" :name="'items['+index+'][id]'" :value="item.id ?? ''">
+    <input type="hidden" :name="'items['+index+'][rfq_item_id]'" :value="item.rfq_item_id ?? ''">
+    <input type="hidden" :name="'items['+index+'][is_alternative]'" :value="item.is_alternative ? 1 : 0">
+    <input type="hidden" :name="'items['+index+'][is_optional_addon]'" value="0">
+
+    <div x-show="!item._collapsed" x-cloak class="mt-3">
+
+    
+    <div x-show="item.rfq_item_id && rfqItemsById[item.rfq_item_id]" x-cloak class="bg-slate-50/90 border border-slate-200 rounded-xl p-3.5 sm:p-4 mb-4 shadow-2xs">
+        
+        <div class="flex items-center justify-between gap-3 mb-3 pb-2.5 border-b border-slate-200/80">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-200 text-slate-700">
+                    <i class="fa-solid fa-file-contract text-slate-500 text-[10px]"></i> Buyer Requested
+                </span>
+                <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full"
+                      :class="rfqItemsById[item.rfq_item_id]?.is_requirement ? 'bg-amber-100 text-amber-900 border border-amber-300' : (rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-gray-100 text-gray-700 border border-gray-300')"
+                      x-text="rfqItemsById[item.rfq_item_id]?.is_requirement ? 'Requirement (Quotation Only)' : (rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'Marketplace Product' : 'Custom Product')">
+                </span>
+            </div>
+            <div class="inline-flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
+                <span class="text-[11px] text-slate-400 font-medium">Quantity:</span>
+                <span class="text-xs font-bold text-slate-900">
+                    <span x-text="rfqItemsById[item.rfq_item_id]?.quantity"></span>
+                    <span class="text-slate-600 font-semibold" x-text="rfqItemsById[item.rfq_item_id]?.unit"></span>
+                </span>
+            </div>
+        </div>
+
+        
+        <div class="flex items-start gap-3 mb-3">
+            <template x-if="rfqItemsById[item.rfq_item_id]?.listing_image_url">
+                <div class="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 shrink-0 bg-white shadow-2xs">
+                    <img :src="rfqItemsById[item.rfq_item_id]?.listing_image_url" :alt="rfqItemsById[item.rfq_item_id]?.item_name" class="w-full h-full object-cover">
+                </div>
+            </template>
+            <div class="min-w-0 flex-1">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Requirement / Item Name</p>
+                <h4 class="text-sm sm:text-base font-bold text-gray-900 leading-snug" x-text="rfqItemsById[item.rfq_item_id]?.item_name"></h4>
+            </div>
+        </div>
+
+        
+        <div class="mb-3 p-3 bg-white rounded-lg border border-slate-200/80 space-y-2.5">
+            
+            <div>
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    <span x-text="rfqItemsById[item.rfq_item_id]?.category_names?.length > 1 ? 'Suggested Categories (' + rfqItemsById[item.rfq_item_id]?.category_names?.length + ')' : 'Category'"></span>
+                </span>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <template x-for="(catName, cIdx) in (rfqItemsById[item.rfq_item_id]?.category_names?.length ? rfqItemsById[item.rfq_item_id]?.category_names : [rfqItemsById[item.rfq_item_id]?.category_name || 'General Category'])" :key="cIdx">
+                        <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200/80 shadow-2xs">
+                            <i class="fa-solid fa-folder-tree text-indigo-500 text-[10px]"></i>
+                            <span x-text="catName"></span>
+                        </span>
+                    </template>
+                </div>
+            </div>
+
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-slate-100">
+                <div>
+                    <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Target / Est. Unit Price</span>
+                    <span class="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-tag text-emerald-600 text-[11px] shrink-0"></i>
+                        <template x-if="rfqItemsById[item.rfq_item_id]?.estimated_unit_price">
+                            <span>
+                                USD <span x-text="rfqItemsById[item.rfq_item_id]?.estimated_unit_price"></span>
+                                <span class="text-[10px] text-slate-400 font-normal">/ <span x-text="rfqItemsById[item.rfq_item_id]?.unit || 'unit'"></span></span>
+                            </span>
+                        </template>
+                        <template x-if="!rfqItemsById[item.rfq_item_id]?.estimated_unit_price">
+                            <span class="text-slate-400 font-normal italic text-xs">Not specified</span>
+                        </template>
+                    </span>
+                </div>
+                <div>
+                    <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Estimated Total Budget</span>
+                    <span class="text-xs font-semibold text-indigo-900 flex items-center gap-1.5">
+                        <i class="fa-solid fa-coins text-amber-500 text-[11px] shrink-0"></i>
+                        <template x-if="rfqItemsById[item.rfq_item_id]?.estimated_unit_price && rfqItemsById[item.rfq_item_id]?.quantity">
+                            <span x-text="formatMoney(parseFloat(String(rfqItemsById[item.rfq_item_id]?.estimated_unit_price).replace(/,/g, '')) * parseFloat(rfqItemsById[item.rfq_item_id]?.quantity || 1))"></span>
+                        </template>
+                        <template x-if="!rfqItemsById[item.rfq_item_id]?.estimated_unit_price">
+                            <span class="text-slate-400 font-normal italic text-xs">Open for bidding</span>
+                        </template>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        
+        <template x-if="rfqItemsById[item.rfq_item_id]?.description">
+            <div class="mb-3">
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    <i class="fa-solid fa-align-left text-slate-400 mr-1"></i> Description / Specifications:
+                </span>
+                <p class="text-xs text-slate-700 leading-relaxed bg-white p-2.5 rounded-lg border border-slate-200/80 whitespace-pre-line"
+                   x-text="rfqItemsById[item.rfq_item_id]?.description"></p>
+            </div>
+        </template>
+
+        
+        <template x-if="rfqItemsById[item.rfq_item_id]?.attributes && rfqItemsById[item.rfq_item_id]?.attributes.length > 0">
+            <div class="mt-2.5 pt-2.5 border-t border-slate-200/60" x-data="{ expanded: false }">
+                <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1">
+                        <i class="fa-solid fa-list-check text-indigo-500 text-[11px]"></i>
+                        <span x-text="rfqItemsById[item.rfq_item_id]?.is_marketplace ? 'Product Specifications:' : 'Category Specifications:'"></span>
+                        <span class="text-gray-400 font-normal" x-text="'(' + rfqItemsById[item.rfq_item_id]?.attributes.length + ')'"></span>
+                    </p>
+                    <button type="button" x-show="rfqItemsById[item.rfq_item_id]?.attributes.length > 6"
+                            @click="expanded = !expanded"
+                            class="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800">
+                        <span x-text="expanded ? 'Show Less' : 'Show All (' + rfqItemsById[item.rfq_item_id]?.attributes.length + ')'"></span>
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <template x-for="(attr, aIdx) in (expanded ? rfqItemsById[item.rfq_item_id]?.attributes : rfqItemsById[item.rfq_item_id]?.attributes.slice(0, 6))" :key="aIdx">
+                        <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-700 shadow-2xs">
+                            <span class="text-gray-500 font-medium" x-text="attr.name + ':'"></span>
+                            <span class="font-semibold text-gray-900" x-text="attr.value"></span>
+                        </span>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        
+        <template x-if="rfqItemsById[item.rfq_item_id]?.specs && rfqItemsById[item.rfq_item_id]?.specs.length > 0">
+            <div class="mt-2.5 pt-2.5 border-t border-slate-200/60">
+                <p class="text-[10px] font-bold text-indigo-900 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-sliders text-indigo-500 text-[11px]"></i>
+                    Buyer's Custom Specifications:
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                    <template x-for="(spec, sIdx) in rfqItemsById[item.rfq_item_id]?.specs" :key="sIdx">
+                        <span class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-indigo-50/90 border border-indigo-200 text-indigo-950 font-medium shadow-2xs">
+                            <span class="text-indigo-600 font-semibold" x-text="(spec.name || 'Spec') + ':'"></span>
+                            <span class="font-bold text-gray-900" x-text="spec.value || '—'"></span>
+                        </span>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        
+        <template x-if="rfqItemsById[item.rfq_item_id]?.attachments && rfqItemsById[item.rfq_item_id]?.attachments.length > 0">
+            <div class="mt-2.5 pt-2.5 border-t border-slate-200/60">
+                <p class="text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-paperclip text-amber-600 text-[11px]"></i>
+                    Buyer's Reference Files &amp; Drawings:
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="att in rfqItemsById[item.rfq_item_id]?.attachments" :key="att.id">
+                        <a :href="att.url" target="_blank"
+                           class="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md bg-white border border-gray-200 text-gray-700 hover:border-amber-400 hover:text-amber-950 shadow-2xs transition-colors">
+                            <i class="fa-solid text-xs text-gray-400"
+                               :class="att.is_image ? 'fa-file-image text-emerald-500' : 'fa-file-pdf text-red-500'"></i>
+                            <span class="font-medium text-gray-800" x-text="att.name"></span>
+                            <span class="text-[10px] text-gray-400 font-mono" x-text="'(' + att.size + ')'"></span>
+                            <i class="fa-solid fa-download text-[9px] text-gray-400 ml-0.5"></i>
+                        </a>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    
+    <div class="mb-2">
+        <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+                Product Name <span class="text-red-500">*</span>
+            </label>
+            <span class="text-[11px] text-gray-400">Specify the brand, model, or product name you are offering</span>
+        </div>
+        <input type="text" 
+               required
+               :name="'items['+index+'][item_name]'" 
+               x-model="item.item_name" 
+               placeholder="e.g., Dell OptiPlex 7090 Desktop / Core i7 Custom PC"
+               class="focus-accent w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 bg-white placeholder-gray-400">
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
+            
+            <template x-if="rfqItemsById[item.rfq_item_id]?.is_requirement">
+                <div>
+                    <div class="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-700 font-medium" x-text="item.quantity"></div>
+                    <input type="hidden" :name="'items['+index+'][quantity]'" :value="item.quantity">
+                </div>
+            </template>
+            <template x-if="!rfqItemsById[item.rfq_item_id]?.is_requirement">
+                <input type="number" step="0.001" min="0.001" :name="'items['+index+'][quantity]'" x-model="item.quantity" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            </template>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+            <template x-if="rfqItemsById[item.rfq_item_id]?.is_requirement">
+                <div>
+                    <div class="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-700 font-medium" x-text="rfqItemsById[item.rfq_item_id]?.unit || '—'"></div>
+                    <input type="hidden" :name="'items['+index+'][unit_id]'" :value="item.unit_id ?? ''">
+                </div>
+            </template>
+            <template x-if="!rfqItemsById[item.rfq_item_id]?.is_requirement">
+                <select :name="'items['+index+'][unit_id]'" x-model="item.unit_id" class="focus-accent w-full text-sm rounded-lg border border-gray-300 px-2 py-2 bg-white">
+                    <option value="">Unit</option>
+                                            <option value="3">bx</option>
+                                            <option value="9">bdl</option>
+                                            <option value="6">ctn</option>
+                                            <option value="15">cm</option>
+                                            <option value="7">dz</option>
+                                            <option value="16">ft</option>
+                                            <option value="12">g</option>
+                                            <option value="21">hr</option>
+                                            <option value="17">in</option>
+                                            <option value="2">item</option>
+                                            <option value="11">kg</option>
+                                            <option value="24">kit</option>
+                                            <option value="25">lic</option>
+                                            <option value="18">L</option>
+                                            <option value="14">m</option>
+                                            <option value="19">ml</option>
+                                            <option value="5">pk</option>
+                                            <option value="23">pk-10</option>
+                                            <option value="22">pk-5</option>
+                                            <option value="8">pr</option>
+                                            <option value="1">pc</option>
+                                            <option value="13">lb</option>
+                                            <option value="10">roll</option>
+                                            <option value="4">set</option>
+                                            <option value="20">sqm</option>
+                                    </select>
+            </template>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Unit Price <span class="text-red-500">*</span></label>
+            <input type="number" step="0.01" min="0" required :name="'items['+index+'][unit_price]'" x-model.number="item.unit_price" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold">
+            <p x-show="rfqItemsById[item.rfq_item_id]?.is_requirement && rfqItemsById[item.rfq_item_id]?.estimated_unit_price" x-cloak class="text-[10px] text-indigo-600 mt-1">
+                Buyer's estimate: <span x-text="rfqItemsById[item.rfq_item_id]?.estimated_unit_price"></span>
+            </p>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Lead Time (Days)</label>
+            <input type="number" min="0" :name="'items['+index+'][lead_time_days]'" x-model.number="item.lead_time_days" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+    </div>
+
+    <div class="mt-2 text-right text-xs text-gray-500">
+        Line total: <span class="font-bold text-indigo-700" x-text="formatMoney(lineTotal(item))"></span>
+    </div>
+
+    <button type="button" @click="item._advancedOpen = !item._advancedOpen" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 mt-3">
+        <i class="fa-solid text-[10px]" :class="item._advancedOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+        <span x-text="item._advancedOpen ? 'Hide advanced options' : 'Advanced: listing, specs &amp; offer type'"></span>
+    </button>
+
+    <div x-show="item._advancedOpen" x-cloak class="mt-3 pt-3 border-t border-gray-100">
+
+    
+    <div class="mb-3">
+        <label class="block text-xs font-medium text-gray-700 mb-1.5">Offer Type</label>
+        <div class="flex flex-wrap gap-2">
+            <label class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border cursor-pointer"
+                   :class="getOfferType(item) === 'existing' ? 'border-indigo-500 bg-indigo-50/50 text-indigo-700 font-semibold' : 'border-gray-200 text-gray-600'">
+                <input type="radio" class="sr-only" :checked="getOfferType(item) === 'existing'" @change="setOfferType(item, 'existing')">
+                Use Existing Listing
+            </label>
+            <label class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border cursor-pointer"
+                   :class="getOfferType(item) === 'custom' ? 'border-indigo-500 bg-indigo-50/50 text-indigo-700 font-semibold' : 'border-gray-200 text-gray-600'">
+                <input type="radio" class="sr-only" :checked="getOfferType(item) === 'custom'" @change="setOfferType(item, 'custom')">
+                Create Custom Offer
+            </label>
+            <template x-if="allowAlternativeProducts">
+                <label class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border cursor-pointer"
+                       :class="getOfferType(item) === 'alternative' ? 'border-amber-500 bg-amber-50/60 text-amber-700 font-semibold' : 'border-gray-200 text-gray-600'">
+                    <input type="radio" class="sr-only" :checked="getOfferType(item) === 'alternative'" @change="setOfferType(item, 'alternative')">
+                    Offer Alternative Product
+                </label>
+            </template>
+        </div>
+    </div>
+
+    
+    <div x-show="item._suggestedListing" x-cloak class="mb-3 flex items-center flex-wrap gap-2 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+        <i class="fa-solid fa-wand-magic-sparkles text-emerald-600"></i>
+        <span class="text-emerald-800">Matches your listing: <span class="font-semibold" x-text="item._suggestedListing?.name"></span></span>
+        <button type="button" @click="useSuggestedListing(item)" class="ml-auto font-semibold text-emerald-700 hover:text-emerald-900 underline">Use it</button>
+        <button type="button" @click="dismissSuggestedListing(item)" class="text-gray-500 hover:text-gray-700">Dismiss</button>
+    </div>
+
+    
+    <div x-show="getOfferType(item) !== 'custom'" x-cloak class="relative mb-3">
+        <label class="block text-xs font-medium text-gray-700 mb-1.5">Select From Your Listings</label>
+        <div class="flex items-center gap-2">
+            <input type="text" x-model="item._listingQuery" @input.debounce.400ms="searchListingsForItem(item)"
+                   placeholder="Search your marketplace listings..."
+                   class="focus-accent w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm">
+            <button type="button" x-show="item.offered_listing_id" @click="clearListingForItem(item)" class="text-xs text-gray-500 hover:text-gray-700 whitespace-nowrap px-2">
+                Clear
+            </button>
+        </div>
+        <div x-show="item._listingResults.length > 0" x-cloak class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+            <template x-for="l in item._listingResults" :key="l.id">
+                <button type="button" @click="selectListingForItem(item, l)" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between gap-2">
+                    <span x-text="l.name"></span>
+                    <span class="text-[11px] text-gray-400" x-text="l.category_name"></span>
+                </button>
+            </template>
+        </div>
+        <p x-show="item.offered_listing_id" class="text-[11px] text-emerald-700 mt-1">
+            <i class="fa-solid fa-circle-check mr-1"></i> Linked to your listing — you can still adjust price/specs below for this quotation only.
+        </p>
+        <input type="hidden" :name="'items['+index+'][offered_listing_id]'" :value="item.offered_listing_id ?? ''">
+
+        <div x-show="item.offered_listing_id && item._variants.length > 0" x-cloak class="mt-2">
+            <label class="block text-xs font-medium text-gray-700 mb-1">Variant</label>
+            <select :name="'items['+index+'][offered_variant_id]'" x-model="item.offered_variant_id" class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                <option value="">No specific variant</option>
+                <template x-for="v in item._variants" :key="v.id">
+                    <option :value="v.id" x-text="v.label"></option>
+                </template>
+            </select>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Description / Notes</label>
+        <textarea :name="'items['+index+'][description]'" x-model="item.description" rows="2" class="focus-accent w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"></textarea>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mt-3">
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Tax Rate %</label>
+            <input type="number" step="0.01" min="0" max="100" :name="'items['+index+'][tax_rate]'" x-model.number="item.tax_rate" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Discount</label>
+            <input type="number" step="0.01" min="0" :name="'items['+index+'][discount_amount]'" x-model.number="item.discount_amount" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+    </div>
+
+    <div x-show="item.rfq_item_id && rfqItemsById[item.rfq_item_id]" x-cloak class="mt-3">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700">Specifications Comparison</label>
+            <label class="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700 cursor-pointer select-none">
+                <input type="checkbox" @change="$event.target.checked && applyCopyBuyerRequirements(item)" class="w-3.5 h-3.5 rounded border-gray-300" style="accent-color:var(--theme-primary)">
+                Copy buyer's requirements into your offer
+            </label>
+        </div>
+        <div x-show="item._attrLoading" class="py-6 text-center text-xs text-gray-500">
+    <i class="fa-solid fa-circle-notch fa-spin text-indigo-600 mr-1"></i> Loading specifications…
+</div>
+
+<template x-if="!item._attrLoading && item._attrGroups.length > 0">
+    <div class="space-y-4 mt-3">
+        <template x-for="group in item._attrGroups" :key="group.group_id">
+            <div class="bg-gray-50/60 rounded-xl border border-gray-200 overflow-hidden">
+                <div class="bg-gray-100/70 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                    <span class="text-xs font-semibold text-gray-800" x-text="group.group_name"></span>
+                    <span class="text-[10px] text-gray-400" x-text="group.attributes.length + ' fields'"></span>
+                </div>
+                <div class="divide-y divide-gray-100">
+                    <template x-for="attr in group.attributes" :key="attr.id">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 items-start">
+                            <div>
+                                <p class="text-[11px] font-medium text-gray-500 mb-1">
+                                    <span x-text="attr.name"></span>
+                                    <span x-show="attr.unit_symbol" class="text-gray-400" x-text="'(' + attr.unit_symbol + ')'"></span>
+                                    — Buyer Requested
+                                </p>
+                                <p class="text-xs font-semibold text-gray-800 bg-white border border-gray-200 rounded-lg px-3 py-2"
+                                   x-text="(rfqItemsById[item.rfq_item_id]?.attributes_by_id?.[attr.id]) ?? 'Not specified'"></p>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-medium text-indigo-600 mb-1 flex items-center gap-1">
+                                    <span x-text="attr.name"></span> — Your Offer
+                                    <span x-show="attr.is_required" class="text-red-500 font-bold">*</span>
+                                </p>
+
+                                
+                                <template x-if="attr.input_type === 'text'">
+                                    <input type="text"
+                                           :name="'items[' + index + '][attribute_values][' + attr.id + '][value_text]'"
+                                           :placeholder="attr.placeholder || ('Enter ' + attr.name.toLowerCase())"
+                                           x-model="getAttrVal(item, attr.id).value_text"
+                                           class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                </template>
+
+                                
+                                <template x-if="attr.input_type === 'textarea'">
+                                    <textarea :name="'items[' + index + '][attribute_values][' + attr.id + '][value_text]'"
+                                              :placeholder="attr.placeholder || ('Enter ' + attr.name.toLowerCase())"
+                                              rows="2"
+                                              x-model="getAttrVal(item, attr.id).value_text"
+                                              class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white"></textarea>
+                                </template>
+
+                                
+                                <template x-if="attr.input_type === 'number'">
+                                    <input type="number" step="any"
+                                           :name="'items[' + index + '][attribute_values][' + attr.id + '][value_number]'"
+                                           :placeholder="attr.placeholder || '0'"
+                                           x-model="getAttrVal(item, attr.id).value_number"
+                                           class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                </template>
+
+                                
+                                <template x-if="attr.input_type === 'select'">
+                                    <div class="space-y-1">
+                                        <select :name="'items[' + index + '][attribute_values][' + attr.id + '][attribute_value_id]'"
+                                                x-model="getAttrVal(item, attr.id).attribute_value_id"
+                                                class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                            <option value="">Select option</option>
+                                            <template x-for="opt in attr.values" :key="opt.id">
+                                                <option :value="opt.id" x-text="opt.value"></option>
+                                            </template>
+                                            <template x-if="attr.allow_custom_value">
+                                                <option value="__other__">Other</option>
+                                            </template>
+                                        </select>
+                                        <input type="text" x-show="isOtherSelected(item, attr.id)"
+                                               :name="'items[' + index + '][attribute_values][' + attr.id + '][custom_value]'"
+                                               placeholder="Please specify..."
+                                               x-model="getAttrVal(item, attr.id).custom_value"
+                                               class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                    </div>
+                                </template>
+
+                                
+                                <template x-if="attr.input_type === 'multi_select'">
+                                    <div class="p-2.5 bg-white rounded-lg border border-gray-200 max-h-32 overflow-y-auto space-y-1.5">
+                                        <template x-if="attr.values.length > 0">
+                                            <div>
+                                                <template x-for="opt in attr.values" :key="opt.id">
+                                                    <label class="inline-flex items-center gap-1.5 mr-2 mb-1 text-[11px] text-gray-700 cursor-pointer bg-gray-50 px-2 py-1 rounded-md border border-gray-200">
+                                                        <input type="checkbox"
+                                                               :name="'items[' + index + '][attribute_values][' + attr.id + '][value_json][]'"
+                                                               :value="opt.value"
+                                                               :checked="isMultiSelected(item, attr.id, opt.value)"
+                                                               @change="toggleMultiSelect(item, attr.id, opt.value)"
+                                                               class="rounded text-indigo-600 focus:ring-indigo-500">
+                                                        <span x-text="opt.value"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template x-if="attr.allow_custom_value">
+                                            <input type="text"
+                                                   :name="'items[' + index + '][attribute_values][' + attr.id + '][custom_value]'"
+                                                   placeholder="Other (please specify)..."
+                                                   x-model="getAttrVal(item, attr.id).custom_value"
+                                                   class="w-full text-xs rounded-lg border border-gray-300 px-2 py-1.5 bg-white mt-1">
+                                        </template>
+                                    </div>
+                                </template>
+
+                                
+                                <template x-if="attr.input_type === 'boolean'">
+                                    <div class="flex items-center gap-3 py-1.5">
+                                        <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+                                            <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][value_boolean]'" value="1"
+                                                   :checked="getAttrVal(item, attr.id).value_boolean == 1"
+                                                   @change="getAttrVal(item, attr.id).value_boolean = 1">
+                                            <span>Yes</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+                                            <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][value_boolean]'" value="0"
+                                                   :checked="getAttrVal(item, attr.id).value_boolean == 0"
+                                                   @change="getAttrVal(item, attr.id).value_boolean = 0">
+                                            <span>No</span>
+                                        </label>
+                                    </div>
+                                </template>
+
+                                
+                                <template x-if="attr.input_type === 'date'">
+                                    <input type="date"
+                                           :name="'items[' + index + '][attribute_values][' + attr.id + '][value_date]'"
+                                           x-model="getAttrVal(item, attr.id).value_date"
+                                           class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                </template>
+
+                                
+                                <template x-if="attr.input_type === 'color'">
+                                    <div class="space-y-1.5">
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-for="opt in attr.values" :key="opt.id">
+                                                <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] cursor-pointer"
+                                                       :class="getAttrVal(item, attr.id).attribute_value_id == opt.id ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500 font-semibold' : 'border-gray-200 bg-white hover:bg-gray-50'">
+                                                    <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][attribute_value_id]'" :value="opt.id"
+                                                           x-model="getAttrVal(item, attr.id).attribute_value_id" class="sr-only">
+                                                    <span x-show="opt.color_hex" class="w-3 h-3 rounded-full border border-gray-300" :style="'background-color:' + opt.color_hex"></span>
+                                                    <span x-text="opt.value"></span>
+                                                </label>
+                                            </template>
+                                            <template x-if="attr.allow_custom_value">
+                                                <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] cursor-pointer"
+                                                       :class="isOtherSelected(item, attr.id) ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500 font-semibold' : 'border-gray-200 bg-white hover:bg-gray-50'">
+                                                    <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][attribute_value_id]'" value="__other__"
+                                                           x-model="getAttrVal(item, attr.id).attribute_value_id" class="sr-only">
+                                                    <span>Other</span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                        <input type="text" x-show="isOtherSelected(item, attr.id)"
+                                               :name="'items[' + index + '][attribute_values][' + attr.id + '][custom_value]'"
+                                               placeholder="Custom color or hex..."
+                                               x-model="getAttrVal(item, attr.id).custom_value"
+                                               class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+</template>
+
+<p x-show="!item._attrLoading && item.rfq_item_id && item._attrGroups.length === 0" class="text-xs text-gray-400 mt-2">
+    No standard specifications were requested for this item.
+</p>
+    </div>
+
+    </div>
+
+    </div>
+</div>
+                    </template>
+
+                    <button type="button" @click="addItem()" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add Another Item
+                    </button>
+</div>
+
+                <div class="flex justify-end">
+                    <button type="button" @click="goNext(1)" class="btn-primary text-sm font-semibold px-5 py-2.5 rounded-lg flex items-center gap-2">
+                        Next: Refine &amp; Add-Ons <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            
+            <div x-show="currentStep === 2" x-cloak class="space-y-6">
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="mb-4">
+            <h3 class="text-sm font-semibold text-gray-900">Refine Your Offer</h3>
+                            <p class="text-xs text-gray-500 mt-1">Every item&#039;s already priced — optionally fine-tune specs, offer type, or bulk-fill from the buyer&#039;s own requirements before moving on.</p>
+                    </div>
+    
+    <button type="button" @click="copyBuyerRequirementsToAll()" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
+                        <i class="fa-solid fa-copy"></i> Copy buyer's requirements to all items
+                    </button>
+                    <p class="text-xs text-gray-400 mt-2">Each item's "Advanced" section (offer type, listing, specifications) is still available on the Price Items step if you'd like to adjust it further.</p>
+</div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="mb-4">
+            <h3 class="text-sm font-semibold text-gray-900">Optional Add-Ons</h3>
+                            <p class="text-xs text-gray-500 mt-1">Products or services you&#039;d like to offer that the buyer didn&#039;t request — shown separately and never treated as a response to an RFQ item.</p>
+                    </div>
+    
+    <template x-for="(addon, index) in addons" :key="index">
+                        <div class="border border-amber-200 bg-amber-50/30 rounded-lg p-4 mb-3 last:mb-0">
+    <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold text-amber-700"><i class="fa-solid fa-plus-circle mr-1"></i>Optional Add-On <span x-text="index + 1"></span></span>
+        <button type="button" @click="removeAddon(index)" class="text-red-500 hover:text-red-700 text-xs">
+            <i class="fa-solid fa-trash"></i> Remove
+        </button>
+    </div>
+
+    <input type="hidden" :name="'addons['+index+'][id]'" :value="addon.id ?? ''">
+    <input type="hidden" :name="'addons['+index+'][is_optional_addon]'" value="1">
+    <input type="hidden" :name="'addons['+index+'][is_alternative]'" value="0">
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Item / Service Name</label>
+            <input type="text" required :name="'addons['+index+'][item_name]'" x-model="addon.item_name" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Lead Time (Days)</label>
+            <input type="number" min="0" :name="'addons['+index+'][lead_time_days]'" x-model.number="addon.lead_time_days" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+    </div>
+
+    <div class="mt-2">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
+        <textarea :name="'addons['+index+'][description]'" x-model="addon.description" rows="2" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-2">
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
+            <input type="number" step="0.001" min="0.001" :name="'addons['+index+'][quantity]'" x-model="addon.quantity" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+            <select :name="'addons['+index+'][unit_id]'" x-model="addon.unit_id" class="focus-accent w-full text-sm rounded-lg border border-gray-300 px-2 py-2 bg-white">
+                <option value="">Unit</option>
+                                    <option value="3">bx</option>
+                                    <option value="9">bdl</option>
+                                    <option value="6">ctn</option>
+                                    <option value="15">cm</option>
+                                    <option value="7">dz</option>
+                                    <option value="16">ft</option>
+                                    <option value="12">g</option>
+                                    <option value="21">hr</option>
+                                    <option value="17">in</option>
+                                    <option value="2">item</option>
+                                    <option value="11">kg</option>
+                                    <option value="24">kit</option>
+                                    <option value="25">lic</option>
+                                    <option value="18">L</option>
+                                    <option value="14">m</option>
+                                    <option value="19">ml</option>
+                                    <option value="5">pk</option>
+                                    <option value="23">pk-10</option>
+                                    <option value="22">pk-5</option>
+                                    <option value="8">pr</option>
+                                    <option value="1">pc</option>
+                                    <option value="13">lb</option>
+                                    <option value="10">roll</option>
+                                    <option value="4">set</option>
+                                    <option value="20">sqm</option>
+                            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Unit Price <span class="text-red-500">*</span></label>
+            <input type="number" step="0.01" min="0" required :name="'addons['+index+'][unit_price]'" x-model.number="addon.unit_price" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Tax Rate %</label>
+            <input type="number" step="0.01" min="0" max="100" :name="'addons['+index+'][tax_rate]'" x-model.number="addon.tax_rate" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Discount</label>
+            <input type="number" step="0.01" min="0" :name="'addons['+index+'][discount_amount]'" x-model.number="addon.discount_amount" class="focus-accent w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+    </div>
+
+    <div class="mt-2 text-right text-xs text-gray-500">
+        Line total: <span class="font-bold text-amber-700" x-text="formatMoney(lineTotal(addon))"></span>
+    </div>
+</div>
+                    </template>
+
+                    <button type="button" @click="addAddon()" class="text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add Optional Item
+                    </button>
+</div>
+
+                <div class="flex justify-between">
+                    <button type="button" @click="setStep(1)" class="text-sm font-semibold px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left text-xs"></i> Back
+                    </button>
+                    <button type="button" @click="goNext(2)" class="btn-primary text-sm font-semibold px-5 py-2.5 rounded-lg flex items-center gap-2">
+                        Next: Terms &amp; Submit <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            
+            <div x-show="currentStep === 3" x-cloak class="space-y-6">
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="mb-4">
+            <h3 class="text-sm font-semibold text-gray-900">Commercial Proposal &amp;amp; Terms</h3>
+                    </div>
+    
+    <div class="space-y-4">
+                                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+            <label for="currency_code" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Currency         </label>
+    
+    <select
+        name="currency_code"
+        id="currency_code"
+                class="focus-accent w-full text-sm rounded-lg border px-3 py-2.5 bg-white border-gray-300"
+    >
+                    <option value="">Select currency</option>
+        
+                    <option value="AED" >AED — UAE Dirham</option>
+                                                                    <option value="AUD" >AUD — Australian Dollar</option>
+                                                                    <option value="BDT" >BDT — Bangladeshi Taka</option>
+                                                                    <option value="CAD" >CAD — Canadian Dollar</option>
+                                                                    <option value="CNY" >CNY — Chinese Yuan</option>
+                                                                    <option value="EUR" >EUR — Euro</option>
+                                                                    <option value="GBP" >GBP — British Pound</option>
+                                                                    <option value="INR" >INR — Indian Rupee</option>
+                                                                    <option value="JPY" >JPY — Japanese Yen</option>
+                                                                    <option value="SAR" >SAR — Saudi Riyal</option>
+                                                                    <option value="SGD" >SGD — Singapore Dollar</option>
+                                                                    <option value="USD" >USD — US Dollar</option>
+                                                                    <option value="UZS" >UZS — Uzbek Som</option>
+            </select>
+
+    </div>
+                            <div>
+            <label for="lead_time_days" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Overall Lead Time (Days)         </label>
+    
+    <input
+        type="number"
+        name="lead_time_days"
+        id="lead_time_days"
+                class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition border-gray-300 focus-accent"
+        value=""
+    >
+
+    </div>
+                            <div>
+            <label for="valid_until" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Quotation Validity Date         </label>
+    
+    <input
+        type="date"
+        name="valid_until"
+        id="valid_until"
+                class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition border-gray-300 focus-accent"
+        value=""
+    >
+
+    </div>
+                        </div>
+                        <div>
+            <label for="shipping_charge" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Shipping Charge         </label>
+    
+    <input
+        type="number"
+        name="shipping_charge"
+        id="shipping_charge"
+                class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition border-gray-300 focus-accent" step="0.01" min="0" value="0"
+        value=""
+    >
+
+    </div>
+                        <div>
+            <label for="proposal" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Executive Summary / Proposal         </label>
+    
+    <textarea
+        name="proposal"
+        id="proposal"
+        rows="4"
+                class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition border-gray-300 focus-accent" placeholder="Explain your proposal, brand advantages, quality assurances..."
+    ></textarea>
+
+    </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+            <label for="warranty_terms" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Warranty Terms         </label>
+    
+    <input
+        type="text"
+        name="warranty_terms"
+        id="warranty_terms"
+                class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition border-gray-300 focus-accent" placeholder="e.g. 1 Year Standard"
+        value=""
+    >
+
+    </div>
+                            <div>
+            <label for="support_terms" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Support Terms         </label>
+    
+    <input
+        type="text"
+        name="support_terms"
+        id="support_terms"
+                class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition border-gray-300 focus-accent" placeholder="e.g. 24/7 Phone Support"
+        value=""
+    >
+
+    </div>
+                            <div>
+            <label for="payment_terms" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Payment Terms         </label>
+    
+    <input
+        type="text"
+        name="payment_terms"
+        id="payment_terms"
+                class="w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 transition border-gray-300 focus-accent" placeholder="e.g. Net 30"
+        value=""
+    >
+
+    </div>
+                        </div>
+                    </div>
+</div>
+
+                <div class="flex justify-start">
+                    <button type="button" @click="setStep(2)" class="text-sm font-semibold px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left text-xs"></i> Back
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="xl:col-span-4 space-y-6">
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="mb-4">
+            <h3 class="text-sm font-semibold text-gray-900">Quotation Summary</h3>
+                    </div>
+    
+    <div class="space-y-2 text-xs">
+                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Subtotal</span><span class="font-semibold text-gray-800" x-text="formatMoney(subtotal())"></span></div>
+                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Tax</span><span class="font-semibold text-gray-800" x-text="formatMoney(totalTax())"></span></div>
+                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Discount</span><span class="font-semibold text-gray-800">-<span x-text="formatMoney(totalDiscount())"></span></span></div>
+                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Shipping</span><span class="font-semibold text-gray-800" x-text="formatMoney(parseFloat(shippingCharge || 0))"></span></div>
+                    <div class="flex justify-between py-2 text-sm"><span class="text-gray-700 font-semibold">Grand Total</span><span class="font-bold text-indigo-700 text-base" x-text="formatMoney(grandTotal())"></span></div>
+                </div>
+
+                                    <button type="submit" class="w-full text-sm font-semibold py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 mt-4">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> Save Draft
+                    </button>
+                    <p class="text-[11px] text-gray-400 mt-2 text-center">Review and submit from the quotation page when you're ready.</p>
+</div>
+        </div>
+
+    </div>
+</form>
+
+
+            </main>
+
+            <footer class="bg-white border-t px-4 lg:px-6 py-3 text-center shrink-0" style="border-color:var(--topbar-border)">
+                <p class="text-xs text-gray-400">&copy; 2026 EduShopify. All rights reserved.</p>
+            </footer>
+
+        </div>
+    </div>
+
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Global SweetAlert confirmation helper
+        function confirmSwal(form, title = 'Are you sure?', text = '', icon = 'warning', confirmBtnText = 'Yes, proceed!') {
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: icon,
+                showCancelButton: true,
+                confirmButtonColor: icon === 'danger' || icon === 'error' ? '#DC2626' : '#4F46E5',
+                cancelButtonColor: '#6B7280',
+                confirmButtonText: confirmBtnText,
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+                focusCancel: true,
+                customClass: {
+                    popup: 'rounded-2xl font-sans text-xs',
+                    title: 'text-base font-bold text-gray-900',
+                    htmlContainer: 'text-xs text-gray-600',
+                    confirmButton: 'text-xs font-semibold px-4 py-2 rounded-lg',
+                    cancelButton: 'text-xs font-semibold px-4 py-2 rounded-lg',
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (typeof form === 'function') {
+                        form();
+                    } else if (form && form.submit) {
+                        form.submit();
+                    }
+                }
+            });
+            return false;
+        }
+
+        // Global Flash Toast Notifications
+                            </script>
+
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('quotationForm', (config) => ({
+            items: config.items,
+            addons: config.addons,
+            rfqItemsById: config.rfqItemsById,
+            allowAlternativeProducts: config.allowAlternativeProducts,
+            currencyCode: config.currencyCode,
+            shippingCharge: config.shippingCharge,
+
+            quotationId: config.quotationId,
+            isSaving: false,
+            saveError: null,
+            currentStep: config.initialStep || 1,
+            // Forward-only ratchet: the furthest step tab reachable directly.
+            // Step 1 is always reachable; anything beyond stays locked until
+            // goNext() advances past it.
+            maxCompletedStep: config.maxCompletedStep || 1,
+            stepDefs: [{ num: 1 }, { num: 2 }, { num: 3 }],
+
+            isStepLocked(n) {
+                return n !== 1 && n > this.maxCompletedStep;
+            },
+            get completionPercent() {
+                return Math.round((Math.min(this.maxCompletedStep, this.stepDefs.length) / this.stepDefs.length) * 100);
+            },
+            stepValid(n) {
+                if (n === 1) {
+                    return this.items.length > 0 && this.items.every(i => parseFloat(i.unit_price) >= 0 && i.unit_price !== null && i.unit_price !== '');
+                }
+                if (n === 2) return true;
+                if (n === 3) return this.stepValid(1) && this.stepValid(2);
+                return true;
+            },
+            setStep(step) {
+                if (this.currentStep === step) return;
+                if (this.isStepLocked(step)) return;
+                this.currentStep = step;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (this.quotationId) this.autosave();
+            },
+            async goNext(n) {
+                if (!this.stepValid(n)) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'warning', title: 'Not quite ready', text: 'Every item needs a Unit Price before moving on.' });
+                    }
+                    this.items.forEach(item => {
+                        if (item.unit_price === null || item.unit_price === '') item._collapsed = false;
+                    });
+                    return;
+                }
+                this.currentStep = n + 1;
+                this.maxCompletedStep = Math.max(this.maxCompletedStep, n + 1);
+                const saved = await this.autosave();
+                if (!saved) {
+                    this.currentStep = n;
+                    return;
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+            // Every autosave/submit always serializes the *complete* items +
+            // addons arrays (never a "just this step" subset) — syncItems()
+            // on the backend deletes any QuotationItem row not present in the
+            // payload, so a partial send would silently drop other items.
+            async autosave() {
+                if (this.isRevision) return true;
+                this.isSaving = true;
+                this.saveError = null;
+                try {
+                    const url = this.quotationId ? (config.autosaveUpdateUrlBase + '/' + this.quotationId + '/autosave') : config.autosaveCreateUrl;
+                    const res = await fetch(url, {
+                        method: this.quotationId ? 'PUT' : 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrfToken, 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            items: this.items, addons: this.addons,
+                            currency_code: this.currencyCode, shipping_charge: this.shippingCharge,
+                            current_step: this.currentStep, max_completed_step: this.maxCompletedStep,
+                        }),
+                    });
+                    if (!res.ok) {
+                        this.saveError = 'Could not save your progress — check your connection and try again.';
+                        return false;
+                    }
+                    const data = await res.json();
+                    if (!this.quotationId && data.id) this.quotationId = data.id;
+                    return true;
+                } catch (e) {
+                    this.saveError = 'Could not save your progress — check your connection and try again.';
+                    return false;
+                } finally {
+                    this.isSaving = false;
+                }
+            },
+
+            init() {
+                this.items.forEach(item => {
+                    const buyerItem = this.rfqItemsById[item.rfq_item_id];
+                    if (buyerItem) this.fetchItemAttributes(item, buyerItem.category_id);
+                });
+                this.loadAutoMatches();
+            },
+
+            // One bulk lookup suggesting the supplier's own best-matching
+            // listing per RFQ item. Only offered as a suggestion the
+            // supplier accepts via "Use it" — never applied automatically —
+            // and only onto items still untouched (no price/listing yet),
+            // so a late-arriving response can't clobber in-progress edits.
+            loadAutoMatches() {
+                fetch(config.autoMatchUrl)
+                    .then(r => r.json())
+                    .then(matches => {
+                        this.items.forEach(item => {
+                            const match = matches[item.rfq_item_id];
+                            if (match && !item.offered_listing_id && !item.unit_price) {
+                                item._suggestedListing = match;
+                            }
+                        });
+                    })
+                    .catch(() => {});
+            },
+            useSuggestedListing(item) {
+                if (!item._suggestedListing) return;
+                this.selectListingForItem(item, { id: item._suggestedListing.listing_id, name: item._suggestedListing.name });
+                item._suggestedListing = null;
+            },
+            dismissSuggestedListing(item) { item._suggestedListing = null; },
+
+            // "Copy buyer's specifications" checkbox above one item's
+            // Specifications Comparison — fills that item's name,
+            // description, quantity, unit AND every buyer-requested attribute
+            // value straight into the matching "Your Offer" fields, so the
+            // supplier starts from the buyer's ask instead of retyping it.
+            // Attribute values copy 1:1 (attribute_value_id/value_text/etc.)
+            // rather than parsing the formatted display text, since
+            // rfq_item_attribute_values and listing_attribute_values mirror
+            // quotation_item_attribute_values' columns exactly — same
+            // attribute definitions, same option ids, on both sides.
+            applyCopyBuyerRequirements(item) {
+                const buyerItem = this.rfqItemsById[item.rfq_item_id];
+                if (!buyerItem) return;
+
+                if (buyerItem.item_name) item.item_name = buyerItem.item_name;
+                if (buyerItem.description) item.description = buyerItem.description;
+                if (buyerItem.quantity) item.quantity = buyerItem.quantity;
+                if (buyerItem.unit_id) item.unit_id = buyerItem.unit_id;
+
+                Object.entries(buyerItem.attribute_values_raw || {}).forEach(([attrId, raw]) => {
+                    const target = this.getAttrVal(item, attrId);
+                    target.attribute_value_id = raw.attribute_value_id;
+                    target.custom_value = raw.custom_value;
+                    target.value_text = raw.value_text;
+                    target.value_number = raw.value_number;
+                    target.value_boolean = raw.value_boolean;
+                    target.value_date = raw.value_date;
+                    target.value_json = raw.value_json;
+                });
+            },
+
+            copyBuyerRequirementsToAll() {
+                this.items.forEach(item => this.applyCopyBuyerRequirements(item));
+            },
+
+            addItem() {
+                // Accordion behaviour: collapse whatever's already there so the
+                // newly added item is the one thing left open to work on.
+                this.collapseAllItems();
+                this.items.push({
+                    id: null, rfq_item_id: null, offered_listing_id: null, offered_variant_id: null, is_alternative: false,
+                    item_name: '', description: '', quantity: '1', unit_id: null, custom_unit: null,
+                    unit_price: null, tax_rate: null, discount_amount: null, lead_time_days: null,
+                    attribute_values: {}, _offerType: 'custom', _collapsed: false, _advancedOpen: false,
+                    _attrLoading: false, _attrGroups: [], _listingQuery: '', _listingResults: [], _variants: [], _suggestedListing: null,
+                });
+            },
+            removeItem(index) {
+                this.items.splice(index, 1);
+                if (this.items.length === 1) this.items[0]._collapsed = false;
+            },
+
+            collapseAllItems() { this.items.forEach(i => { i._collapsed = true; }); },
+            expandAllItems() { this.items.forEach(i => { i._collapsed = false; }); },
+
+            addAddon() {
+                this.addons.push({ id: null, item_name: '', description: '', quantity: '1', unit_id: null, unit_price: null, tax_rate: null, discount_amount: null, lead_time_days: null });
+            },
+            removeAddon(index) { this.addons.splice(index, 1); },
+
+            // _offerType is the explicit source of truth for which pill is
+            // selected — it used to be derived purely from is_alternative/
+            // offered_listing_id, which meant clicking "Use Existing Listing"
+            // was a no-op until a listing was actually picked (nothing set
+            // offered_listing_id yet), so the pill could never highlight and
+            // the search box never appeared. Storing intent directly fixes
+            // that; offered_listing_id is still what actually gets submitted.
+            getOfferType(item) {
+                return item._offerType || (item.is_alternative ? 'alternative' : (item.offered_listing_id ? 'existing' : 'custom'));
+            },
+            setOfferType(item, type) {
+                item._offerType = type;
+                item.is_alternative = (type === 'alternative');
+                if (type === 'custom') {
+                    item.offered_listing_id = null;
+                    item.offered_variant_id = null;
+                    item._variants = [];
+                }
+            },
+
+            searchListingsForItem(item) {
+                if (item._listingQuery.trim().length < 2) { item._listingResults = []; return; }
+                const buyerItem = this.rfqItemsById[item.rfq_item_id];
+                const categoryParam = buyerItem && buyerItem.category_id ? '&category_id=' + buyerItem.category_id : '';
+                fetch(config.listingsSearchUrl + '?q=' + encodeURIComponent(item._listingQuery) + categoryParam)
+                    .then(r => r.json())
+                    .then(data => { item._listingResults = data; });
+            },
+            selectListingForItem(item, listing) {
+                item._listingQuery = '';
+                item._listingResults = [];
+                fetch(config.listingsPrefillUrl + '/' + listing.id + '/prefill')
+                    .then(r => r.json())
+                    .then(data => {
+                        item.offered_listing_id = data.item.offered_listing_id;
+                        item.item_name = data.item.item_name;
+                        item.description = data.item.description;
+                        item.unit_id = data.item.unit_id;
+                        item.unit_price = data.item.unit_price;
+                        item.attribute_values = data.attribute_values || {};
+                        item._variants = data.variants || [];
+                    });
+            },
+            clearListingForItem(item) {
+                item.offered_listing_id = null;
+                item.offered_variant_id = null;
+                item._variants = [];
+            },
+
+            fetchItemAttributes(item, categoryId) {
+                if (!categoryId) { item._attrGroups = []; return; }
+                item._attrLoading = true;
+                // Editing/revising an existing quotation that already has a
+                // value for an attribute since deactivated — keep it visible
+                // instead of silently dropping it.
+                let url = config.categoryAttributesUrl + '/' + categoryId + '/attributes';
+                const keepIds = Object.keys(item.attribute_values || {});
+                if (keepIds.length > 0) {
+                    url += '?keep_attribute_ids=' + keepIds.join(',');
+                }
+                fetch(url)
+                    .then(r => r.json())
+                    .then(data => { item._attrGroups = data.groups || []; })
+                    .finally(() => { item._attrLoading = false; });
+            },
+
+            getAttrVal(item, attrId) {
+                if (!item.attribute_values[attrId]) {
+                    item.attribute_values[attrId] = {
+                        attribute_value_id: null, custom_value: null, value_text: null,
+                        value_number: null, value_boolean: null, value_date: null, value_json: [],
+                    };
+                }
+                return item.attribute_values[attrId];
+            },
+            isOtherSelected(item, attrId) {
+                return this.getAttrVal(item, attrId).attribute_value_id === '__other__';
+            },
+            isMultiSelected(item, attrId, value) {
+                const v = this.getAttrVal(item, attrId).value_json;
+                return Array.isArray(v) && v.includes(value);
+            },
+            toggleMultiSelect(item, attrId, value) {
+                const val = this.getAttrVal(item, attrId);
+                if (!Array.isArray(val.value_json)) val.value_json = [];
+                const idx = val.value_json.indexOf(value);
+                if (idx === -1) val.value_json.push(value); else val.value_json.splice(idx, 1);
+            },
+
+            lineTotal(row) {
+                const qty = parseFloat(row.quantity || 0);
+                const price = parseFloat(row.unit_price || 0);
+                const lineSubtotal = qty * price;
+                const discount = parseFloat(row.discount_amount || 0);
+                const taxRate = (row.tax_rate !== null && row.tax_rate !== '' && row.tax_rate !== undefined) ? parseFloat(row.tax_rate) : null;
+                const tax = taxRate !== null ? (lineSubtotal - discount) * taxRate / 100 : 0;
+                return lineSubtotal - discount + tax;
+            },
+            lineTax(row) {
+                const qty = parseFloat(row.quantity || 0);
+                const price = parseFloat(row.unit_price || 0);
+                const lineSubtotal = qty * price;
+                const discount = parseFloat(row.discount_amount || 0);
+                const taxRate = (row.tax_rate !== null && row.tax_rate !== '' && row.tax_rate !== undefined) ? parseFloat(row.tax_rate) : null;
+                return taxRate !== null ? (lineSubtotal - discount) * taxRate / 100 : 0;
+            },
+            formatMoney(n) {
+                return (this.currencyCode || 'USD') + ' ' + (isNaN(n) ? '0.00' : n.toFixed(2));
+            },
+            allRows() { return [...this.items, ...this.addons]; },
+            subtotal() { return this.allRows().reduce((s, r) => s + parseFloat(r.quantity || 0) * parseFloat(r.unit_price || 0), 0); },
+            totalTax() { return this.allRows().reduce((s, r) => s + this.lineTax(r), 0); },
+            totalDiscount() { return this.allRows().reduce((s, r) => s + parseFloat(r.discount_amount || 0), 0); },
+            grandTotal() { return this.subtotal() - this.totalDiscount() + this.totalTax() + parseFloat(this.shippingCharge || 0); },
+        }));
+    });
+</script>
+</body>
+</html>

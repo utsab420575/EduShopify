@@ -47,6 +47,8 @@ class SaveQuotationRequest extends FormRequest
             'items.*.attribute_values.*.value_date' => ['nullable', 'date'],
             'items.*.attribute_values.*.value_json' => ['nullable'],
 
+            'current_step' => ['nullable', 'integer', 'min:1', 'max:3'],
+            'max_completed_step' => ['nullable', 'integer', 'min:1', 'max:3'],
             'currency_code' => ['nullable', 'string', 'size:3'],
             'lead_time_days' => ['nullable', 'integer', 'min:0'],
             'valid_until' => ['nullable', 'date'],

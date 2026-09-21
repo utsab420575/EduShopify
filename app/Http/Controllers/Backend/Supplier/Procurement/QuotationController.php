@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backend\Supplier\Procurement;
 
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Backend\Supplier\Procurement\QuotationAutosaveRequest;
 use App\Http\Requests\Backend\Supplier\Procurement\SaveQuotationRequest;
 use App\Models\Category;
 use App\Models\Currency;
@@ -62,16 +63,20 @@ class QuotationController extends Controller
         ]);
     }
 
-    public function create(Rfq $rfq, SupplierRfqActionService $actions)
+    public function create(Request $request, Rfq $rfq, SupplierRfqActionService $actions, QuotationService $service)
     {
-        $this->authorize('create', [Quotation::class, $rfq]);
-
         $account = $this->currentAccount();
 
+        // Checked before authorize() — QuotationPolicy::create() also denies
+        // once a quotation exists (one live quotation per supplier per RFQ),
+        // which would throw a 403 here instead of letting a supplier who
+        // re-clicks "Submit Quote" land back on their existing quotation.
         $existing = $account->quotations()->where('rfq_id', $rfq->id)->first();
         if ($existing) {
             return redirect()->route('supplier.quotations.show', $existing);
         }
+
+        $this->authorize('create', [Quotation::class, $rfq]);
 
         $actions->record($rfq, $account, 'preparing_quote');
 
@@ -81,10 +86,37 @@ class QuotationController extends Controller
             'buyerAccount.buyerProfile'
         ]);
 
+        // "Start from a previous quotation" — ownership scoped inline since
+        // clone_from is a raw, user-suppliable query param; never trust it
+        // belongs to this supplier without this where() clause.
+        $cloneSource = null;
+        $cloneMatches = [];
+        if ($request->filled('clone_from')) {
+            $cloneSource = $account->quotations()
+                ->where('id', $request->integer('clone_from'))
+                ->where('rfq_id', '!=', $rfq->id)
+                ->first();
+
+            if ($cloneSource) {
+                $cloneMatches = $service->matchQuotationToRfq($cloneSource, $rfq);
+            }
+        }
+
+        $previousQuotations = $account->quotations()
+            ->where('rfq_id', '!=', $rfq->id)
+            ->whereIn('status', ['draft', 'submitted', 'under_review', 'revised', 'shortlisted', 'awarded', 'rejected'])
+            ->with('rfq')
+            ->latest()
+            ->limit(20)
+            ->get();
+
         return view('backend.supplier.procurement.quotations.create', [
             'account' => $account,
             'user' => $this->currentUser(),
             'rfq' => $rfq,
+            'previousQuotations' => $previousQuotations,
+            'cloneSource' => $cloneSource,
+            'cloneMatches' => $cloneMatches,
         ] + $this->formLookups());
     }
 
@@ -101,6 +133,72 @@ class QuotationController extends Controller
         }
 
         return redirect()->route('supplier.quotations.show', $quotation)->with('success', 'Quotation saved as draft.');
+    }
+
+    /**
+     * POST supplier/quotations/create/{rfq}/autosave — fired on step
+     * transitions (never on keystroke) while filling out a brand-new
+     * quotation, before it has an id yet.
+     */
+    public function autosaveCreate(QuotationAutosaveRequest $request, Rfq $rfq, QuotationService $service)
+    {
+        $this->authorize('create', [Quotation::class, $rfq]);
+
+        try {
+            $quotation = $service->saveDraft($rfq, $this->currentAccount(), $this->currentUser(), $request->validated());
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        }
+
+        return response()->json(['id' => $quotation->id, 'quotation_number' => $quotation->quotation_number]);
+    }
+
+    /**
+     * GET supplier/quotations/create/{rfq}/auto-match — one bulk lookup
+     * (instead of N per-item searchListings() calls) suggesting, for each
+     * RFQ item, the supplier's own best-matching approved listing by
+     * category + name similarity. A suggestion only, never applied without
+     * the supplier clicking "Use it" client-side — quantities/pricing on
+     * this RFQ may legitimately differ from the listing's own defaults.
+     */
+    public function autoMatchListings(Rfq $rfq)
+    {
+        $this->authorize('create', [Quotation::class, $rfq]);
+
+        $listings = $this->currentAccount()->listings()
+            ->where('approval_status', 'approved')
+            ->get(['id', 'name', 'main_category_id']);
+
+        $matches = [];
+
+        foreach ($rfq->items as $item) {
+            $best = null;
+            $bestScore = 0.0;
+
+            foreach ($listings as $listing) {
+                $score = 0.0;
+                if ($item->category_id && $listing->main_category_id === $item->category_id) {
+                    $score += 0.6;
+                }
+                similar_text(strtolower($item->item_name ?? ''), strtolower($listing->name ?? ''), $pct);
+                $score += 0.4 * ($pct / 100);
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $best = $listing;
+                }
+            }
+
+            if ($best && $bestScore >= 0.35) {
+                $matches[$item->id] = [
+                    'listing_id' => $best->id,
+                    'name' => $best->name,
+                    'score' => round($bestScore, 2),
+                ];
+            }
+        }
+
+        return response()->json($matches);
     }
 
     public function show(Quotation $quotation)
@@ -169,6 +267,24 @@ class QuotationController extends Controller
         }
 
         return redirect()->route('supplier.quotations.show', $quotation)->with('success', 'Draft updated.');
+    }
+
+    /**
+     * POST supplier/quotations/{quotation}/autosave — fired on step
+     * transitions once the draft already has an id (client switches over
+     * to this endpoint the moment autosaveCreate() returns one).
+     */
+    public function autosaveUpdate(QuotationAutosaveRequest $request, Quotation $quotation, QuotationService $service)
+    {
+        $this->authorize('editDraft', $quotation);
+
+        try {
+            $service->saveDraft($quotation->rfq, $this->currentAccount(), $this->currentUser(), $request->validated(), $quotation);
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function submit(Request $request, Quotation $quotation, QuotationService $service)

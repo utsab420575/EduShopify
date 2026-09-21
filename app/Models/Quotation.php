@@ -25,6 +25,8 @@ class Quotation extends Model
         'submitted_by_user_id',
         'rfq_version_no',
         'current_revision_no',
+        'current_step',
+        'max_completed_step',
         'subtotal',
         'tax_amount',
         'discount_amount',
@@ -53,6 +55,8 @@ class Quotation extends Model
         return [
             'rfq_version_no'      => 'integer',
             'current_revision_no' => 'integer',
+            'current_step'        => 'integer',
+            'max_completed_step'  => 'integer',
             'subtotal'            => 'decimal:2',
             'tax_amount'          => 'decimal:2',
             'discount_amount'     => 'decimal:2',

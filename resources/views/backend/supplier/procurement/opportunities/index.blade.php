@@ -1,7 +1,7 @@
 @extends('backend.layouts.supplier')
 
 @section('title', 'RFQ Opportunities')
-@section('breadcrumb', 'RFQ Opportunities / Available RFQs')
+@section('breadcrumb', in_array('interested', (array) request('activity', [])) ? 'RFQ Opportunities / Interested RFQs' : (request('filter') === 'invited' ? 'RFQ Opportunities / Invited RFQs' : 'RFQ Opportunities / Available RFQs'))
 
 @section('body')
 

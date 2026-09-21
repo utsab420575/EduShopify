@@ -92,6 +92,9 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
             Route::post('/{rfq}/cancel', [RfqController::class, 'cancel'])->name('cancel');
             Route::post('/{rfq}/extend-deadline', [RfqController::class, 'extendDeadline'])->name('extend-deadline');
             Route::post('/{rfq}/questions/{question}/answer', [RfqController::class, 'answerQuestion'])->name('questions.answer');
+            Route::delete('/{rfq}', [RfqController::class, 'destroy'])->name('destroy');
+            Route::post('/{rfq}/duplicate', [RfqController::class, 'duplicate'])->name('duplicate');
+            Route::get('/{rfq}/statistics', [RfqController::class, 'statistics'])->name('statistics');
         });
 
         Route::prefix('quotations')->name('quotations.')->group(function () {

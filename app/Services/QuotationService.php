@@ -54,6 +54,14 @@ class QuotationService
 
             $attributes = [
                 'currency_code'    => $this->resolveCurrency($data['currency_code'] ?? $quotation?->currency_code ?? $rfq->currency_code),
+                'current_step'     => isset($data['current_step']) ? (int) $data['current_step'] : ($quotation?->current_step ?? 1),
+                // Forward-only — never let an autosave regress this even if
+                // the client sends a lower value (e.g. a stale tab reloaded
+                // after the supplier progressed further in another tab).
+                'max_completed_step' => max(
+                    isset($data['max_completed_step']) ? (int) $data['max_completed_step'] : 1,
+                    $quotation?->max_completed_step ?? 1
+                ),
                 'subtotal'         => $totals['subtotal'],
                 'tax_amount'       => $totals['tax_amount'],
                 'discount_amount'  => $totals['discount_amount'],
@@ -269,6 +277,84 @@ class QuotationService
         $this->notifyBuyer($quotation->rfq, "A supplier withdrew their quotation for \"{$quotation->rfq->title}\".", $this->buyerRfqUrl($quotation->rfq));
 
         return $quotation;
+    }
+
+    /**
+     * "Clone from a previous quotation" — a literal structural copy (like
+     * RfqController::duplicate()) doesn't fit here, because $source's items
+     * belong to a *different* RFQ than $targetRfq, so their rfq_item_id
+     * can't just be reused. Instead this greedily best-matches each of
+     * $targetRfq's items against $source's items (category match + name
+     * similarity) and returns only the pricing/terms worth carrying over —
+     * item_name, rfq_item_id, category_id and quantity always stay tied to
+     * $targetRfq's own item, never copied from the source.
+     *
+     * @return array<int, array{unit_price: ?float, tax_rate: ?float, discount_amount: ?float, lead_time_days: ?int, description: ?string, attribute_values: array}>
+     *         keyed by $targetRfq item id.
+     */
+    public function matchQuotationToRfq(Quotation $source, Rfq $targetRfq): array
+    {
+        $source->loadMissing(['items.rfqItem', 'items.attributeValues']);
+        $targetRfq->loadMissing('items');
+
+        $sourceItems = $source->items->where('is_optional_addon', false)->values();
+
+        $pairs = [];
+        foreach ($targetRfq->items as $targetItem) {
+            foreach ($sourceItems as $sourceItem) {
+                $score = 0.0;
+                $sourceCategoryId = $sourceItem->rfqItem?->category_id;
+                if ($targetItem->category_id && $sourceCategoryId === $targetItem->category_id) {
+                    $score += 0.6;
+                }
+                similar_text(strtolower($targetItem->item_name ?? ''), strtolower($sourceItem->item_name ?? ''), $pct);
+                $score += 0.4 * ($pct / 100);
+
+                if ($score >= 0.3) {
+                    $pairs[] = ['target' => $targetItem, 'source' => $sourceItem, 'score' => $score];
+                }
+            }
+        }
+
+        usort($pairs, fn ($a, $b) => $b['score'] <=> $a['score']);
+
+        $matches = [];
+        $usedTargetIds = [];
+        $usedSourceIds = [];
+
+        foreach ($pairs as $pair) {
+            $targetItem = $pair['target'];
+            $sourceItem = $pair['source'];
+            if (isset($usedTargetIds[$targetItem->id]) || isset($usedSourceIds[$sourceItem->id])) {
+                continue;
+            }
+
+            $usedTargetIds[$targetItem->id] = true;
+            $usedSourceIds[$sourceItem->id] = true;
+
+            $sameCategory = $targetItem->category_id && $sourceItem->rfqItem?->category_id === $targetItem->category_id;
+
+            $matches[$targetItem->id] = [
+                'unit_price'       => $sourceItem->unit_price,
+                'tax_rate'         => $sourceItem->tax_rate,
+                'discount_amount'  => $sourceItem->discount_amount,
+                'lead_time_days'   => $sourceItem->lead_time_days,
+                'description'      => $sourceItem->description,
+                'attribute_values' => $sameCategory
+                    ? $sourceItem->attributeValues->mapWithKeys(fn ($v) => [$v->attribute_id => [
+                        'attribute_value_id' => $v->attribute_value_id,
+                        'custom_value'       => $v->custom_value,
+                        'value_text'         => $v->value_text,
+                        'value_number'       => $v->value_number,
+                        'value_boolean'      => $v->value_boolean,
+                        'value_date'         => $v->value_date,
+                        'value_json'         => $v->value_json,
+                    ]])->all()
+                    : [],
+            ];
+        }
+
+        return $matches;
     }
 
     /**

@@ -17,7 +17,7 @@
     ];
 @endphp
 
-<aside class="w-64 flex flex-col border-r fixed lg:static inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:translate-x-0 bg-white"
+<aside class="w-64 flex flex-col border-r fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:translate-x-0 bg-white"
        style="border-color:var(--sidebar-border)"
        :class="mobileSidebar ? 'translate-x-0' : '-translate-x-full'">
 
