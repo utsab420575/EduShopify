@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * Table: quotation_items.
@@ -14,9 +17,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * rfq_item_id is nullable so a supplier may propose extra items; is_alternative
  * marks an alternative offer against the same RFQ line.
  */
-class QuotationItem extends Model
+class QuotationItem extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
+
+    // Mirrors RfqItem's `attachments` collection — the supplier's own
+    // "Upload Quotation Document" response method attaches its file(s) here.
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('document')
+            ->useDisk(config('media-library.disk_name', 'public'));
+    }
 
     protected $fillable = [
         'quotation_id',
@@ -25,6 +36,7 @@ class QuotationItem extends Model
         'offered_variant_id',
         'is_alternative',
         'is_optional_addon',
+        'response_method',
         'item_name',
         'description',
         'quantity',
@@ -88,6 +100,21 @@ class QuotationItem extends Model
     public function attributeValues(): HasMany
     {
         return $this->hasMany(QuotationItemAttributeValue::class, 'quotation_item_id');
+    }
+
+    public function offers(): HasMany
+    {
+        return $this->hasMany(QuotationItemOffer::class, 'quotation_item_id')->orderBy('sort_order');
+    }
+
+    public function primaryOffer(): HasOne
+    {
+        return $this->hasOne(QuotationItemOffer::class, 'quotation_item_id')->where('is_primary', true);
+    }
+
+    public function selectedOffer(): HasOne
+    {
+        return $this->hasOne(QuotationItemOffer::class, 'quotation_item_id')->where('is_selected', true);
     }
 
     public function scopeAlternatives(Builder $query): Builder

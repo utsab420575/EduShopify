@@ -16,7 +16,7 @@
 
 @section('body')
 
-    <div x-data="quotationComparePage({{ $rfq->id }}, {{ $maxItems }}, '{{ route('buyer.quotations.compare.data', $rfq) }}')" x-cloak>
+    <div x-data="quotationComparePage({{ $rfq->id }}, {{ $maxItems }}, '{{ route('buyer.quotations.compare.data', $rfq) }}', '{{ url('/buyer/quotations') }}')" x-cloak>
 
         <x-backend.page-header title="Quotation Comparison" :subtitle="$rfq->title . ' — RFQ ' . $rfq->rfq_number">
             <x-slot:actions>
@@ -212,8 +212,14 @@
                                                           'bg-emerald-50 text-emerald-700 border-emerald-200': offer.offer_type === 'existing_product',
                                                           'bg-gray-100 text-gray-600 border-gray-200': offer.offer_type === 'custom',
                                                           'bg-blue-50 text-blue-700 border-blue-200': offer.offer_type === 'alternative',
-                                                      }" x-text="offerTypeLabel(offer.offer_type)"></span>
+                                                          'bg-purple-50 text-purple-700 border-purple-200': offer.response_method === 'document',
+                                                      }" x-text="offer.response_method === 'document' ? 'Document Quotation' : offerTypeLabel(offer.offer_type)"></span>
                                                 <a x-show="offer.offered_listing" :href="offer.offered_listing ? '/listing/' + offer.offered_listing.slug : '#'" target="_blank" class="block text-xs mt-0.5" style="color:var(--theme-primary)" x-text="offer.offered_listing?.name"></a>
+                                                <template x-for="doc in (offer.documents || [])" :key="doc.id">
+                                                    <a :href="doc.url" target="_blank" class="flex items-center gap-1 text-[11px] mt-0.5 text-purple-700 hover:underline">
+                                                        <i class="fa-solid fa-download text-[9px]"></i><span x-text="doc.name"></span>
+                                                    </a>
+                                                </template>
                                             </div>
                                         </template>
                                     </th>
@@ -255,10 +261,20 @@
                                         </template>
                                         <template x-for="offer in offersFor(item, q.quotation_id)" :key="offer.quotation_item_id">
                                             <div class="text-xs mb-1">
-                                                <span x-text="money(offer.unit_price, commercialFor(q.quotation_id).currency_code)"></span>
-                                                <span class="text-gray-400"> × </span><span x-text="offer.quantity"></span>
-                                                <span class="text-gray-400"> = </span>
-                                                <span class="font-medium" x-text="money(offer.line_total, commercialFor(q.quotation_id).currency_code)"></span>
+                                                <template x-if="offer.response_method === 'document'">
+                                                    <span>
+                                                        <span class="text-gray-400">Total Amount: </span>
+                                                        <span class="font-medium" x-text="money(offer.line_total, commercialFor(q.quotation_id).currency_code)"></span>
+                                                    </span>
+                                                </template>
+                                                <template x-if="offer.response_method !== 'document'">
+                                                    <span>
+                                                        <span x-text="money(offer.unit_price, commercialFor(q.quotation_id).currency_code)"></span>
+                                                        <span class="text-gray-400"> × </span><span x-text="offer.quantity"></span>
+                                                        <span class="text-gray-400"> = </span>
+                                                        <span class="font-medium" x-text="money(offer.line_total, commercialFor(q.quotation_id).currency_code)"></span>
+                                                    </span>
+                                                </template>
                                             </div>
                                         </template>
                                     </td>
@@ -286,6 +302,72 @@
                             </tr>
                         </tbody>
                     </table>
+                    </div>
+
+                    {{-- ── Offers Comparison — every offer under every Product
+                         Response, per supplier, side by side. A single-offer
+                         Product Response still renders here (as one card) so
+                         the layout doesn't jump depending on how many offers
+                         exist. ── --}}
+                    <div class="border-t border-gray-200">
+                        <div class="px-5 py-2.5 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">Offers Comparison</div>
+                        <div class="overflow-x-auto">
+                            <div class="flex divide-x divide-gray-100 min-w-[900px]">
+                                <template x-for="q in data.summary" :key="q.quotation_id">
+                                    <div class="flex-1 min-w-[260px] p-4">
+                                        <p class="text-xs font-semibold text-gray-900 mb-3" x-text="q.supplier_name"></p>
+
+                                        <template x-if="offersFor(item, q.quotation_id).length === 0">
+                                            <p class="text-xs text-gray-400 italic">Not quoted</p>
+                                        </template>
+
+                                        <template x-for="productResponse in offersFor(item, q.quotation_id)" :key="productResponse.quotation_item_id">
+                                            <div class="mb-4 last:mb-0">
+                                                <p x-show="offersFor(item, q.quotation_id).length > 1" x-cloak class="text-[11px] font-semibold text-gray-500 mb-1.5" x-text="productResponse.item_name"></p>
+
+                                                <div class="space-y-2">
+                                                    <template x-for="offer in productResponse.offers" :key="offer.id">
+                                                        <div class="border rounded-lg p-2.5" :class="offer.is_selected ? 'border-emerald-300 bg-emerald-50/40' : 'border-gray-200'">
+                                                            <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                                                                <span class="text-xs font-semibold text-gray-900" x-text="offer.product_name"></span>
+                                                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200" x-text="offer.offer_method"></span>
+                                                                <span x-show="offer.is_primary" x-cloak class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">Primary</span>
+                                                                <span x-show="offer.is_selected" x-cloak class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-check text-[9px]"></i> Selected</span>
+                                                            </div>
+                                                            <a x-show="offer.offered_listing" :href="offer.offered_listing ? '/listing/' + offer.offered_listing.slug : '#'" target="_blank" class="block text-[11px] mb-1" style="color:var(--theme-primary)" x-text="offer.offered_listing?.name"></a>
+                                                            <div class="flex items-center justify-between text-xs">
+                                                                <span class="text-gray-500" x-text="(offer.delivery_time ? offer.delivery_time + ' days' : '—')"></span>
+                                                                <span class="font-bold text-gray-900" x-text="money(offer.total_price, commercialFor(q.quotation_id).currency_code)"></span>
+                                                            </div>
+                                                            <template x-if="offer.specifications && offer.specifications.length > 0">
+                                                                <div class="mt-1.5 pt-1.5 border-t border-gray-100 space-y-0.5">
+                                                                    <template x-for="spec in offer.specifications" :key="spec.name">
+                                                                        <p class="text-[11px] text-gray-500"><span class="text-gray-400" x-text="spec.name + ':'"></span> <span x-text="spec.value"></span></p>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
+                                                            <template x-for="doc in (offer.documents || [])" :key="doc.id">
+                                                                <a :href="doc.url" target="_blank" class="flex items-center gap-1 text-[11px] mt-1 text-purple-700 hover:underline">
+                                                                    <i class="fa-solid fa-download text-[9px]"></i><span x-text="doc.name"></span>
+                                                                </a>
+                                                            </template>
+                                                            <form x-show="q.can_select_offer && productResponse.offers.length > 1" x-cloak
+                                                                  method="POST" :action="selectOfferUrl(q.quotation_id, productResponse.quotation_item_id, offer.id)" class="mt-1.5">
+                                                                <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                                                                <button type="submit" :disabled="offer.is_selected"
+                                                                        class="text-[11px] font-semibold px-2.5 py-1 rounded-md border"
+                                                                        :class="offer.is_selected ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default' : 'border-gray-300 text-gray-700 hover:bg-gray-50'"
+                                                                        x-text="offer.is_selected ? 'Selected' : 'Select this offer'"></button>
+                                                            </form>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </template>

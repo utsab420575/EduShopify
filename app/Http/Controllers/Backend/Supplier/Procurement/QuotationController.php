@@ -150,7 +150,11 @@ class QuotationController extends Controller
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        return response()->json(['id' => $quotation->id, 'quotation_number' => $quotation->quotation_number]);
+        return response()->json([
+            'id' => $quotation->id,
+            'quotation_number' => $quotation->quotation_number,
+            'items' => $service->getLastClientRefItemIds(),
+        ]);
     }
 
     /**
@@ -246,6 +250,10 @@ class QuotationController extends Controller
             'rfq.items.unit', 'rfq.items.category', 'rfq.items.listing.attributeValues.attribute', 'rfq.items.listing.media', 'rfq.items.media',
             'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
             'items.attributeValues',
+            'items.offers.marketplaceProduct.primaryImage',
+            'items.offers.marketplaceProduct.mainCategory',
+            'items.offers.marketplaceProduct.brand',
+            'items.offers.unit',
         ]);
 
         return view('backend.supplier.procurement.quotations.edit', [
@@ -279,12 +287,12 @@ class QuotationController extends Controller
         $this->authorize('editDraft', $quotation);
 
         try {
-            $service->saveDraft($quotation->rfq, $this->currentAccount(), $this->currentUser(), $request->validated(), $quotation);
+            $updated = $service->saveDraft($quotation->rfq, $this->currentAccount(), $this->currentUser(), $request->validated(), $quotation);
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'items' => $service->getLastClientRefItemIds()]);
     }
 
     public function submit(Request $request, Quotation $quotation, QuotationService $service)
@@ -307,6 +315,47 @@ class QuotationController extends Controller
         $service->withdraw($quotation, $request->input('reason'));
 
         return redirect()->route('supplier.quotations.show', $quotation)->with('success', 'Quotation withdrawn.');
+    }
+
+    /**
+     * POST supplier/quotations/{quotation}/combined-document — a single,
+     * supplementary attachment for the whole quotation (Step 3), distinct
+     * from a per-item "Upload Quotation Document" response method. Mirrors
+     * QuotationItemDocumentController::store()'s exact validation/upload
+     * pattern, one file per request.
+     */
+    public function uploadCombinedDocument(Request $request, Quotation $quotation)
+    {
+        $this->authorize('editDraft', $quotation);
+
+        $request->validate([
+            'document' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,webp,pdf,doc,docx,xls,xlsx,zip,csv,txt'],
+        ]);
+
+        $file = $request->file('document');
+        $media = $quotation->addMedia($file)
+            ->usingFileName(sprintf('quo_%s_%s.%s', $quotation->id, uniqid(), $file->getClientOriginalExtension()))
+            ->toMediaCollection('combined_document');
+
+        return response()->json([
+            'id' => $media->id,
+            'name' => $media->file_name,
+            'size' => $media->human_readable_size,
+            'url' => $media->getUrl(),
+            'is_image' => str_starts_with($media->mime_type ?? '', 'image/'),
+        ]);
+    }
+
+    /**
+     * DELETE supplier/quotations/{quotation}/combined-document/{media}
+     */
+    public function deleteCombinedDocument(Quotation $quotation, int $media)
+    {
+        $this->authorize('editDraft', $quotation);
+
+        $quotation->getMedia('combined_document')->where('id', $media)->first()?->delete();
+
+        return response()->json(['success' => true]);
     }
 
     /**
@@ -370,15 +419,30 @@ class QuotationController extends Controller
     {
         abort_unless($listing->supplier_account_id === $this->currentAccount()->id, 404);
 
+        $listing->load(['mainCategory', 'primaryImage', 'brand', 'attributeValues.attribute.unit', 'attributeValues.attributeValue']);
+
+        $imageUrl = $listing->primaryImage?->getUrl()
+            ?? ($listing->relationLoaded('media') && $listing->media->isNotEmpty() ? $listing->media->first()?->getUrl() : null)
+            ?? $listing->getFirstMediaUrl('gallery')
+            ?: null;
+
         return response()->json([
             'item' => [
                 'offered_listing_id' => $listing->id,
+                'marketplace_product_id' => $listing->id,
                 'item_name' => $listing->name,
-                'description' => $listing->short_description,
+                'product_name' => $listing->name,
+                'description' => $listing->short_description ?: $listing->description,
                 'quantity' => (string) ($listing->min_order_quantity ?: 1),
                 'unit_id' => $listing->unit_id,
                 'unit_price' => $listing->base_price,
+                'category_id' => $listing->main_category_id,
+                'category_name' => $listing->mainCategory?->name,
+                'brand_name' => $listing->brand?->name,
+                'image_url' => $imageUrl,
+                'slug' => $listing->slug,
             ],
+            'category_attributes' => $listing->mainCategory ? $listing->mainCategory->attributesGroupedForForm() : null,
             'attribute_values' => $listing->attributeValues->mapWithKeys(fn ($v) => [
                 $v->attribute_id => [
                     'attribute_value_id' => $v->attribute_value_id,

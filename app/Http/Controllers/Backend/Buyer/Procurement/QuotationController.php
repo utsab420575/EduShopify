@@ -9,6 +9,8 @@ use App\Http\Requests\Backend\Buyer\Procurement\CompareQuotationsDataRequest;
 use App\Http\Requests\Backend\Buyer\Procurement\RejectQuotationRequest;
 use App\Http\Requests\Backend\Buyer\Procurement\RequestQuotationRevisionRequest;
 use App\Models\Quotation;
+use App\Models\QuotationItem;
+use App\Models\QuotationItemOffer;
 use App\Models\Review;
 use App\Models\Rfq;
 use App\Services\AwardService;
@@ -136,10 +138,12 @@ class QuotationController extends Controller
 
         $quotation->load([
             'rfq.items', 'supplierAccount.supplierProfile',
-            'items.rfqItem', 'items.offeredListing', 'items.unit',
+            'items.rfqItem', 'items.offeredListing', 'items.unit', 'items.media',
+            'items.offers.marketplaceProduct', 'items.offers.media',
+            'media',
             'shortlists',
             'revisions' => fn ($q) => $q->orderByDesc('revision_no'),
-            'revisions.items',
+            'revisions.items.offers',
             'revisions.createdBy',
         ]);
 
@@ -186,6 +190,24 @@ class QuotationController extends Controller
         $decisions->reject($quotation, $request->string('reason'));
 
         return back()->with('success', 'Quotation rejected.');
+    }
+
+    /**
+     * POST buyer/quotations/{quotation}/items/{item}/offers/{offer}/select
+     * — picks which offer within one Product Response should be used if
+     * this quotation is awarded. $item/$offer ownership is verified inline
+     * (not implicit route-model-scoping) since both are nested resources.
+     */
+    public function selectOffer(Quotation $quotation, QuotationItem $item, QuotationItemOffer $offer, QuotationDecisionService $decisions)
+    {
+        $this->authorize('selectOffer', $quotation);
+
+        abort_unless($item->quotation_id === $quotation->id, 404);
+        abort_unless($offer->quotation_item_id === $item->id, 404);
+
+        $decisions->selectOffer($item, $offer);
+
+        return back()->with('success', 'Offer selected for this product.');
     }
 
     public function award(AwardQuotationRequest $request, Quotation $quotation, AwardService $awards)

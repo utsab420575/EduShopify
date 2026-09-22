@@ -285,8 +285,7 @@ class HybridReviewFlowTest extends TestCase
         $review = Review::where('quotation_id', $quotation->id)->where('listing_id', $listingA->id)->firstOrFail();
 
         $this->actingAs($buyerB)->put(route('buyer.reviews.update-product', $review), ['rating' => 1])
-            ->assertRedirect()
-            ->assertSessionHasErrors('rating');
+            ->assertForbidden();
 
         $this->assertSame(4, $review->fresh()->rating);
     }
@@ -306,8 +305,7 @@ class HybridReviewFlowTest extends TestCase
         $supplierReview = Review::where('quotation_id', $quotation->id)->where('review_type', 'supplier')->firstOrFail();
 
         $this->actingAs($buyer)->put(route('buyer.reviews.update-product', $supplierReview), ['rating' => 1])
-            ->assertRedirect()
-            ->assertSessionHasErrors('rating');
+            ->assertForbidden();
 
         $this->assertSame(4, $supplierReview->fresh()->rating);
     }
@@ -327,8 +325,7 @@ class HybridReviewFlowTest extends TestCase
             ->assertRedirect();
 
         $this->actingAs($buyer)->post(route('buyer.reviews.store-for-quotation', $quotation), ['rating' => 2])
-            ->assertRedirect()
-            ->assertSessionHasErrors('rating');
+            ->assertForbidden();
 
         $this->assertSame(1, Review::where('quotation_id', $quotation->id)->where('review_type', 'supplier')->count());
         $this->assertSame(2, Review::where('quotation_id', $quotation->id)->where('review_type', 'product')->count());

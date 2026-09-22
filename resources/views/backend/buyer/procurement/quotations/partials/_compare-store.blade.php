@@ -161,11 +161,12 @@
             },
         }));
 
-        Alpine.data('quotationComparePage', (rfqId, maxItems, dataUrl) => ({
+        Alpine.data('quotationComparePage', (rfqId, maxItems, dataUrl, quotationsUrlBase) => ({
             loading: true,
             count: 0,
             maxItems: maxItems,
             dataUrl: dataUrl,
+            quotationsUrlBase: quotationsUrlBase,
             data: null,
             highlightDiffs: true,
             showDiffsOnly: false,
@@ -243,6 +244,9 @@
             },
             offersFor(item, qid) {
                 return (item.offers || {})[qid] || [];
+            },
+            selectOfferUrl(quotationId, quotationItemId, offerId) {
+                return this.quotationsUrlBase + '/' + quotationId + '/items/' + quotationItemId + '/offers/' + offerId + '/select';
             },
             offerTypeLabel(type) {
                 return { existing_product: 'Existing Supplier Product', custom: 'Custom RFQ Offer', alternative: 'Alternative Offer' }[type] || type;

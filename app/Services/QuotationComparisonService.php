@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Quotation;
 use App\Models\QuotationItem;
+use App\Models\QuotationItemOffer;
 use App\Models\Rfq;
 use App\Models\RfqItem;
 use Illuminate\Support\Collection;
@@ -59,6 +60,11 @@ class QuotationComparisonService
                 'items.offeredListing',
                 'items.offeredVariant',
                 'items.unit',
+                'items.media',
+                'items.offers.marketplaceProduct',
+                'items.offers.offeredVariant',
+                'items.offers.unit',
+                'items.offers.media',
             ])
             ->get()
             ->sortBy(fn (Quotation $q) => $ids->search($q->id))
@@ -91,6 +97,11 @@ class QuotationComparisonService
                 'valid_until'       => $q->valid_until?->format('d M Y'),
                 'is_expired'        => $q->hasExpired(),
                 'is_shortlisted'    => $q->shortlists->isNotEmpty(),
+                // Every quotation reaching this point is already scoped
+                // through $rfq->quotations() (resolve()), so ownership is
+                // guaranteed — only the status gate from
+                // QuotationPolicy::selectOffer() needs repeating here.
+                'can_select_offer'  => in_array($q->status, ['submitted', 'revised', 'shortlisted', 'under_review'], true),
             ];
         })->values()->all();
     }
@@ -153,13 +164,13 @@ class QuotationComparisonService
             ])->values();
 
             $offersByQuotation = $quotations->mapWithKeys(function (Quotation $q) use ($rfqItem, $buyerAttrs) {
-                $offers = $q->items
+                $productResponses = $q->items
                     ->where('rfq_item_id', $rfqItem->id)
                     ->where('is_optional_addon', false)
-                    ->map(fn (QuotationItem $item) => $this->formatOffer($item, $buyerAttrs))
+                    ->map(fn (QuotationItem $item) => $this->formatProductResponse($item, $buyerAttrs))
                     ->values();
 
-                return [$q->id => $offers];
+                return [$q->id => $productResponses];
             });
 
             return [
@@ -173,7 +184,16 @@ class QuotationComparisonService
         })->values()->all();
     }
 
-    private function formatOffer(QuotationItem $item, Collection $buyerAttrsByAttributeId): array
+    /**
+     * One Product Response (quotation_items row) — the RFQ-item-level
+     * structured attribute comparison still lives here (offers don't carry
+     * structured attribute_values, only a free-text `specifications` JSON
+     * column each), plus the nested list of every individual Offer
+     * (quotation_item_offers) underneath it, so the buyer can compare
+     * Supplier A's Dell/HP/Lenovo alternatives against Supplier B's
+     * Asus/Acer alternatives directly.
+     */
+    private function formatProductResponse(QuotationItem $item, Collection $buyerAttrsByAttributeId): array
     {
         $offerType = $item->is_alternative
             ? 'alternative'
@@ -219,6 +239,7 @@ class QuotationComparisonService
             'quotation_item_id' => $item->id,
             'offer_type'        => $offerType,
             'is_alternative'    => (bool) $item->is_alternative,
+            'response_method'   => $item->response_method,
             'item_name'         => $item->item_name,
             'quantity'          => rtrim(rtrim((string) $item->quantity, '0'), '.'),
             'unit'              => $item->unit?->symbol ?? $item->unit?->name ?? $item->custom_unit,
@@ -229,8 +250,47 @@ class QuotationComparisonService
             'lead_time_days'    => $item->lead_time_days,
             'offered_listing'   => $item->offeredListing ? ['id' => $item->offeredListing->id, 'name' => $item->offeredListing->name, 'slug' => $item->offeredListing->slug] : null,
             'offered_variant'   => $item->offeredVariant ? ['id' => $item->offeredVariant->id, 'name' => $item->offeredVariant->name] : null,
+            'documents'         => $item->getMedia('document')->map(fn ($m) => [
+                'id' => $m->id, 'name' => $m->file_name, 'size' => $m->human_readable_size,
+                'url' => $m->getUrl(), 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
+            ])->values()->all(),
             'attributes'        => $matched->all(),
             'additional_specifications' => $additional->all(),
+            'offers'            => $item->offers->map(fn (QuotationItemOffer $offer) => $this->formatSingleOffer($offer))->values()->all(),
+        ];
+    }
+
+    /**
+     * One individual Offer (quotation_item_offers row) under a Product
+     * Response — its own method/price/quantity/delivery time/documents,
+     * plus its free-text specifications (offers don't carry structured
+     * attribute_values, only the parent Product Response does).
+     */
+    private function formatSingleOffer(QuotationItemOffer $offer): array
+    {
+        return [
+            'id'               => $offer->id,
+            'offer_method'     => $offer->offer_method,
+            'product_name'     => $offer->product_name,
+            'description'      => $offer->description,
+            'quantity'         => rtrim(rtrim((string) $offer->quantity, '0'), '.'),
+            'unit'             => $offer->unit?->symbol ?? $offer->unit?->name ?? $offer->custom_unit,
+            'unit_price'       => (float) $offer->unit_price,
+            'tax_amount'       => (float) $offer->tax_amount,
+            'discount_amount'  => (float) $offer->discount,
+            'total_price'      => (float) $offer->total_price,
+            'delivery_time'    => $offer->delivery_time,
+            'is_primary'       => (bool) $offer->is_primary,
+            'is_selected'      => (bool) $offer->is_selected,
+            'offered_listing'  => $offer->marketplaceProduct ? [
+                'id' => $offer->marketplaceProduct->id, 'name' => $offer->marketplaceProduct->name, 'slug' => $offer->marketplaceProduct->slug,
+            ] : null,
+            'offered_variant'  => $offer->offeredVariant ? ['id' => $offer->offeredVariant->id, 'name' => $offer->offeredVariant->name] : null,
+            'documents'        => $offer->getMedia('document')->map(fn ($m) => [
+                'id' => $m->id, 'name' => $m->file_name, 'size' => $m->human_readable_size,
+                'url' => $m->getUrl(), 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
+            ])->values()->all(),
+            'specifications'   => is_array($offer->specifications) ? $offer->specifications : [],
         ];
     }
 

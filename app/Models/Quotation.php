@@ -9,14 +9,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * Table: quotations — one live quotation per supplier account per RFQ.
  * Revisions are kept in quotation_revisions.
  */
-class Quotation extends Model
+class Quotation extends Model implements HasMedia
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, InteractsWithMedia;
+
+    // Supplementary, whole-quotation attachment(s) — distinct from a
+    // per-item "document" response method (QuotationItem::registerMediaCollections()).
+    // Explicitly does not replace itemized pricing; see the Step 3 UI copy.
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('combined_document')
+            ->useDisk(config('media-library.disk_name', 'public'));
+    }
 
     protected $fillable = [
         'quotation_number',

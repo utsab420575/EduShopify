@@ -142,25 +142,111 @@
         ];
     });
 
+    // Flat, indented list ({id, label}) for the optional category picker
+    // inside "Create Custom Offer" — same source RequirementController uses
+    // for the buyer's own category picker, just rendered as a plain <select>
+    // here instead of a searchable multi-select tree (single category per
+    // offer, kept deliberately simple).
+    $categoryOptions = \App\Models\Category::getTreeSelectOptions(['product', 'service', 'both']);
+
     if ($isEdit || $isRevision) {
         $existingRfqItemIds = $quotation->items->pluck('rfq_item_id')->filter()->all();
-        $initialItems = $quotation->items->where('is_optional_addon', false)->values()->map(fn ($item, $idx) => [
-            'id' => $item->id, 'rfq_item_id' => $item->rfq_item_id,
-            'offered_listing_id' => $item->offered_listing_id, 'offered_variant_id' => $item->offered_variant_id,
-            'is_alternative' => (bool) $item->is_alternative,
-            'item_name' => $item->item_name, 'description' => $item->description, 'quantity' => (string) $item->quantity,
-            'unit_id' => $item->unit_id, 'custom_unit' => $item->custom_unit,
-            'unit_price' => $item->unit_price, 'tax_rate' => $item->tax_rate, 'discount_amount' => $item->discount_amount,
-            'lead_time_days' => $item->lead_time_days,
-            'attribute_values' => (object) $item->attributeValues->mapWithKeys(fn ($v) => [$v->attribute_id => [
-                'attribute_value_id' => $v->attribute_value_id, 'custom_value' => $v->custom_value,
-                'value_text' => $v->value_text, 'value_number' => $v->value_number,
-                'value_boolean' => $v->value_boolean, 'value_date' => $v->value_date, 'value_json' => $v->value_json,
-            ]])->all(),
-            '_offerType' => $item->is_alternative ? 'alternative' : ($item->offered_listing_id ? 'existing' : 'custom'),
-            '_collapsed' => $idx > 0 && !$errors->has("items.$idx.*"), '_advancedOpen' => false,
-            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [], '_suggestedListing' => null,
-        ])->values();
+        $initialItems = $quotation->items->where('is_optional_addon', false)->values()->map(function ($item, $idx) use ($errors) {
+            $offers = ($item->relationLoaded('offers') && $item->offers->isNotEmpty())
+                ? $item->offers->map(function ($o, $oIdx) {
+                    return [
+                        'id' => $o->id,
+                        'offer_method' => $o->offer_method,
+                        'marketplace_product_id' => $o->marketplace_product_id,
+                        'offered_variant_id' => $o->offered_variant_id,
+                        'product_name' => $o->product_name,
+                        'category_id' => $o->category_id,
+                        'description' => $o->description,
+                        'specifications' => is_array($o->specifications) ? $o->specifications : [],
+                        'quantity' => (string) $o->quantity,
+                        'unit_id' => $o->unit_id,
+                        'custom_unit' => $o->custom_unit,
+                        'unit_price' => $o->unit_price,
+                        'tax_rate' => $o->tax_rate,
+                        'discount' => $o->discount,
+                        'delivery_time' => $o->delivery_time,
+                        'is_primary' => (bool) $o->is_primary,
+                        'is_selected' => (bool) $o->is_selected,
+                        'sort_order' => (int) $o->sort_order,
+                        '_localKey' => \Illuminate\Support\Str::random(12),
+                        '_collapsed' => $oIdx > 0,
+                        '_image_url' => $o->marketplaceProduct?->primaryImage?->getUrl() ?? ($o->marketplaceProduct?->getFirstMediaUrl('gallery') ?: null),
+                        '_brand_name' => $o->marketplaceProduct?->brand?->name,
+                        '_category_name' => $o->marketplaceProduct?->mainCategory?->name,
+                        '_slug' => $o->marketplaceProduct?->slug,
+                        '_variants' => $o->marketplaceProduct ? $o->marketplaceProduct->variants->map(fn($v) => ['id' => $v->id, 'label' => $v->title . ($v->sku ? ' (' . $v->sku . ')' : '')])->values()->all() : [],
+                        '_attrGroups' => [],
+                        '_attrLoading' => false,
+                        '_attribute_values' => [],
+                        '_custom_specs' => is_array($o->specifications) ? $o->specifications : [],
+                        '_documents' => method_exists($o, 'getMedia') ? $o->getMedia('document')->map(fn ($m) => [
+                            'id' => $m->id, 'name' => $m->file_name, 'size' => $m->human_readable_size,
+                            'url' => $m->getUrl(), 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
+                        ])->values()->all() : [],
+                    ];
+                })->values()->all()
+                : [[
+                    'id' => null,
+                    'offer_method' => $item->response_method ?? ($item->offered_listing_id ? 'marketplace' : 'custom'),
+                    'marketplace_product_id' => $item->offered_listing_id,
+                    'offered_variant_id' => $item->offered_variant_id,
+                    'product_name' => $item->item_name,
+                    'category_id' => $item->rfqItem?->category_id,
+                    'description' => $item->description,
+                    'specifications' => is_array($item->specs) ? $item->specs : [],
+                    'quantity' => (string) $item->quantity,
+                    'unit_id' => $item->unit_id,
+                    'custom_unit' => $item->custom_unit,
+                    'unit_price' => $item->unit_price,
+                    'tax_rate' => $item->tax_rate,
+                    'discount' => $item->discount_amount,
+                    'delivery_time' => $item->lead_time_days,
+                    'is_primary' => true,
+                    'is_selected' => false,
+                    'sort_order' => 0,
+                    '_localKey' => \Illuminate\Support\Str::random(12),
+                    '_collapsed' => false,
+                    '_image_url' => $item->offeredListing?->primaryImage?->getUrl() ?? ($item->offeredListing?->getFirstMediaUrl('gallery') ?: null),
+                    '_brand_name' => $item->offeredListing?->brand?->name,
+                    '_category_name' => $item->offeredListing?->mainCategory?->name,
+                    '_variants' => $item->offeredListing ? $item->offeredListing->variants->map(fn($v) => ['id' => $v->id, 'label' => $v->title . ($v->sku ? ' (' . $v->sku . ')' : '')])->values()->all() : [],
+                    '_attrGroups' => [],
+                    '_attrLoading' => false,
+                    '_attribute_values' => [],
+                    '_custom_specs' => is_array($item->specs) ? $item->specs : [],
+                    '_documents' => [],
+                ]];
+
+            return [
+                'id' => $item->id, 'rfq_item_id' => $item->rfq_item_id,
+                'offered_listing_id' => $item->offered_listing_id, 'offered_variant_id' => $item->offered_variant_id,
+                'is_alternative' => (bool) $item->is_alternative,
+                'item_name' => $item->item_name, 'description' => $item->description, 'quantity' => (string) $item->quantity,
+                'unit_id' => $item->unit_id, 'custom_unit' => $item->custom_unit,
+                'unit_price' => $item->unit_price, 'tax_rate' => $item->tax_rate, 'discount_amount' => $item->discount_amount,
+                'lead_time_days' => $item->lead_time_days,
+                'attribute_values' => (object) $item->attributeValues->mapWithKeys(fn ($v) => [$v->attribute_id => [
+                    'attribute_value_id' => $v->attribute_value_id, 'custom_value' => $v->custom_value,
+                    'value_text' => $v->value_text, 'value_number' => $v->value_number,
+                    'value_boolean' => $v->value_boolean, 'value_date' => $v->value_date, 'value_json' => $v->value_json,
+                ]])->all(),
+                'offers' => $offers,
+                '_responseMethod' => $item->response_method ?? ($item->offered_listing_id ? 'marketplace' : 'custom'),
+                '_localKey' => \Illuminate\Support\Str::random(12),
+                '_collapsed' => $idx > 0 && !$errors->has("items.$idx.*"),
+                '_documents' => method_exists($item, 'getMedia') ? $item->getMedia('document')->map(fn ($m) => [
+                    'id' => $m->id, 'name' => $m->file_name, 'size' => $m->human_readable_size,
+                    'url' => $m->getUrl(), 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
+                ])->values()->all() : [],
+                '_uploadPreparing' => false,
+                '_attrLoading' => false, '_attrGroups' => [], '_variants' => [], '_suggestedListing' => null,
+            ];
+        })->values();
 
         $newRfqItems = $rfq->items->whereNotIn('id', $existingRfqItemIds)->map(fn ($item) => [
             'id' => null, 'rfq_item_id' => $item->id,
@@ -169,9 +255,11 @@
             'unit_id' => $item->unit_id, 'custom_unit' => $item->custom_unit,
             'unit_price' => null, 'tax_rate' => null, 'discount_amount' => null, 'lead_time_days' => null,
             'attribute_values' => (object) [],
-            '_offerType' => 'custom',
-            '_collapsed' => true, '_advancedOpen' => false,
-            '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [], '_suggestedListing' => null,
+            'offers' => [],
+            '_responseMethod' => null,
+            '_localKey' => \Illuminate\Support\Str::random(12),
+            '_collapsed' => false,
+            '_documents' => [], '_uploadPreparing' => false, '_attrLoading' => false, '_attrGroups' => [], '_variants' => [], '_suggestedListing' => null,
         ]);
         $initialItems = $initialItems->concat($newRfqItems)->values();
 
@@ -182,9 +270,6 @@
             'lead_time_days' => $item->lead_time_days,
         ])->values();
     } else {
-        // "Start from a previous quotation" (?clone_from=) overlays matched
-        // pricing/terms onto the item seed below — name/quantity/category
-        // always stay tied to THIS rfq's own item, never copied from the source.
         $initialItems = $rfq->items->values()->map(function ($item, $idx) use ($cloneMatches, $errors) {
             $clone = $cloneMatches[$item->id] ?? null;
 
@@ -196,9 +281,11 @@
                 'unit_price' => $clone['unit_price'] ?? null, 'tax_rate' => $clone['tax_rate'] ?? null,
                 'discount_amount' => $clone['discount_amount'] ?? null, 'lead_time_days' => $clone['lead_time_days'] ?? null,
                 'attribute_values' => (object) ($clone['attribute_values'] ?? []),
-                '_offerType' => 'custom',
-                '_collapsed' => $idx > 0 && !$errors->has("items.$idx.*"), '_advancedOpen' => false,
-                '_attrLoading' => false, '_attrGroups' => [], '_listingQuery' => '', '_listingResults' => [], '_variants' => [], '_suggestedListing' => null,
+                'offers' => [],
+                '_responseMethod' => null,
+                '_localKey' => \Illuminate\Support\Str::random(12),
+                '_collapsed' => $idx > 0 && !$errors->has("items.$idx.*"),
+                '_documents' => [], '_uploadPreparing' => false, '_attrLoading' => false, '_attrGroups' => [], '_variants' => [], '_suggestedListing' => null,
             ];
         })->values();
 
@@ -217,9 +304,17 @@
         currencyCode: '{{ old('currency_code', $quotation?->currency_code ?? $cloneSource?->currency_code ?? $rfq->currency_code ?? 'USD') }}',
         shippingCharge: {{ (float) old('shipping_charge', $quotation?->shipping_charge ?? 0) }},
         categoryAttributesUrl: '{{ url('/supplier/quotations/categories') }}',
+        categoryOptions: {{ json_encode($categoryOptions) }},
         listingsSearchUrl: '{{ route('supplier.quotations.listings.search') }}',
         listingsPrefillUrl: '{{ url('/supplier/quotations/listings') }}',
         autoMatchUrl: '{{ route('supplier.quotations.listings.auto-match', $rfq) }}',
+        selectProductUrl: '{{ route('supplier.quotations.listings.select', $rfq) }}',
+        itemDocumentUrlBase: '{{ url('/supplier/quotations') }}',
+        combinedDocumentUrlBase: '{{ url('/supplier/quotations') }}',
+        combinedDocuments: {{ ($isEdit && method_exists($quotation, 'getMedia') ? $quotation->getMedia('combined_document')->map(fn ($m) => [
+            'id' => $m->id, 'name' => $m->file_name, 'size' => $m->human_readable_size,
+            'url' => $m->getUrl(), 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
+        ])->values() : collect())->toJson() }},
         quotationId: {{ $isEdit ? $quotation->id : 'null' }},
         isRevision: {{ $isRevision ? 'true' : 'false' }},
         autosaveCreateUrl: '{{ route('supplier.quotations.autosave.create', $rfq) }}',
@@ -318,7 +413,7 @@
 
             {{-- ═══════ STEP 1 — Price Items ═══════ --}}
             <div x-show="currentStep === 1" x-cloak class="space-y-6">
-                <x-backend.form-card title="Requested Items" description="Respond to each RFQ item — use one of your listings, offer an alternative, or create a fully custom offer. Only Unit Price is required; everything else can wait.">
+                <x-backend.form-card title="Requested Items" description="Respond to each RFQ item — add a product, choose how you want to provide it, and add alternatives if you have more than one option.">
                     <div x-show="items.length > 1" x-cloak class="flex items-center gap-3 mb-4 -mt-1">
                         <button type="button" @click="collapseAllItems()" class="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
                             <i class="fa-solid fa-compress"></i> Collapse All
@@ -328,12 +423,36 @@
                         </button>
                     </div>
 
-                    <template x-for="(item, index) in items" :key="index">
-                        @include('backend.supplier.procurement.quotations.partials._item')
+                    @foreach($rfq->items as $rfqItem)
+                        <div class="mb-6 pb-6 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
+                            @include('backend.supplier.procurement.quotations.partials._rfq-item-panel')
+
+                            <div class="space-y-3 mb-3">
+                                <template x-for="item in itemsForRfq({{ $rfqItem->id }})" :key="item._localKey">
+                                    @include('backend.supplier.procurement.quotations.partials._item')
+                                </template>
+                            </div>
+
+                            <button type="button" @click="addProduct({{ $rfqItem->id }})"
+                                    class="text-xs font-semibold px-3 py-2 rounded-lg border border-dashed border-indigo-300 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 transition-colors">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add Another Product Response
+                            </button>
+                        </div>
+                    @endforeach
+
+                    <template x-if="extraItems().length > 0">
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Additional Items You're Offering</label>
+                            <div class="space-y-3">
+                                <template x-for="item in extraItems()" :key="item._localKey">
+                                    @include('backend.supplier.procurement.quotations.partials._item')
+                                </template>
+                            </div>
+                        </div>
                     </template>
 
                     <button type="button" @click="addItem()" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Add Another Item
+                        <i class="fa-solid fa-plus"></i> Offer Something Else
                     </button>
                 </x-backend.form-card>
 
@@ -391,6 +510,32 @@
                         </div>
                         <x-backend.input type="number" name="shipping_charge" label="Shipping Charge" step="0.01" min="0" :value="old('shipping_charge', $quotation?->shipping_charge ?? 0)" />
                         <x-backend.textarea name="proposal" label="Executive Summary / Proposal" :value="old('proposal', $quotation?->proposal ?? $cloneSource?->proposal)" placeholder="Explain your proposal, brand advantages, quality assurances..." />
+
+                        {{-- Supplementary, whole-quotation attachment(s) — does not
+                             replace the itemized pricing on Step 1/2. --}}
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">Supporting Documents (optional)</label>
+                            <p class="text-[11px] text-gray-400 mb-2">Attach a formal quote, brochure, or other supporting file. This does not replace your itemized pricing above.</p>
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                <template x-for="doc in (combinedDocuments || [])" :key="doc.id">
+                                    <span class="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-md bg-white border border-gray-200 text-gray-700 shadow-2xs">
+                                        <i class="fa-solid" :class="doc.is_image ? 'fa-file-image text-emerald-500' : 'fa-file-pdf text-red-500'"></i>
+                                        <a :href="doc.url" target="_blank" class="font-medium text-gray-800 hover:text-indigo-600" x-text="doc.name"></a>
+                                        <span class="text-gray-400 font-mono" x-text="'(' + doc.size + ')'"></span>
+                                        <button type="button" @click="deleteCombinedDocument(doc.id)" class="text-red-400 hover:text-red-600 ml-1"><i class="fa-solid fa-xmark"></i></button>
+                                    </span>
+                                </template>
+                            </div>
+                            <label class="inline-flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                   :class="combinedDocUploading ? 'opacity-50 pointer-events-none' : ''">
+                                <i class="fa-solid" :class="combinedDocUploading ? 'fa-spinner fa-spin' : 'fa-upload'"></i>
+                                <span x-text="combinedDocUploading ? 'Uploading…' : 'Upload File'"></span>
+                                <input type="file" class="hidden" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.zip,.csv,.txt"
+                                       @change="if ($event.target.files[0]) { uploadCombinedDocument($event.target.files[0]); $event.target.value = ''; }">
+                            </label>
+                            <p class="text-[11px] text-gray-400 mt-1.5">PDF, Word, Excel, or image — up to 10MB.</p>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <x-backend.input name="warranty_terms" label="Warranty Terms" :value="old('warranty_terms', $quotation?->warranty_terms ?? $cloneSource?->warranty_terms)" placeholder="e.g. 1 Year Standard" />
                             <x-backend.input name="support_terms" label="Support Terms" :value="old('support_terms', $quotation?->support_terms ?? $cloneSource?->support_terms)" placeholder="e.g. 24/7 Phone Support" />
@@ -442,10 +587,13 @@
             addons: config.addons,
             rfqItemsById: config.rfqItemsById,
             allowAlternativeProducts: config.allowAlternativeProducts,
+            categoryOptions: config.categoryOptions,
             currencyCode: config.currencyCode,
             shippingCharge: config.shippingCharge,
 
             quotationId: config.quotationId,
+            combinedDocuments: config.combinedDocuments,
+            combinedDocUploading: false,
             isSaving: false,
             saveError: null,
             currentStep: config.initialStep || 1,
@@ -463,7 +611,14 @@
             },
             stepValid(n) {
                 if (n === 1) {
-                    return this.items.length > 0 && this.items.every(i => parseFloat(i.unit_price) >= 0 && i.unit_price !== null && i.unit_price !== '');
+                    if (this.items.length === 0) return false;
+                    return this.items.every(i => {
+                        if (i.offers && i.offers.length > 0) {
+                            const primary = i.offers.find(o => o.is_primary) || i.offers[0];
+                            return primary && parseFloat(primary.unit_price) >= 0 && primary.unit_price !== null && primary.unit_price !== '';
+                        }
+                        return parseFloat(i.unit_price) >= 0 && i.unit_price !== null && i.unit_price !== '';
+                    });
                 }
                 if (n === 2) return true;
                 if (n === 3) return this.stepValid(1) && this.stepValid(2);
@@ -479,10 +634,11 @@
             async goNext(n) {
                 if (!this.stepValid(n)) {
                     if (typeof Swal !== 'undefined') {
-                        Swal.fire({ icon: 'warning', title: 'Not quite ready', text: 'Every item needs a Unit Price before moving on.' });
+                        Swal.fire({ icon: 'warning', title: 'Not quite ready', text: 'Every item needs at least one offer with a Unit Price before moving on.' });
                     }
                     this.items.forEach(item => {
-                        if (item.unit_price === null || item.unit_price === '') item._collapsed = false;
+                        item._collapsed = false;
+                        if (item.offers) item.offers.forEach(o => o._collapsed = false);
                     });
                     return;
                 }
@@ -495,21 +651,29 @@
                 }
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
-            // Every autosave/submit always serializes the *complete* items +
-            // addons arrays (never a "just this step" subset) — syncItems()
-            // on the backend deletes any QuotationItem row not present in the
-            // payload, so a partial send would silently drop other items.
             async autosave() {
                 if (this.isRevision) return true;
                 this.isSaving = true;
                 this.saveError = null;
                 try {
                     const url = this.quotationId ? (config.autosaveUpdateUrlBase + '/' + this.quotationId + '/autosave') : config.autosaveCreateUrl;
+                    const itemsPayload = this.items.map(item => {
+                        this.syncItemWithPrimaryOffer(item);
+                        return {
+                            ...item,
+                            client_ref: item._localKey,
+                            response_method: item._responseMethod,
+                            offers: (item.offers || []).map(o => ({
+                                ...o,
+                                specifications: this.getOfferSpecsPayload(o),
+                            })),
+                        };
+                    });
                     const res = await fetch(url, {
                         method: this.quotationId ? 'PUT' : 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrfToken, 'Accept': 'application/json' },
                         body: JSON.stringify({
-                            items: this.items, addons: this.addons,
+                            items: itemsPayload, addons: this.addons,
                             currency_code: this.currencyCode, shipping_charge: this.shippingCharge,
                             current_step: this.currentStep, max_completed_step: this.maxCompletedStep,
                         }),
@@ -520,6 +684,12 @@
                     }
                     const data = await res.json();
                     if (!this.quotationId && data.id) this.quotationId = data.id;
+                    if (data.items) {
+                        this.items.forEach(item => {
+                            const assignedId = data.items[item._localKey];
+                            if (assignedId && !item.id) item.id = assignedId;
+                        });
+                    }
                     return true;
                 } catch (e) {
                     this.saveError = 'Could not save your progress — check your connection and try again.';
@@ -530,18 +700,411 @@
             },
 
             init() {
+                this.restoreFromMarketplaceSelection();
                 this.items.forEach(item => {
+                    this.syncItemWithPrimaryOffer(item);
                     const buyerItem = this.rfqItemsById[item.rfq_item_id];
                     if (buyerItem) this.fetchItemAttributes(item, buyerItem.category_id);
                 });
                 this.loadAutoMatches();
             },
 
-            // One bulk lookup suggesting the supplier's own best-matching
-            // listing per RFQ item. Only offered as a suggestion the
-            // supplier accepts via "Use it" — never applied automatically —
-            // and only onto items still untouched (no price/listing yet),
-            // so a late-arriving response can't clobber in-progress edits.
+            generateLocalKey() {
+                return (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Math.random().toString(36).slice(2);
+            },
+
+            itemsForRfq(rfqItemId) {
+                return this.items.filter(i => String(i.rfq_item_id) === String(rfqItemId));
+            },
+            extraItems() {
+                return this.items.filter(i => !i.rfq_item_id);
+            },
+            allocatedQty(rfqItemId) {
+                return this.itemsForRfq(rfqItemId).reduce((sum, item) => {
+                    const primary = (item.offers && item.offers.length > 0)
+                        ? (item.offers.find(o => o.is_primary) || item.offers[0])
+                        : item;
+                    return sum + parseFloat(primary.quantity || 0);
+                }, 0);
+            },
+            addProduct(rfqItemId) {
+                const buyerItem = this.rfqItemsById[rfqItemId];
+                const newItem = {
+                    id: null,
+                    rfq_item_id: rfqItemId,
+                    offered_listing_id: null,
+                    offered_variant_id: null,
+                    is_alternative: false,
+                    item_name: buyerItem?.item_name ?? '',
+                    description: null,
+                    quantity: buyerItem?.quantity ?? '1',
+                    unit_id: buyerItem?.unit_id ?? null,
+                    custom_unit: null,
+                    unit_price: null,
+                    tax_rate: null,
+                    discount_amount: null,
+                    lead_time_days: null,
+                    attribute_values: {},
+                    specs: [],
+                    offers: [],
+                    _responseMethod: null,
+                    _localKey: this.generateLocalKey(),
+                    _collapsed: false,
+                    _documents: [],
+                    _uploadPreparing: false,
+                    _attrLoading: false,
+                    _attrGroups: [],
+                    _variants: [],
+                    _suggestedListing: null,
+                };
+                this.items.push(newItem);
+            },
+            removeProduct(item) {
+                const idx = this.items.findIndex(i => i._localKey === item._localKey);
+                if (idx !== -1) {
+                    this.items.splice(idx, 1);
+                }
+            },
+
+            openMarketplaceSelector(item) {
+                try {
+                    const raw = (window.Alpine && window.Alpine.raw) ? window.Alpine.raw(this.items) : this.items;
+                    sessionStorage.setItem('quotationItemsSnapshot', JSON.stringify(raw));
+                } catch (e) {}
+
+                const returnUrl = window.location.href.split('#')[0];
+                const url = new URL(config.selectProductUrl, window.location.origin);
+                url.searchParams.set('rfq_item_id', item.rfq_item_id ?? '');
+                url.searchParams.set('item_token', item._localKey);
+                url.searchParams.set('return_url', returnUrl);
+                window.location.href = url.toString();
+            },
+
+            async restoreFromMarketplaceSelection() {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('restore_items') !== '1') return;
+
+                try {
+                    const saved = sessionStorage.getItem('quotationItemsSnapshot');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length > 0) this.items = parsed;
+                    }
+                } catch (e) {}
+                sessionStorage.removeItem('quotationItemsSnapshot');
+
+                const selectedListingIdsParam = params.get('selected_listing_ids') || params.get('selected_listing_id');
+                const itemToken = params.get('item_token');
+                const rfqItemId = params.get('rfq_item_id');
+
+                if (selectedListingIdsParam) {
+                    const listingIds = selectedListingIdsParam.split(',')
+                        .map(s => parseInt(s.trim(), 10))
+                        .filter(n => !isNaN(n));
+
+                    let item = itemToken ? this.items.find(i => i._localKey === itemToken) : null;
+                    if (!item && rfqItemId) {
+                        item = this.items.find(i => String(i.rfq_item_id) === String(rfqItemId));
+                    }
+
+                    if (item && listingIds.length > 0) {
+                        item._collapsed = false;
+                        if (!Array.isArray(item.offers)) item.offers = [];
+
+                        const hasExistingRealOffers = item.offers.some(o => o.marketplace_product_id || (parseFloat(o.unit_price) > 0));
+
+                        for (let idx = 0; idx < listingIds.length; idx++) {
+                            const lid = listingIds[idx];
+                            try {
+                                const res = await fetch(config.listingsPrefillUrl + '/' + lid + '/prefill');
+                                if (!res.ok) continue;
+                                const data = await res.json();
+                                
+                                const isFirstInBatch = idx === 0;
+                                const isPrimary = !hasExistingRealOffers && isFirstInBatch;
+                                const sortOrder = hasExistingRealOffers ? (item.offers.length + idx) : idx;
+
+                                const customSpecs = [];
+                                if (data.attribute_values) {
+                                    Object.entries(data.attribute_values).forEach(([attrId, val]) => {
+                                        if (val && val.value_text) {
+                                            customSpecs.push({ name: 'Spec #' + attrId, value: val.value_text });
+                                        }
+                                    });
+                                }
+
+                                const offer = {
+                                    id: null,
+                                    offer_method: 'marketplace',
+                                    marketplace_product_id: data.item.offered_listing_id,
+                                    offered_variant_id: null,
+                                    product_name: data.item.product_name || data.item.item_name,
+                                    category_id: data.item.category_id,
+                                    description: data.item.description || '',
+                                    specifications: customSpecs,
+                                    quantity: item.quantity || data.item.quantity || '1',
+                                    unit_id: data.item.unit_id || item.unit_id,
+                                    custom_unit: null,
+                                    unit_price: data.item.unit_price || '',
+                                    tax_rate: item.tax_rate ?? null,
+                                    discount: null,
+                                    delivery_time: item.lead_time_days ?? null,
+                                    is_primary: isPrimary,
+                                    is_selected: false,
+                                    sort_order: sortOrder,
+                                    _localKey: this.generateLocalKey(),
+                                    _collapsed: !isPrimary,
+                                    _image_url: data.item.image_url,
+                                    _brand_name: data.item.brand_name,
+                                    _category_name: data.item.category_name,
+                                    _slug: data.item.slug,
+                                    _variants: data.variants || [],
+                                    _attrGroups: data.category_attributes || [],
+                                    _attrLoading: false,
+                                    _attribute_values: data.attribute_values || {},
+                                    _custom_specs: customSpecs,
+                                    _documents: [],
+                                };
+
+                                if (!hasExistingRealOffers && isFirstInBatch) {
+                                    item.offers = [offer];
+                                } else {
+                                    item.offers.push(offer);
+                                }
+                            } catch (err) {
+                                console.error('Error prefilling listing', lid, err);
+                            }
+                        }
+
+                        this.syncItemWithPrimaryOffer(item);
+                    }
+                }
+
+                params.delete('restore_items');
+                params.delete('selected_listing_ids');
+                params.delete('selected_listing_id');
+                params.delete('item_token');
+                params.delete('rfq_item_id');
+                const query = params.toString();
+                const cleanUrl = window.location.pathname + (query ? '?' + query : '');
+                window.history.replaceState({}, '', cleanUrl);
+            },
+
+            addCustomOffer(item, makePrimary = true) {
+                if (!Array.isArray(item.offers)) item.offers = [];
+                const isPrimary = makePrimary && (item.offers.length === 0 || !item.offers.some(o => o.is_primary));
+                const buyerItem = this.rfqItemsById[item.rfq_item_id];
+                
+                const offer = {
+                    id: null,
+                    offer_method: 'custom',
+                    marketplace_product_id: null,
+                    offered_variant_id: null,
+                    product_name: item.item_name || (buyerItem?.item_name ?? ''),
+                    category_id: buyerItem?.category_id ?? null,
+                    description: item.description || (buyerItem?.description ?? ''),
+                    specifications: [],
+                    quantity: item.quantity || (buyerItem?.quantity ?? '1'),
+                    unit_id: item.unit_id || (buyerItem?.unit_id ?? null),
+                    custom_unit: null,
+                    unit_price: '',
+                    tax_rate: null,
+                    discount: null,
+                    delivery_time: null,
+                    is_primary: isPrimary,
+                    is_selected: false,
+                    sort_order: item.offers.length,
+                    _localKey: this.generateLocalKey(),
+                    _collapsed: false,
+                    _image_url: null,
+                    _brand_name: null,
+                    _category_name: buyerItem?.category_name ?? null,
+                    _variants: [],
+                    _attrGroups: [],
+                    _attrLoading: false,
+                    _attribute_values: {},
+                    _custom_specs: [],
+                    _documents: [],
+                };
+                
+                item.offers.push(offer);
+                item._collapsed = false;
+                this.syncItemWithPrimaryOffer(item);
+            },
+
+            addCopyBuyerSpecOffer(item, makePrimary = true) {
+                if (!Array.isArray(item.offers)) item.offers = [];
+                const isPrimary = makePrimary && (item.offers.length === 0 || !item.offers.some(o => o.is_primary));
+                const buyerItem = this.rfqItemsById[item.rfq_item_id];
+                
+                const customSpecs = [];
+                if (buyerItem?.specs && Array.isArray(buyerItem.specs)) {
+                    buyerItem.specs.forEach(s => {
+                        if (s.name && !s.name.startsWith('__')) {
+                            customSpecs.push({ name: s.name, value: s.value || '' });
+                        }
+                    });
+                }
+
+                const offer = {
+                    id: null,
+                    offer_method: 'copy_spec',
+                    marketplace_product_id: null,
+                    offered_variant_id: null,
+                    product_name: buyerItem?.item_name || item.item_name || '',
+                    category_id: buyerItem?.category_id ?? null,
+                    description: buyerItem?.description || item.description || '',
+                    specifications: customSpecs,
+                    quantity: buyerItem?.quantity || item.quantity || '1',
+                    unit_id: buyerItem?.unit_id || item.unit_id || null,
+                    custom_unit: null,
+                    unit_price: buyerItem?.estimated_unit_price ? parseFloat(String(buyerItem.estimated_unit_price).replace(/,/g, '')) : '',
+                    tax_rate: null,
+                    discount: null,
+                    delivery_time: null,
+                    is_primary: isPrimary,
+                    is_selected: false,
+                    sort_order: item.offers.length,
+                    _localKey: this.generateLocalKey(),
+                    _collapsed: false,
+                    _image_url: buyerItem?.listing_image_url ?? null,
+                    _brand_name: null,
+                    _category_name: buyerItem?.category_name ?? null,
+                    _variants: [],
+                    _attrGroups: [],
+                    _attrLoading: false,
+                    _attribute_values: JSON.parse(JSON.stringify(buyerItem?.attribute_values_raw || {})),
+                    _custom_specs: customSpecs,
+                    _documents: [],
+                };
+
+                item.offers.push(offer);
+                item._collapsed = false;
+                this.syncItemWithPrimaryOffer(item);
+            },
+
+            addDocumentOffer(item, makePrimary = true) {
+                if (!Array.isArray(item.offers)) item.offers = [];
+                const isPrimary = makePrimary && (item.offers.length === 0 || !item.offers.some(o => o.is_primary));
+                const buyerItem = this.rfqItemsById[item.rfq_item_id];
+                
+                const offer = {
+                    id: null,
+                    offer_method: 'document',
+                    marketplace_product_id: null,
+                    offered_variant_id: null,
+                    product_name: (buyerItem?.item_name ? (buyerItem.item_name + ' — Document Quotation') : 'Quotation Document'),
+                    category_id: buyerItem?.category_id ?? null,
+                    description: '',
+                    specifications: [],
+                    quantity: '1',
+                    unit_id: null,
+                    custom_unit: null,
+                    unit_price: '',
+                    tax_rate: null,
+                    discount: null,
+                    delivery_time: null,
+                    is_primary: isPrimary,
+                    is_selected: false,
+                    sort_order: item.offers.length,
+                    _localKey: this.generateLocalKey(),
+                    _collapsed: false,
+                    _image_url: null,
+                    _brand_name: null,
+                    _category_name: null,
+                    _variants: [],
+                    _attrGroups: [],
+                    _attrLoading: false,
+                    _attribute_values: {},
+                    _custom_specs: [],
+                    _documents: [],
+                };
+
+                item.offers.push(offer);
+                item._collapsed = false;
+                this.syncItemWithPrimaryOffer(item);
+            },
+
+            makePrimaryOffer(item, targetOffer) {
+                if (!item.offers) return;
+                item.offers.forEach(o => {
+                    o.is_primary = (o._localKey === targetOffer._localKey);
+                });
+                this.syncItemWithPrimaryOffer(item);
+            },
+
+            removeOffer(item, offerIndex) {
+                if (!item.offers) return;
+                const removedWasPrimary = item.offers[offerIndex]?.is_primary;
+                item.offers.splice(offerIndex, 1);
+                if (removedWasPrimary && item.offers.length > 0) {
+                    item.offers[0].is_primary = true;
+                }
+                item.offers.forEach((o, idx) => { o.sort_order = idx; });
+                this.syncItemWithPrimaryOffer(item);
+            },
+
+            addCustomSpec(offer) {
+                if (!Array.isArray(offer._custom_specs)) offer._custom_specs = [];
+                offer._custom_specs.push({ name: '', value: '' });
+            },
+
+            removeCustomSpec(offer, specIndex) {
+                if (!Array.isArray(offer._custom_specs)) return;
+                offer._custom_specs.splice(specIndex, 1);
+            },
+
+            getOfferSpecsPayload(offer) {
+                const specs = [];
+                if (Array.isArray(offer._custom_specs)) {
+                    offer._custom_specs.forEach(s => {
+                        if (s.name && s.name.trim() !== '') {
+                            specs.push({ name: s.name.trim(), value: s.value || '' });
+                        }
+                    });
+                }
+                return specs;
+            },
+
+            methodLabel(key) {
+                switch(key) {
+                    case 'marketplace': return 'Catalog Product';
+                    case 'custom': return 'Custom Offer';
+                    case 'copy_spec': return 'Copied Spec';
+                    case 'document': return 'Quotation Doc';
+                    default: return 'Offer';
+                }
+            },
+
+            syncItemWithPrimaryOffer(item) {
+                if (!item.offers || item.offers.length === 0) return;
+                const primary = item.offers.find(o => o.is_primary) || item.offers[0];
+                if (primary) {
+                    item.item_name = primary.product_name || item.item_name;
+                    item.unit_price = primary.unit_price;
+                    item.quantity = primary.quantity;
+                    item.unit_id = primary.unit_id;
+                    item.custom_unit = primary.custom_unit;
+                    item.tax_rate = primary.tax_rate;
+                    item.discount_amount = primary.discount;
+                    item.lead_time_days = primary.delivery_time;
+                    item.offered_listing_id = primary.marketplace_product_id;
+                    item.offered_variant_id = primary.offered_variant_id;
+                    item._responseMethod = primary.offer_method;
+                    item.description = primary.description;
+                }
+            },
+
+            offerTotal(offer) {
+                const qty = parseFloat(offer.quantity || 0);
+                const price = parseFloat(offer.unit_price || 0);
+                const lineSubtotal = qty * price;
+                const discount = parseFloat(offer.discount || 0);
+                const taxRate = (offer.tax_rate !== null && offer.tax_rate !== '' && offer.tax_rate !== undefined) ? parseFloat(offer.tax_rate) : null;
+                const tax = taxRate !== null ? (lineSubtotal - discount) * taxRate / 100 : 0;
+                return lineSubtotal - discount + tax;
+            },
+
             loadAutoMatches() {
                 fetch(config.autoMatchUrl)
                     .then(r => r.json())
@@ -557,40 +1120,14 @@
             },
             useSuggestedListing(item) {
                 if (!item._suggestedListing) return;
+                item._responseMethod = 'marketplace';
                 this.selectListingForItem(item, { id: item._suggestedListing.listing_id, name: item._suggestedListing.name });
                 item._suggestedListing = null;
             },
             dismissSuggestedListing(item) { item._suggestedListing = null; },
 
-            // "Copy buyer's specifications" checkbox above one item's
-            // Specifications Comparison — fills that item's name,
-            // description, quantity, unit AND every buyer-requested attribute
-            // value straight into the matching "Your Offer" fields, so the
-            // supplier starts from the buyer's ask instead of retyping it.
-            // Attribute values copy 1:1 (attribute_value_id/value_text/etc.)
-            // rather than parsing the formatted display text, since
-            // rfq_item_attribute_values and listing_attribute_values mirror
-            // quotation_item_attribute_values' columns exactly — same
-            // attribute definitions, same option ids, on both sides.
             applyCopyBuyerRequirements(item) {
-                const buyerItem = this.rfqItemsById[item.rfq_item_id];
-                if (!buyerItem) return;
-
-                if (buyerItem.item_name) item.item_name = buyerItem.item_name;
-                if (buyerItem.description) item.description = buyerItem.description;
-                if (buyerItem.quantity) item.quantity = buyerItem.quantity;
-                if (buyerItem.unit_id) item.unit_id = buyerItem.unit_id;
-
-                Object.entries(buyerItem.attribute_values_raw || {}).forEach(([attrId, raw]) => {
-                    const target = this.getAttrVal(item, attrId);
-                    target.attribute_value_id = raw.attribute_value_id;
-                    target.custom_value = raw.custom_value;
-                    target.value_text = raw.value_text;
-                    target.value_number = raw.value_number;
-                    target.value_boolean = raw.value_boolean;
-                    target.value_date = raw.value_date;
-                    target.value_json = raw.value_json;
-                });
+                this.addCopyBuyerSpecOffer(item, true);
             },
 
             copyBuyerRequirementsToAll() {
@@ -598,15 +1135,15 @@
             },
 
             addItem() {
-                // Accordion behaviour: collapse whatever's already there so the
-                // newly added item is the one thing left open to work on.
                 this.collapseAllItems();
                 this.items.push({
                     id: null, rfq_item_id: null, offered_listing_id: null, offered_variant_id: null, is_alternative: false,
                     item_name: '', description: '', quantity: '1', unit_id: null, custom_unit: null,
                     unit_price: null, tax_rate: null, discount_amount: null, lead_time_days: null,
-                    attribute_values: {}, _offerType: 'custom', _collapsed: false, _advancedOpen: false,
-                    _attrLoading: false, _attrGroups: [], _listingQuery: '', _listingResults: [], _variants: [], _suggestedListing: null,
+                    attribute_values: {}, offers: [], _responseMethod: null, _localKey: this.generateLocalKey(),
+                    _collapsed: false,
+                    _documents: [], _uploadPreparing: false,
+                    _attrLoading: false, _attrGroups: [], _variants: [], _suggestedListing: null,
                 });
             },
             removeItem(index) {
@@ -614,69 +1151,90 @@
                 if (this.items.length === 1) this.items[0]._collapsed = false;
             },
 
-            collapseAllItems() { this.items.forEach(i => { i._collapsed = true; }); },
-            expandAllItems() { this.items.forEach(i => { i._collapsed = false; }); },
+            collapseAllItems() { this.items.forEach(i => { i._collapsed = true; if (i.offers) i.offers.forEach(o => o._collapsed = true); }); },
+            expandAllItems() { this.items.forEach(i => { i._collapsed = false; if (i.offers) i.offers.forEach(o => o._collapsed = false); }); },
 
             addAddon() {
                 this.addons.push({ id: null, item_name: '', description: '', quantity: '1', unit_id: null, unit_price: null, tax_rate: null, discount_amount: null, lead_time_days: null });
             },
             removeAddon(index) { this.addons.splice(index, 1); },
 
-            // _offerType is the explicit source of truth for which pill is
-            // selected — it used to be derived purely from is_alternative/
-            // offered_listing_id, which meant clicking "Use Existing Listing"
-            // was a no-op until a listing was actually picked (nothing set
-            // offered_listing_id yet), so the pill could never highlight and
-            // the search box never appeared. Storing intent directly fixes
-            // that; offered_listing_id is still what actually gets submitted.
-            getOfferType(item) {
-                return item._offerType || (item.is_alternative ? 'alternative' : (item.offered_listing_id ? 'existing' : 'custom'));
-            },
-            setOfferType(item, type) {
-                item._offerType = type;
-                item.is_alternative = (type === 'alternative');
-                if (type === 'custom') {
-                    item.offered_listing_id = null;
-                    item.offered_variant_id = null;
-                    item._variants = [];
+            async uploadCombinedDocument(file) {
+                if (!this.quotationId) return;
+                this.combinedDocUploading = true;
+                try {
+                    const body = new FormData();
+                    body.append('document', file);
+                    const res = await fetch(config.combinedDocumentUrlBase + '/' + this.quotationId + '/combined-document', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': config.csrfToken, 'Accept': 'application/json' },
+                        body,
+                    });
+                    if (!res.ok) return;
+                    const media = await res.json();
+                    this.combinedDocuments = [...(this.combinedDocuments || []), media];
+                } finally {
+                    this.combinedDocUploading = false;
                 }
             },
-
-            searchListingsForItem(item) {
-                if (item._listingQuery.trim().length < 2) { item._listingResults = []; return; }
-                const buyerItem = this.rfqItemsById[item.rfq_item_id];
-                const categoryParam = buyerItem && buyerItem.category_id ? '&category_id=' + buyerItem.category_id : '';
-                fetch(config.listingsSearchUrl + '?q=' + encodeURIComponent(item._listingQuery) + categoryParam)
-                    .then(r => r.json())
-                    .then(data => { item._listingResults = data; });
+            async deleteCombinedDocument(mediaId) {
+                if (!this.quotationId) return;
+                await fetch(config.combinedDocumentUrlBase + '/' + this.quotationId + '/combined-document/' + mediaId, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': config.csrfToken, 'Accept': 'application/json' },
+                });
+                this.combinedDocuments = (this.combinedDocuments || []).filter(d => d.id !== mediaId);
             },
+
             selectListingForItem(item, listing) {
-                item._listingQuery = '';
-                item._listingResults = [];
                 fetch(config.listingsPrefillUrl + '/' + listing.id + '/prefill')
                     .then(r => r.json())
                     .then(data => {
-                        item.offered_listing_id = data.item.offered_listing_id;
-                        item.item_name = data.item.item_name;
-                        item.description = data.item.description;
-                        item.unit_id = data.item.unit_id;
-                        item.unit_price = data.item.unit_price;
-                        item.attribute_values = data.attribute_values || {};
-                        item._variants = data.variants || [];
+                        const offer = {
+                            id: null,
+                            offer_method: 'marketplace',
+                            marketplace_product_id: data.item.offered_listing_id,
+                            offered_variant_id: null,
+                            product_name: data.item.product_name || data.item.item_name,
+                            category_id: data.item.category_id,
+                            description: data.item.description || '',
+                            specifications: [],
+                            quantity: item.quantity || data.item.quantity || '1',
+                            unit_id: data.item.unit_id || item.unit_id,
+                            custom_unit: null,
+                            unit_price: data.item.unit_price || '',
+                            tax_rate: item.tax_rate ?? null,
+                            discount: null,
+                            delivery_time: item.lead_time_days ?? null,
+                            is_primary: true,
+                            is_selected: false,
+                            sort_order: 0,
+                            _localKey: this.generateLocalKey(),
+                            _collapsed: false,
+                            _image_url: data.item.image_url,
+                            _brand_name: data.item.brand_name,
+                            _category_name: data.item.category_name,
+                            _variants: data.variants || [],
+                            _attrGroups: data.category_attributes || [],
+                            _attrLoading: false,
+                            _attribute_values: data.attribute_values || {},
+                            _custom_specs: [],
+                            _documents: [],
+                        };
+                        item.offers = [offer];
+                        this.syncItemWithPrimaryOffer(item);
                     });
             },
             clearListingForItem(item) {
                 item.offered_listing_id = null;
                 item.offered_variant_id = null;
                 item._variants = [];
+                item.offers = [];
             },
 
             fetchItemAttributes(item, categoryId) {
                 if (!categoryId) { item._attrGroups = []; return; }
                 item._attrLoading = true;
-                // Editing/revising an existing quotation that already has a
-                // value for an attribute since deactivated — keep it visible
-                // instead of silently dropping it.
                 let url = config.categoryAttributesUrl + '/' + categoryId + '/attributes';
                 const keepIds = Object.keys(item.attribute_values || {});
                 if (keepIds.length > 0) {
@@ -697,25 +1255,12 @@
                 }
                 return item.attribute_values[attrId];
             },
-            isOtherSelected(item, attrId) {
-                return this.getAttrVal(item, attrId).attribute_value_id === '__other__';
-            },
-            isMultiSelected(item, attrId, value) {
-                const v = this.getAttrVal(item, attrId).value_json;
-                return Array.isArray(v) && v.includes(value);
-            },
-            toggleMultiSelect(item, attrId, value) {
-                const val = this.getAttrVal(item, attrId);
-                if (!Array.isArray(val.value_json)) val.value_json = [];
-                const idx = val.value_json.indexOf(value);
-                if (idx === -1) val.value_json.push(value); else val.value_json.splice(idx, 1);
-            },
 
             lineTotal(row) {
                 const qty = parseFloat(row.quantity || 0);
                 const price = parseFloat(row.unit_price || 0);
                 const lineSubtotal = qty * price;
-                const discount = parseFloat(row.discount_amount || 0);
+                const discount = parseFloat(row.discount_amount || row.discount || 0);
                 const taxRate = (row.tax_rate !== null && row.tax_rate !== '' && row.tax_rate !== undefined) ? parseFloat(row.tax_rate) : null;
                 const tax = taxRate !== null ? (lineSubtotal - discount) * taxRate / 100 : 0;
                 return lineSubtotal - discount + tax;
@@ -724,17 +1269,25 @@
                 const qty = parseFloat(row.quantity || 0);
                 const price = parseFloat(row.unit_price || 0);
                 const lineSubtotal = qty * price;
-                const discount = parseFloat(row.discount_amount || 0);
+                const discount = parseFloat(row.discount_amount || row.discount || 0);
                 const taxRate = (row.tax_rate !== null && row.tax_rate !== '' && row.tax_rate !== undefined) ? parseFloat(row.tax_rate) : null;
                 return taxRate !== null ? (lineSubtotal - discount) * taxRate / 100 : 0;
             },
             formatMoney(n) {
-                return (this.currencyCode || 'USD') + ' ' + (isNaN(n) ? '0.00' : n.toFixed(2));
+                return (this.currencyCode || 'USD') + ' ' + (isNaN(n) ? '0.00' : Number(n).toFixed(2));
             },
             allRows() { return [...this.items, ...this.addons]; },
-            subtotal() { return this.allRows().reduce((s, r) => s + parseFloat(r.quantity || 0) * parseFloat(r.unit_price || 0), 0); },
+            subtotal() {
+                return this.allRows().reduce((s, r) => {
+                    return s + parseFloat(r.quantity || 0) * parseFloat(r.unit_price || 0);
+                }, 0);
+            },
             totalTax() { return this.allRows().reduce((s, r) => s + this.lineTax(r), 0); },
-            totalDiscount() { return this.allRows().reduce((s, r) => s + parseFloat(r.discount_amount || 0), 0); },
+            totalDiscount() {
+                return this.allRows().reduce((s, r) => {
+                    return s + parseFloat(r.discount_amount || r.discount || 0);
+                }, 0);
+            },
             grandTotal() { return this.subtotal() - this.totalDiscount() + this.totalTax() + parseFloat(this.shippingCharge || 0); },
         }));
     });

@@ -87,6 +87,20 @@ class QuotationPolicy
             && ! in_array($quotation->status, ['rejected', 'withdrawn', 'awarded', 'expired', 'draft'], true);
     }
 
+    /**
+     * Choosing which offer (within a Product Response) should be used if
+     * this quotation is awarded — a preparatory action, so it shares
+     * award()'s ownership/permission/status gate but not its "no pending
+     * award already in flight" exclusivity check (selecting doesn't create
+     * anything).
+     */
+    public function selectOffer(User $user, Quotation $quotation): bool
+    {
+        return $this->checkAccess($user, 'buyer', 'quotation.award') !== null
+            && $this->ownsAsBuyer($user, $quotation)
+            && in_array($quotation->status, ['submitted', 'revised', 'shortlisted', 'under_review'], true);
+    }
+
     public function award(User $user, Quotation $quotation): bool
     {
         if ($this->checkAccess($user, 'buyer', 'quotation.award') === null || ! $this->ownsAsBuyer($user, $quotation)) {

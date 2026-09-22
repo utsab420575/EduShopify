@@ -58,6 +58,11 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @forelse($quotation->items as $item)
+                                @php
+                                    $offers = $item->offers;
+                                    $selectedOfferId = $offers->firstWhere('is_selected', true)?->id
+                                        ?? $offers->firstWhere('is_primary', true)?->id;
+                                @endphp
                                 <tr>
                                     <td class="px-5 py-3">
                                         <p class="text-sm font-medium text-gray-900">{{ $item->item_name }}</p>
@@ -65,14 +70,70 @@
                                             <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                                                 <i class="fa-solid fa-file-invoice text-[9px] mr-0.5"></i> Requirement
                                             </span>
-                                        @elseif($item->is_alternative)
-                                            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Alternative</span>
                                         @endif
                                     </td>
                                     <td class="px-5 py-3 text-sm text-gray-600 text-right">{{ rtrim(rtrim((string) $item->quantity, '0'), '.') }} {{ $item->unit?->symbol }}</td>
                                     <td class="px-5 py-3 text-sm text-gray-600 text-right">{{ number_format($item->unit_price, 2) }}</td>
                                     <td class="px-5 py-3 text-sm font-medium text-gray-900 text-right">{{ number_format($item->line_total, 2) }}</td>
                                 </tr>
+                                @if($offers->isNotEmpty())
+                                    <tr class="bg-gray-50/60">
+                                        <td colspan="4" class="px-5 py-3">
+                                            @if($offers->count() > 1)
+                                                <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                                                    {{ $offers->count() }} offers for this product — pick which one to award
+                                                </p>
+                                            @endif
+                                            <div class="space-y-2">
+                                                @foreach($offers as $offer)
+                                                    <div class="flex items-center justify-between gap-3 bg-white border rounded-lg px-3 py-2"
+                                                         style="{{ $offer->id === $selectedOfferId ? 'border-color:var(--theme-primary)' : '' }}"
+                                                         class="{{ $offer->id === $selectedOfferId ? '' : 'border-gray-200' }}">
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                                <span class="text-xs font-semibold text-gray-900">{{ $offer->product_name }}</span>
+                                                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">{{ ucfirst(str_replace('_', ' ', $offer->offer_method)) }}</span>
+                                                                @if($offer->is_primary)
+                                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">Supplier's Primary</span>
+                                                                @endif
+                                                                @if($offer->id === $selectedOfferId && $offer->is_selected)
+                                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-check text-[9px]"></i> Your Selection</span>
+                                                                @endif
+                                                            </div>
+                                                            @if($offer->description)
+                                                                <p class="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{{ $offer->description }}</p>
+                                                            @endif
+                                                            @if($offer->getMedia('document')->isNotEmpty())
+                                                                <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                                                    @foreach($offer->getMedia('document') as $doc)
+                                                                        <a href="{{ $doc->getUrl() }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-gray-50 border border-gray-200 text-gray-700 hover:border-purple-300 hover:text-purple-700">
+                                                                            <i class="fa-solid fa-download text-[9px]"></i> {{ $doc->file_name }}
+                                                                        </a>
+                                                                    @endforeach
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                        <div class="text-right shrink-0">
+                                                            <p class="text-xs font-bold text-gray-900">{{ number_format($offer->total_price, 2) }}</p>
+                                                            <p class="text-[10px] text-gray-400">{{ $offer->delivery_time ? $offer->delivery_time . ' days' : '—' }}</p>
+                                                        </div>
+                                                        @can('selectOffer', $quotation)
+                                                            @if($offers->count() > 1)
+                                                                <form method="POST" action="{{ route('buyer.quotations.items.offers.select', [$quotation, $item, $offer]) }}" class="shrink-0">
+                                                                    @csrf
+                                                                    <button type="submit" @disabled($offer->is_selected)
+                                                                            class="text-[11px] font-semibold px-2.5 py-1.5 rounded-md border {{ $offer->is_selected ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default' : 'border-gray-300 text-gray-700 hover:bg-gray-50' }}">
+                                                                        {{ $offer->is_selected ? 'Selected' : 'Select' }}
+                                                                    </button>
+                                                                </form>
+                                                            @endif
+                                                        @endcan
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endif
                             @empty
                                 <tr>
                                     <td colspan="4" class="px-5 py-6 text-sm text-gray-400 text-center">No items quoted yet.</td>
@@ -94,6 +155,20 @@
             @if($quotation->proposal)
                 <x-backend.form-card title="Proposal">
                     <p class="text-sm text-gray-600 whitespace-pre-line">{{ $quotation->proposal }}</p>
+                </x-backend.form-card>
+            @endif
+
+            @if($quotation->getMedia('combined_document')->isNotEmpty())
+                <x-backend.form-card title="Supporting Documents">
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($quotation->getMedia('combined_document') as $doc)
+                            <a href="{{ $doc->getUrl() }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-gray-50 border border-gray-200 text-gray-700 hover:text-indigo-600">
+                                <i class="fa-solid {{ str_starts_with($doc->mime_type ?? '', 'image/') ? 'fa-file-image text-emerald-500' : 'fa-file-pdf text-red-500' }}"></i>
+                                <span class="font-medium">{{ $doc->file_name }}</span>
+                                <span class="text-gray-400 font-mono">({{ $doc->human_readable_size }})</span>
+                            </a>
+                        @endforeach
+                    </div>
                 </x-backend.form-card>
             @endif
 
@@ -137,11 +212,27 @@
                                     @if($revision->change_summary)
                                         <p class="text-xs text-gray-500 mt-1">{{ $revision->change_summary }}</p>
                                     @endif
-                                    <ul class="mt-2 space-y-1">
+                                    <ul class="mt-2 space-y-1.5">
                                         @foreach($revision->items as $item)
-                                            <li class="text-xs text-gray-600 flex justify-between">
-                                                <span>{{ $item->item_name }} &times; {{ rtrim(rtrim((string) $item->quantity, '0'), '.') }}</span>
-                                                <span>{{ number_format($item->line_total, 2) }}</span>
+                                            <li class="text-xs text-gray-600">
+                                                <div class="flex justify-between">
+                                                    <span>{{ $item->item_name }} &times; {{ rtrim(rtrim((string) $item->quantity, '0'), '.') }}</span>
+                                                    <span>{{ number_format($item->line_total, 2) }}</span>
+                                                </div>
+                                                @if($item->offers->count() > 1)
+                                                    <ul class="mt-1 ml-3 space-y-0.5">
+                                                        @foreach($item->offers as $offer)
+                                                            <li class="flex justify-between text-[11px] text-gray-400">
+                                                                <span>
+                                                                    {{ $offer->product_name }}
+                                                                    @if($offer->is_primary) <span class="text-indigo-500">(primary)</span> @endif
+                                                                    @if($offer->is_selected) <span class="text-emerald-600">(selected)</span> @endif
+                                                                </span>
+                                                                <span>{{ number_format($offer->total_price, 2) }}</span>
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @endif
                                             </li>
                                         @endforeach
                                     </ul>

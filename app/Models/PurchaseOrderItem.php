@@ -19,6 +19,7 @@ class PurchaseOrderItem extends Model
     protected $fillable = [
         'purchase_order_id',
         'quotation_item_id',
+        'quotation_item_offer_id',
         'item_name',
         'description',
         'quantity',
@@ -49,6 +50,11 @@ class PurchaseOrderItem extends Model
     public function quotationItem(): BelongsTo
     {
         return $this->belongsTo(QuotationItem::class, 'quotation_item_id');
+    }
+
+    public function quotationItemOffer(): BelongsTo
+    {
+        return $this->belongsTo(QuotationItemOffer::class, 'quotation_item_offer_id');
     }
 
     public function unit(): BelongsTo

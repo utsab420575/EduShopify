@@ -326,7 +326,7 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
 
 /* ── Public Frontend Marketplace ──
    Discovery + marketplace pages per docs/ai/workflows/frontend_workflow.md
-   + docs/ai/design_frontend.md. See routes/frontend.php.
+   + docs/ai/design_frontend_new.md. See routes/frontend.php.
    Registered AFTER every reserved `/supplier/*` path above (backend dashboard,
    onboarding, pending/pricing/subscribe) — frontend.php declares a catch-all
    GET /supplier/{supplier:slug} public profile route, which would otherwise

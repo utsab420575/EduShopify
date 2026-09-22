@@ -80,9 +80,56 @@ class AwardResponseService
         });
     }
 
+    /**
+     * Builds the PO strictly from each Product Response's AWARDED offer —
+     * the buyer's explicit selection (QuotationItem::selectedOffer) if they
+     * made one, else the supplier's own primary offer — never the highest
+     * bid and never more than one line per Product Response. Because the
+     * buyer's selection can differ in price from whichever offer was
+     * primary while quoting, the PO's own totals are recomputed from the
+     * awarded offers rather than copied from the quotation's stored
+     * (primary-offer-based) totals.
+     */
     private function createPurchaseOrder(Award $award): void
     {
-        $quotation = $award->quotation()->with('items')->first();
+        $quotation = $award->quotation()->with(['items.selectedOffer', 'items.primaryOffer'])->first();
+
+        $lines = [];
+        $subtotal = 0.0;
+        $taxAmount = 0.0;
+        $discountAmount = 0.0;
+
+        foreach ($quotation->items as $item) {
+            $offer = $item->selectedOffer ?? $item->primaryOffer;
+
+            $lineSubtotal = $offer
+                ? round((float) $offer->quantity * (float) $offer->unit_price, 2)
+                : round((float) $item->quantity * (float) $item->unit_price, 2);
+            $lineDiscount = (float) ($offer->discount ?? $item->discount_amount ?? 0);
+            $lineTax = (float) ($offer->tax_amount ?? $item->tax_amount ?? 0);
+            $lineTotal = $offer ? round((float) $offer->total_price, 2) : (float) $item->line_total;
+
+            $subtotal += $lineSubtotal;
+            $taxAmount += $lineTax;
+            $discountAmount += $lineDiscount;
+
+            $lines[] = [
+                'quotation_item_id'        => $item->id,
+                'quotation_item_offer_id'  => $offer?->id,
+                'item_name'                => $offer->product_name ?? $item->item_name,
+                'description'              => $offer->description ?? $item->description,
+                'quantity'                 => $offer->quantity ?? $item->quantity,
+                'unit_id'                  => $offer->unit_id ?? $item->unit_id,
+                'custom_unit'              => $offer->custom_unit ?? $item->custom_unit,
+                'unit_price'               => $offer->unit_price ?? $item->unit_price,
+                'tax_amount'               => $lineTax,
+                'discount_amount'          => $lineDiscount,
+                'line_total'               => $lineTotal,
+            ];
+        }
+
+        $shipping = round((float) $quotation->shipping_charge, 2);
+        $grandTotal = round($subtotal - $discountAmount + $taxAmount + $shipping, 2);
 
         $po = PurchaseOrder::create([
             'po_number'           => $this->generatePoNumber(),
@@ -92,31 +139,19 @@ class AwardResponseService
             'buyer_account_id'    => $award->buyer_account_id,
             'supplier_account_id' => $award->supplier_account_id,
             'created_by_user_id'  => $award->awarded_by_user_id,
-            'subtotal'            => $quotation->subtotal,
-            'tax_amount'          => $quotation->tax_amount,
-            'shipping_charge'     => $quotation->shipping_charge,
-            'discount_amount'     => $quotation->discount_amount,
-            'grand_total'         => $quotation->grand_total,
+            'subtotal'            => round($subtotal, 2),
+            'tax_amount'          => round($taxAmount, 2),
+            'shipping_charge'     => $shipping,
+            'discount_amount'     => round($discountAmount, 2),
+            'grand_total'         => $grandTotal,
             'currency_code'       => $quotation->currency_code,
             'status'              => 'issued',
             'payment_status'      => 'not_recorded',
             'issued_at'           => now(),
         ]);
 
-        foreach ($quotation->items as $item) {
-            PurchaseOrderItem::create([
-                'purchase_order_id'  => $po->id,
-                'quotation_item_id'  => $item->id,
-                'item_name'          => $item->item_name,
-                'description'        => $item->description,
-                'quantity'           => $item->quantity,
-                'unit_id'            => $item->unit_id,
-                'custom_unit'        => $item->custom_unit,
-                'unit_price'         => $item->unit_price,
-                'tax_amount'         => $item->tax_amount,
-                'discount_amount'    => $item->discount_amount,
-                'line_total'         => $item->line_total,
-            ]);
+        foreach ($lines as $line) {
+            PurchaseOrderItem::create(['purchase_order_id' => $po->id] + $line);
         }
     }
 

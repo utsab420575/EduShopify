@@ -40,7 +40,7 @@
                                 {{-- TEXT --}}
                                 <template x-if="attr.input_type === 'text'">
                                     <input type="text"
-                                           :name="'items[' + index + '][attribute_values][' + attr.id + '][value_text]'"
+                                           :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][value_text]'"
                                            :placeholder="attr.placeholder || ('Enter ' + attr.name.toLowerCase())"
                                            x-model="getAttrVal(item, attr.id).value_text"
                                            class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
@@ -48,7 +48,7 @@
 
                                 {{-- TEXTAREA --}}
                                 <template x-if="attr.input_type === 'textarea'">
-                                    <textarea :name="'items[' + index + '][attribute_values][' + attr.id + '][value_text]'"
+                                    <textarea :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][value_text]'"
                                               :placeholder="attr.placeholder || ('Enter ' + attr.name.toLowerCase())"
                                               rows="2"
                                               x-model="getAttrVal(item, attr.id).value_text"
@@ -58,7 +58,7 @@
                                 {{-- NUMBER --}}
                                 <template x-if="attr.input_type === 'number'">
                                     <input type="number" step="any"
-                                           :name="'items[' + index + '][attribute_values][' + attr.id + '][value_number]'"
+                                           :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][value_number]'"
                                            :placeholder="attr.placeholder || '0'"
                                            x-model="getAttrVal(item, attr.id).value_number"
                                            class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
@@ -67,7 +67,7 @@
                                 {{-- SELECT --}}
                                 <template x-if="attr.input_type === 'select'">
                                     <div class="space-y-1">
-                                        <select :name="'items[' + index + '][attribute_values][' + attr.id + '][attribute_value_id]'"
+                                        <select :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][attribute_value_id]'"
                                                 x-model="getAttrVal(item, attr.id).attribute_value_id"
                                                 class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
                                             <option value="">Select option</option>
@@ -79,7 +79,7 @@
                                             </template>
                                         </select>
                                         <input type="text" x-show="isOtherSelected(item, attr.id)"
-                                               :name="'items[' + index + '][attribute_values][' + attr.id + '][custom_value]'"
+                                               :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][custom_value]'"
                                                placeholder="Please specify..."
                                                x-model="getAttrVal(item, attr.id).custom_value"
                                                class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
@@ -94,7 +94,7 @@
                                                 <template x-for="opt in attr.values" :key="opt.id">
                                                     <label class="inline-flex items-center gap-1.5 mr-2 mb-1 text-[11px] text-gray-700 cursor-pointer bg-gray-50 px-2 py-1 rounded-md border border-gray-200">
                                                         <input type="checkbox"
-                                                               :name="'items[' + index + '][attribute_values][' + attr.id + '][value_json][]'"
+                                                               :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][value_json][]'"
                                                                :value="opt.value"
                                                                :checked="isMultiSelected(item, attr.id, opt.value)"
                                                                @change="toggleMultiSelect(item, attr.id, opt.value)"
@@ -106,7 +106,7 @@
                                         </template>
                                         <template x-if="attr.allow_custom_value">
                                             <input type="text"
-                                                   :name="'items[' + index + '][attribute_values][' + attr.id + '][custom_value]'"
+                                                   :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][custom_value]'"
                                                    placeholder="Other (please specify)..."
                                                    x-model="getAttrVal(item, attr.id).custom_value"
                                                    class="w-full text-xs rounded-lg border border-gray-300 px-2 py-1.5 bg-white mt-1">
@@ -118,13 +118,13 @@
                                 <template x-if="attr.input_type === 'boolean'">
                                     <div class="flex items-center gap-3 py-1.5">
                                         <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-                                            <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][value_boolean]'" value="1"
+                                            <input type="radio" :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][value_boolean]'" value="1"
                                                    :checked="getAttrVal(item, attr.id).value_boolean == 1"
                                                    @change="getAttrVal(item, attr.id).value_boolean = 1">
                                             <span>Yes</span>
                                         </label>
                                         <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-                                            <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][value_boolean]'" value="0"
+                                            <input type="radio" :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][value_boolean]'" value="0"
                                                    :checked="getAttrVal(item, attr.id).value_boolean == 0"
                                                    @change="getAttrVal(item, attr.id).value_boolean = 0">
                                             <span>No</span>
@@ -135,7 +135,7 @@
                                 {{-- DATE --}}
                                 <template x-if="attr.input_type === 'date'">
                                     <input type="date"
-                                           :name="'items[' + index + '][attribute_values][' + attr.id + '][value_date]'"
+                                           :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][value_date]'"
                                            x-model="getAttrVal(item, attr.id).value_date"
                                            class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">
                                 </template>
@@ -147,7 +147,7 @@
                                             <template x-for="opt in attr.values" :key="opt.id">
                                                 <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] cursor-pointer"
                                                        :class="getAttrVal(item, attr.id).attribute_value_id == opt.id ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500 font-semibold' : 'border-gray-200 bg-white hover:bg-gray-50'">
-                                                    <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][attribute_value_id]'" :value="opt.id"
+                                                    <input type="radio" :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][attribute_value_id]'" :value="opt.id"
                                                            x-model="getAttrVal(item, attr.id).attribute_value_id" class="sr-only">
                                                     <span x-show="opt.color_hex" class="w-3 h-3 rounded-full border border-gray-300" :style="'background-color:' + opt.color_hex"></span>
                                                     <span x-text="opt.value"></span>
@@ -156,14 +156,14 @@
                                             <template x-if="attr.allow_custom_value">
                                                 <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] cursor-pointer"
                                                        :class="isOtherSelected(item, attr.id) ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500 font-semibold' : 'border-gray-200 bg-white hover:bg-gray-50'">
-                                                    <input type="radio" :name="'items[' + index + '][attribute_values][' + attr.id + '][attribute_value_id]'" value="__other__"
+                                                    <input type="radio" :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][attribute_value_id]'" value="__other__"
                                                            x-model="getAttrVal(item, attr.id).attribute_value_id" class="sr-only">
                                                     <span>Other</span>
                                                 </label>
                                             </template>
                                         </div>
                                         <input type="text" x-show="isOtherSelected(item, attr.id)"
-                                               :name="'items[' + index + '][attribute_values][' + attr.id + '][custom_value]'"
+                                               :name="'items[' + item._localKey + '][attribute_values][' + attr.id + '][custom_value]'"
                                                placeholder="Custom color or hex..."
                                                x-model="getAttrVal(item, attr.id).custom_value"
                                                class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 bg-white">

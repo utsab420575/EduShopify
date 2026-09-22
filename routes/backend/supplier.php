@@ -117,12 +117,15 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::post('/{rfq}/interested', [\App\Http\Controllers\Backend\Supplier\Procurement\OpportunityController::class, 'interested'])->name('interested');
         });
 
+        Route::get('/select-products-for-quotation', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationProductSelectorController::class, 'index'])->name('select-products-for-quotation');
+
         // ── Quotations ────────────────────────────────────────────────────
         Route::prefix('quotations')->name('quotations.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'index'])->name('index');
             Route::get('/create/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'create'])->name('create');
             Route::post('/create/{rfq}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'store'])->name('store');
             Route::get('/create/{rfq}/auto-match', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'autoMatchListings'])->name('listings.auto-match');
+            Route::get('/create/{rfq}/select-product', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationProductSelectorController::class, 'index'])->name('listings.select');
             Route::get('/categories/{category}/attributes', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'categoryAttributes'])->name('category-attributes');
             Route::get('/listings/search', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'searchListings'])->name('listings.search');
             Route::get('/listings/{listing}/prefill', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'listingPrefill'])->name('listings.prefill');
@@ -130,9 +133,13 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::get('/{quotation}/edit', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'edit'])->name('edit');
             Route::put('/{quotation}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'update'])->name('update');
             Route::put('/{quotation}/autosave', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'autosaveUpdate'])->name('autosave.update');
+            Route::post('/{quotation}/items/{item}/document', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationItemDocumentController::class, 'store'])->name('items.document.store');
+            Route::delete('/{quotation}/items/{item}/document/{media}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationItemDocumentController::class, 'destroy'])->name('items.document.destroy');
             Route::get('/{quotation}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'show'])->name('show');
             Route::post('/{quotation}/submit', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'submit'])->name('submit');
             Route::post('/{quotation}/withdraw', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'withdraw'])->name('withdraw');
+            Route::post('/{quotation}/combined-document', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'uploadCombinedDocument'])->name('combined-document.store');
+            Route::delete('/{quotation}/combined-document/{media}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'deleteCombinedDocument'])->name('combined-document.destroy');
 
             // Revision response
             Route::get('/{quotation}/revision', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationRevisionController::class, 'create'])->name('revision.create');

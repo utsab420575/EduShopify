@@ -48,24 +48,17 @@ class AppServiceProvider extends ServiceProvider
         Livewire::forceAssetInjection();
 
         // Enterprise RBAC Gate:
-        // 1. Super Admin: Universal platform root bypass
-        // 2. Tenant Owners: Full bypass for tenant-scoped abilities (cannot access platform.*)
-        // 3. Employees / Staff: Must have explicit role-based or direct permissions
+        // Super Admin: Universal platform root bypass (platform.* abilities and everything else).
+        // Everyone else — including tenant owners — is resolved through normal Policy/Spatie
+        // permission checks, so per-resource ownership (ownsAsBuyer/ownsAsSupplier/etc. in each
+        // policy's checkAccess()) is always enforced. Tenant owners get their broad access via the
+        // seeded `primary_owner` Spatie role (RoleSeeder.php), assigned at registration
+        // (AccountRegistrationService::assignPrimaryOwnerRole()) — not via a Gate bypass.
         Gate::before(function ($user, $ability) {
-            // Root Platform Super Admin
             if ($user->hasRole('super_admin') || ($user->accountMember?->account?->is_system_account && $user->accountMember?->is_primary_owner)) {
                 return true;
             }
 
-            // Tenant Company Owner (Supplier Owner or Buyer Owner)
-            if ($user->accountMember?->isOwner()) {
-                // Tenant Owners get full access to non-platform tenant abilities
-                if (! str_starts_with($ability, 'platform.')) {
-                    return true;
-                }
-            }
-
-            // Employees and other staff fall through to standard Spatie role/permission checks
             return null;
         });
 

@@ -9,9 +9,11 @@ use App\Models\Listing;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\QuotationItemAttributeValue;
+use App\Models\QuotationItemOffer;
 use App\Models\QuotationRevision;
 use App\Models\QuotationRevisionItem;
 use App\Models\QuotationRevisionItemAttributeValue;
+use App\Models\QuotationRevisionItemOffer;
 use App\Models\QuotationRevisionRequest;
 use App\Models\Rfq;
 use App\Models\RfqSupplierQueue;
@@ -39,6 +41,18 @@ use Illuminate\Validation\ValidationException;
  */
 class QuotationService
 {
+    /**
+     * The client_ref => persisted id map from the most recent saveDraft()
+     * call on this instance — see getClientRefItemIds(). Deliberately kept
+     * as service-instance state, not attached to the Quotation model: an
+     * earlier attempt used Eloquent's setAttribute() to stash it on the
+     * returned model, but that pollutes the model's dirty-attribute
+     * tracking, so a later ->update()/->save() on that same instance (e.g.
+     * submitDraft() called right after saveDraft() in revise()/submit()
+     * flows) tried to persist a nonexistent "client_ref_item_ids" column.
+     */
+    private array $lastClientRefItemIds = [];
+
     public function __construct(
         private SupplierRfqActionService $supplierRfqActions,
         private QuotationActivityService $quotationActivities,
@@ -89,10 +103,22 @@ class QuotationService
                 ]);
             }
 
-            $this->syncItems($quotation, $data['items'] ?? []);
+            $this->lastClientRefItemIds = $this->syncItems($quotation, $data['items'] ?? []);
 
             return $quotation->fresh(['items.attributeValues']);
         });
+    }
+
+    /**
+     * Reads back the client_ref => persisted id map from the most recent
+     * saveDraft() call on this same service instance, for the autosave
+     * endpoints to echo to the client — safe because a controller resolves
+     * one QuotationService instance per request and calls saveDraft() then
+     * this immediately after, never interleaved with another save.
+     */
+    public function getLastClientRefItemIds(): array
+    {
+        return $this->lastClientRefItemIds;
     }
 
     /**
@@ -126,7 +152,7 @@ class QuotationService
 
             $rfq->increment('quotations_count');
 
-            $quotation = $quotation->fresh(['items.attributeValues']);
+            $quotation = $quotation->fresh(['items.attributeValues', 'items.offers']);
             $this->snapshotRevision($quotation, $quotation->submittedBy);
 
             RfqSupplierQueue::where('rfq_id', $rfq->id)
@@ -189,7 +215,7 @@ class QuotationService
                 ->where('status', 'pending')
                 ->update(['status' => 'revised', 'responded_at' => now()]);
 
-            $quotation = $quotation->fresh(['items.attributeValues']);
+            $quotation = $quotation->fresh(['items.attributeValues', 'items.offers']);
             $this->snapshotRevision($quotation, $user ?? $quotation->submittedBy, $data['change_summary'] ?? null);
 
             $this->quotationActivities->record($quotation, 'quotation_updated', $data['change_summary'] ?? null);
@@ -262,6 +288,45 @@ class QuotationService
                     'value_date' => $value->value_date,
                     'value_json' => $value->value_json,
                 ]);
+            }
+
+            // Every offer (primary AND alternatives), not just the one that
+            // currently counts toward totals — a revision represents the
+            // complete quotation state at that point in time.
+            foreach ($item->offers as $offer) {
+                $revisionOffer = QuotationRevisionItemOffer::create([
+                    'quotation_revision_item_id' => $revisionItem->id,
+                    'offer_method' => $offer->offer_method,
+                    'marketplace_product_id' => $offer->marketplace_product_id,
+                    'offered_variant_id' => $offer->offered_variant_id,
+                    'product_name' => $offer->product_name,
+                    'category_id' => $offer->category_id,
+                    'description' => $offer->description,
+                    'specifications' => $offer->specifications,
+                    'quantity' => $offer->quantity,
+                    'unit_id' => $offer->unit_id,
+                    'custom_unit' => $offer->custom_unit,
+                    'unit_price' => $offer->unit_price,
+                    'tax_rate' => $offer->tax_rate,
+                    'tax_amount' => $offer->tax_amount,
+                    'discount' => $offer->discount,
+                    'total_price' => $offer->total_price,
+                    'delivery_time' => $offer->delivery_time,
+                    'status' => $offer->status,
+                    'is_primary' => $offer->is_primary,
+                    'is_selected' => $offer->is_selected,
+                    'sort_order' => $offer->sort_order,
+                    'source_offer_id' => $offer->id,
+                ]);
+
+                // Physically duplicate any attached document(s) so this
+                // revision stays intact even if the live offer is later
+                // edited or removed by a subsequent revision.
+                foreach (['document', 'gallery'] as $collection) {
+                    foreach ($offer->getMedia($collection) as $media) {
+                        $media->copy($revisionOffer, $collection);
+                    }
+                }
             }
         }
     }
@@ -422,6 +487,16 @@ class QuotationService
         $discountAmount = 0.0;
 
         foreach ($items as $item) {
+            if (! empty($item['offers']) && is_array($item['offers'])) {
+                $primaryOffer = collect($item['offers'])->firstWhere('is_primary', true) ?? ($item['offers'][0] ?? null);
+                if ($primaryOffer) {
+                    $item['quantity'] = $primaryOffer['quantity'] ?? ($item['quantity'] ?? 1);
+                    $item['unit_price'] = $primaryOffer['unit_price'] ?? ($item['unit_price'] ?? 0);
+                    $item['discount_amount'] = isset($primaryOffer['discount']) ? (float) $primaryOffer['discount'] : ($item['discount_amount'] ?? 0);
+                    $item['tax_rate'] = isset($primaryOffer['tax_rate']) && $primaryOffer['tax_rate'] !== '' && $primaryOffer['tax_rate'] !== null ? (float) $primaryOffer['tax_rate'] : ($item['tax_rate'] ?? null);
+                }
+            }
+
             [$lineSubtotal, $lineDiscount, $lineTax] = $this->computeLine($item);
             $subtotal += $lineSubtotal;
             $taxAmount += $lineTax;
@@ -447,14 +522,45 @@ class QuotationService
         return [$lineSubtotal, $discountAmount, $taxAmount];
     }
 
-    private function syncItems(Quotation $quotation, array $items): void
+    /**
+     * @return array<string, int> maps each submitted item's client-side
+     *         `client_ref` (the Alpine item's stable `_localKey`) to its
+     *         persisted row id — a brand-new item has no id until this runs,
+     *         and document uploads (added in a later phase) need a real,
+     *         persisted QuotationItem id to attach media to, so the client
+     *         needs a way to learn the id an autosave just created.
+     */
+    private function syncItems(Quotation $quotation, array $items): array
     {
         $keepIds = [];
+        $clientRefMap = [];
 
         foreach (array_values($items) as $item) {
+            $isOptionalAddon = (bool) ($item['is_optional_addon'] ?? false);
+
+            if (! empty($item['offers']) && is_array($item['offers'])) {
+                $primaryOffer = collect($item['offers'])->firstWhere('is_primary', true) ?? ($item['offers'][0] ?? null);
+                if ($primaryOffer) {
+                    $item['item_name'] = $primaryOffer['product_name'] ?? ($item['item_name'] ?? '');
+                    $item['offered_listing_id'] = $primaryOffer['marketplace_product_id'] ?? ($item['offered_listing_id'] ?? null);
+                    $item['offered_variant_id'] = $primaryOffer['offered_variant_id'] ?? ($item['offered_variant_id'] ?? null);
+                    $item['response_method'] = $primaryOffer['offer_method'] ?? ($item['response_method'] ?? null);
+                    $item['description'] = $primaryOffer['description'] ?? ($item['description'] ?? null);
+                    $item['quantity'] = $primaryOffer['quantity'] ?? ($item['quantity'] ?? 1);
+                    $item['unit_id'] = $primaryOffer['unit_id'] ?? ($item['unit_id'] ?? null);
+                    $item['custom_unit'] = $primaryOffer['custom_unit'] ?? ($item['custom_unit'] ?? null);
+                    $item['unit_price'] = $primaryOffer['unit_price'] ?? ($item['unit_price'] ?? 0);
+                    $item['tax_rate'] = isset($primaryOffer['tax_rate']) && $primaryOffer['tax_rate'] !== '' && $primaryOffer['tax_rate'] !== null ? (float) $primaryOffer['tax_rate'] : ($item['tax_rate'] ?? null);
+                    $item['discount_amount'] = isset($primaryOffer['discount']) ? (float) $primaryOffer['discount'] : ($item['discount_amount'] ?? 0);
+                    $item['lead_time_days'] = $primaryOffer['delivery_time'] ?? ($item['lead_time_days'] ?? null);
+                    if (isset($primaryOffer['specifications'])) {
+                        $item['specs'] = $primaryOffer['specifications'];
+                    }
+                }
+            }
+
             [$lineSubtotal, $discountAmount, $taxAmount] = $this->computeLine($item);
             $lineTotal = round($lineSubtotal - $discountAmount + $taxAmount, 2);
-            $isOptionalAddon = (bool) ($item['is_optional_addon'] ?? false);
             $taxRate = isset($item['tax_rate']) && $item['tax_rate'] !== '' && $item['tax_rate'] !== null ? (float) $item['tax_rate'] : null;
 
             $attributes = [
@@ -464,6 +570,7 @@ class QuotationService
                 'offered_variant_id' => $item['offered_variant_id'] ?? null,
                 'is_alternative'     => (bool) ($item['is_alternative'] ?? false),
                 'is_optional_addon'  => $isOptionalAddon,
+                'response_method'    => $item['response_method'] ?? null,
                 'item_name'          => $item['item_name'],
                 'description'        => $item['description'] ?? null,
                 'quantity'           => $item['quantity'],
@@ -490,11 +597,17 @@ class QuotationService
             }
 
             $this->syncItemAttributeValues($row, $item['attribute_values'] ?? []);
+            $this->syncItemOffers($row, $item['offers'] ?? []);
 
             $keepIds[] = $row->id;
+            if (! empty($item['client_ref'])) {
+                $clientRefMap[$item['client_ref']] = $row->id;
+            }
         }
 
         QuotationItem::where('quotation_id', $quotation->id)->whereNotIn('id', $keepIds)->delete();
+
+        return $clientRefMap;
     }
 
     /**
@@ -654,6 +767,116 @@ class QuotationService
         }
 
         QuotationItemAttributeValue::where('quotation_item_id', $item->id)->whereNotIn('attribute_id', $processedAttrIds)->delete();
+    }
+
+    /**
+     * Synchronizes child quotation_item_offers under one QuotationItem (Product Response layer).
+     * If no offers array is explicitly sent, seeds a default offer mirroring the QuotationItem
+     * for full backward compatibility.
+     */
+    private function syncItemOffers(QuotationItem $item, array $offers): void
+    {
+        $keepOfferIds = [];
+        $hasPrimary = false;
+
+        if (empty($offers)) {
+            // Seed / sync single default offer matching the quotation item
+            $firstOffer = $item->offers()->first();
+            $offerData = [
+                'quotation_item_id'      => $item->id,
+                'offer_method'           => $item->response_method ?: 'marketplace',
+                'marketplace_product_id' => $item->offered_listing_id,
+                'offered_variant_id'     => $item->offered_variant_id,
+                'product_name'           => $item->item_name,
+                'category_id'            => $item->rfqItem?->category_id,
+                'description'            => $item->description,
+                'specifications'         => $item->specs,
+                'quantity'               => $item->quantity,
+                'unit_id'                => $item->unit_id,
+                'custom_unit'            => $item->custom_unit,
+                'unit_price'             => $item->unit_price,
+                'tax_rate'               => $item->tax_rate,
+                'tax_amount'             => $item->tax_amount,
+                'discount'               => $item->discount_amount,
+                'total_price'            => $item->line_total,
+                'delivery_time'          => $item->lead_time_days,
+                'status'                 => 'draft',
+                'is_primary'             => true,
+                'is_selected'            => false,
+                'sort_order'             => 0,
+            ];
+
+            if ($firstOffer) {
+                $firstOffer->update($offerData);
+                $keepOfferIds[] = $firstOffer->id;
+            } else {
+                $created = QuotationItemOffer::create($offerData);
+                $keepOfferIds[] = $created->id;
+            }
+        } else {
+            foreach ($offers as $idx => $offer) {
+                $isPrimary = (bool) ($offer['is_primary'] ?? ($idx === 0));
+                if ($isPrimary && ! $hasPrimary) {
+                    $hasPrimary = true;
+                } elseif ($isPrimary && $hasPrimary) {
+                    $isPrimary = false;
+                }
+
+                $qty = (float) ($offer['quantity'] ?? $item->quantity ?? 1);
+                $price = (float) ($offer['unit_price'] ?? 0);
+                $discount = (float) ($offer['discount'] ?? 0);
+                $taxRate = isset($offer['tax_rate']) && $offer['tax_rate'] !== '' && $offer['tax_rate'] !== null ? (float) $offer['tax_rate'] : null;
+                $taxAmount = $taxRate !== null ? round((($qty * $price) - $discount) * $taxRate / 100, 2) : 0.0;
+                $totalPrice = round((($qty * $price) - $discount) + $taxAmount, 2);
+
+                $specs = $offer['specifications'] ?? ($offer['specs'] ?? null);
+                if (is_string($specs)) {
+                    $decoded = json_decode($specs, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $specs = $decoded;
+                    }
+                }
+
+                $offerData = [
+                    'quotation_item_id'      => $item->id,
+                    'offer_method'           => $offer['offer_method'] ?? 'marketplace',
+                    'marketplace_product_id' => $offer['marketplace_product_id'] ?? null,
+                    'offered_variant_id'     => $offer['offered_variant_id'] ?? null,
+                    'product_name'           => $offer['product_name'] ?? $item->item_name,
+                    'category_id'            => $offer['category_id'] ?? $item->rfqItem?->category_id,
+                    'description'            => $offer['description'] ?? null,
+                    'specifications'         => $specs,
+                    'quantity'               => $qty,
+                    'unit_id'                => $offer['unit_id'] ?? $item->unit_id,
+                    'custom_unit'            => $offer['custom_unit'] ?? null,
+                    'unit_price'             => $price,
+                    'tax_rate'               => $taxRate,
+                    'tax_amount'             => $taxAmount,
+                    'discount'               => $discount,
+                    'total_price'            => $totalPrice,
+                    'delivery_time'          => isset($offer['delivery_time']) && $offer['delivery_time'] !== '' ? (int) $offer['delivery_time'] : null,
+                    'status'                 => $offer['status'] ?? 'draft',
+                    'is_primary'             => $isPrimary,
+                    'is_selected'            => (bool) ($offer['is_selected'] ?? false),
+                    'sort_order'             => (int) ($offer['sort_order'] ?? $idx),
+                ];
+
+                $row = null;
+                if (! empty($offer['id'])) {
+                    $row = QuotationItemOffer::where('quotation_item_id', $item->id)->find($offer['id']);
+                }
+
+                if ($row) {
+                    $row->update($offerData);
+                } else {
+                    $row = QuotationItemOffer::create($offerData);
+                }
+
+                $keepOfferIds[] = $row->id;
+            }
+        }
+
+        QuotationItemOffer::where('quotation_item_id', $item->id)->whereNotIn('id', $keepOfferIds)->delete();
     }
 
     private function generateQuotationNumber(): string

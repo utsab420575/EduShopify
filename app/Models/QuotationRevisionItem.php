@@ -80,4 +80,9 @@ class QuotationRevisionItem extends Model
     {
         return $this->hasMany(QuotationRevisionItemAttributeValue::class, 'quotation_revision_item_id');
     }
+
+    public function offers(): HasMany
+    {
+        return $this->hasMany(QuotationRevisionItemOffer::class, 'quotation_revision_item_id')->orderBy('sort_order');
+    }
 }

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\QuotationItem;
+use App\Models\QuotationItemOffer;
 use App\Models\Quotation;
 use App\Models\QuotationRevisionRequest;
 use App\Models\RfqShortlist;
@@ -84,6 +86,21 @@ class QuotationDecisionService
         $this->notifySupplier($quotation, "Your quotation {$quotation->quotation_number} was not selected by the buyer.");
 
         return $quotation;
+    }
+
+    /**
+     * The buyer's choice of which offer within one Product Response should
+     * be used if this quotation gets awarded — independent of whichever
+     * offer the supplier marked primary while quoting. AwardResponseService
+     * reads this (falling back to the primary offer when none was ever
+     * explicitly selected) when building the Purchase Order.
+     */
+    public function selectOffer(QuotationItem $item, QuotationItemOffer $offer): void
+    {
+        DB::transaction(function () use ($item, $offer) {
+            $item->offers()->update(['is_selected' => false]);
+            $offer->update(['is_selected' => true]);
+        });
     }
 
     public function markViewed(Quotation $quotation): void

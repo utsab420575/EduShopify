@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | The public marketplace, per docs/ai/workflows/frontend_workflow.md and
-| docs/ai/design_frontend.md. Entirely separate from Backend/Admin/Buyer/
+| docs/ai/design_frontend_new.md. Entirely separate from Backend/Admin/Buyer/
 | Supplier per ARCHITECTURE.md Rule 2 — no auth middleware here except on
 | the handoff endpoints, which redirect rather than render.
 |
