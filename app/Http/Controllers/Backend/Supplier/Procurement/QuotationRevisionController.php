@@ -21,7 +21,9 @@ class QuotationRevisionController extends Controller
         $quotation->load([
             'rfq.items.unit', 'rfq.items.category', 'rfq.items.listing.attributeValues.attribute', 'rfq.items.listing.media', 'rfq.items.media',
             'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
-            'items.attributeValues',
+            'items.offers.attributeValues.attribute.unit',
+            'items.offers.attributeValues.attributeValue',
+            'deliveryAddresses',
             'revisionRequests' => fn ($q) => $q->where('status', 'pending'),
         ]);
 

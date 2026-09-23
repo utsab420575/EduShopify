@@ -24,13 +24,9 @@ class QuotationController extends Controller
     private const STATUS_OPTIONS = [
         'draft' => 'Draft',
         'submitted' => 'Submitted',
-        'under_review' => 'Under Review',
-        'revision_requested' => 'Revision Requested',
-        'revised' => 'Revised',
         'shortlisted' => 'Shortlisted',
         'awarded' => 'Awarded',
         'rejected' => 'Rejected',
-        'withdrawn' => 'Withdrawn',
         'expired' => 'Expired',
     ];
 
@@ -73,6 +69,42 @@ class QuotationController extends Controller
         // re-clicks "Submit Quote" land back on their existing quotation.
         $existing = $account->quotations()->where('rfq_id', $rfq->id)->first();
         if ($existing) {
+            if ($existing->status === 'draft') {
+                if ($request->filled('clone_from')) {
+                    $cloneSource = $account->quotations()
+                        ->where('id', $request->integer('clone_from'))
+                        ->where('rfq_id', '!=', $rfq->id)
+                        ->first();
+
+                    if ($cloneSource) {
+                        $cloneMatches = $service->matchQuotationToRfq($cloneSource, $rfq);
+                        $itemsData = [];
+                        foreach ($rfq->items as $item) {
+                            $clone = $cloneMatches[$item->id] ?? null;
+                            $itemsData[] = [
+                                'rfq_item_id' => $item->id,
+                                'item_name' => $item->item_name,
+                                'description' => $clone['description'] ?? null,
+                                'quantity' => $item->quantity,
+                                'unit_id' => $item->unit_id,
+                                'custom_unit' => $item->custom_unit,
+                                'unit_price' => $clone['unit_price'] ?? null,
+                                'tax_rate' => $clone['tax_rate'] ?? null,
+                                'discount_amount' => $clone['discount_amount'] ?? null,
+                                'lead_time_days' => $clone['lead_time_days'] ?? null,
+                                'attribute_values' => $clone['attribute_values'] ?? [],
+                            ];
+                        }
+                        $service->saveDraft($rfq, $account, $this->currentUser(), [
+                            'currency_code' => $cloneSource->currency_code ?? $rfq->currency_code,
+                            'items' => $itemsData,
+                        ], $existing);
+                    }
+                }
+
+                return redirect()->route('supplier.quotations.edit', $existing);
+            }
+
             return redirect()->route('supplier.quotations.show', $existing);
         }
 
@@ -81,8 +113,13 @@ class QuotationController extends Controller
         $actions->record($rfq, $account, 'preparing_quote');
 
         $rfq->load([
-            'items.unit', 'items.category', 'items.listing.attributeValues.attribute', 'items.listing.media', 'items.media',
-            'items.attributeValues.attribute.unit', 'items.attributeValues.attributeValue',
+            'items.unit',
+            'items.category',
+            'items.listing.attributeValues.attribute',
+            'items.listing.media',
+            'items.media',
+            'items.attributeValues.attribute.unit',
+            'items.attributeValues.attributeValue',
             'buyerAccount.buyerProfile'
         ]);
 
@@ -102,22 +139,36 @@ class QuotationController extends Controller
             }
         }
 
-        $previousQuotations = $account->quotations()
-            ->where('rfq_id', '!=', $rfq->id)
-            ->whereIn('status', ['draft', 'submitted', 'under_review', 'revised', 'shortlisted', 'awarded', 'rejected'])
-            ->with('rfq')
-            ->latest()
-            ->limit(20)
-            ->get();
+        $itemsData = [];
+        if ($cloneSource && !empty($cloneMatches)) {
+            foreach ($rfq->items as $item) {
+                if (isset($cloneMatches[$item->id])) {
+                    $clone = $cloneMatches[$item->id];
+                    $itemsData[] = [
+                        'rfq_item_id' => $item->id,
+                        'item_name' => $item->item_name,
+                        'description' => $clone['description'] ?? null,
+                        'quantity' => $item->quantity,
+                        'unit_id' => $item->unit_id,
+                        'custom_unit' => $item->custom_unit,
+                        'unit_price' => $clone['unit_price'] ?? null,
+                        'tax_rate' => $clone['tax_rate'] ?? null,
+                        'discount_amount' => $clone['discount_amount'] ?? null,
+                        'lead_time_days' => $clone['lead_time_days'] ?? null,
+                        'attribute_values' => $clone['attribute_values'] ?? [],
+                    ];
+                }
+            }
+        }
 
-        return view('backend.supplier.procurement.quotations.create', [
-            'account' => $account,
-            'user' => $this->currentUser(),
-            'rfq' => $rfq,
-            'previousQuotations' => $previousQuotations,
-            'cloneSource' => $cloneSource,
-            'cloneMatches' => $cloneMatches,
-        ] + $this->formLookups());
+        $quotation = $service->saveDraft($rfq, $account, $this->currentUser(), [
+            'currency_code' => $cloneSource?->currency_code ?? $rfq->currency_code,
+            'current_step' => 1,
+            'max_completed_step' => 1,
+            'items' => $itemsData,
+        ]);
+
+        return redirect()->route('supplier.quotations.edit', $quotation);
     }
 
     public function store(SaveQuotationRequest $request, Rfq $rfq, QuotationService $service)
@@ -154,6 +205,7 @@ class QuotationController extends Controller
             'id' => $quotation->id,
             'quotation_number' => $quotation->quotation_number,
             'items' => $service->getLastClientRefItemIds(),
+            'offers' => $service->getLastClientRefOfferIds(),
         ]);
     }
 
@@ -167,7 +219,7 @@ class QuotationController extends Controller
      */
     public function autoMatchListings(Rfq $rfq)
     {
-        $this->authorize('create', [Quotation::class, $rfq]);
+        $this->authorize('selectProducts', [Quotation::class, $rfq]);
 
         $listings = $this->currentAccount()->listings()
             ->where('approval_status', 'approved')
@@ -220,11 +272,13 @@ class QuotationController extends Controller
             'rfq.items.attributeValues.attributeValue',
             'items.attributeValues.attribute.unit',
             'items.attributeValues.attributeValue',
+            'items.offers',
             'items.offeredListing',
             'items.offeredVariant',
             'items.unit',
             'revisions.items',
-            'revisionRequests' => fn ($q) => $q->latest(),
+            'revisionRequests' => fn($q) => $q->latest(),
+            'activities' => fn($q) => $q->with('user')->latest(),
         ]);
 
         $rfq = $quotation->rfq;
@@ -239,7 +293,54 @@ class QuotationController extends Controller
             'quotation' => $quotation,
             'versionChanged' => $versionChanged,
             'changeLogs' => $changeLogs,
+            'stats' => $this->computeQuotationStatistics($quotation),
+            // Events the BUYER initiated — filtered cleanly by actor_role === 'buyer'
+            'buyerActivity' => $quotation->activities->where('actor_role', 'buyer')->values(),
         ]);
+    }
+
+    /**
+     * GET supplier/quotations/{quotation}/statistics — powers the shared
+     * Statistics modal on the index page, mirroring RfqController::statistics().
+     */
+    public function statistics(Quotation $quotation)
+    {
+        $this->authorize('view', $quotation);
+
+        $quotation->loadMissing('activities');
+
+        return response()->json($this->computeQuotationStatistics($quotation));
+    }
+
+    private function computeQuotationStatistics(Quotation $quotation): array
+    {
+        $activities = $quotation->activities()->latest()->get();
+
+        $viewedAt = $activities->firstWhere('activity_type', 'viewed_by_buyer')?->created_at;
+        $messagesCount = $activities->whereIn('activity_type', ['buyer_messaged', 'supplier_replied'])->count();
+        $revisionRequests = $activities->where('activity_type', 'buyer_requested_revision')->count();
+        $lastActivity = $activities->first();
+
+        return [
+            'quotation_id' => $quotation->id,
+            'quotation_number' => $quotation->quotation_number,
+            'status' => $quotation->status,
+            'submitted_at_human' => $quotation->submitted_at?->diffForHumans(),
+            'viewed_by_buyer' => $viewedAt !== null,
+            'viewed_at_human' => $viewedAt?->diffForHumans(),
+            'messages_count' => $messagesCount,
+            'revision_requests_count' => $revisionRequests,
+            'revision_no' => $quotation->current_revision_no,
+            'last_activity_label' => $lastActivity?->label(),
+            'last_activity_human' => $lastActivity?->created_at->diffForHumans(),
+            'recent_activities' => $activities->take(5)->map(fn($a) => [
+                'label' => $a->label(),
+                'message' => $a->message,
+                'icon' => $a->icon(),
+                'color_class' => $a->colorClass(),
+                'created_at_human' => $a->created_at->diffForHumans(),
+            ])->values(),
+        ];
     }
 
     public function edit(Quotation $quotation)
@@ -247,20 +348,40 @@ class QuotationController extends Controller
         $this->authorize('editDraft', $quotation);
 
         $quotation->load([
-            'rfq.items.unit', 'rfq.items.category', 'rfq.items.listing.attributeValues.attribute', 'rfq.items.listing.media', 'rfq.items.media',
-            'rfq.items.attributeValues.attribute.unit', 'rfq.items.attributeValues.attributeValue',
-            'items.attributeValues',
+            'rfq.items.unit',
+            'rfq.items.category',
+            'rfq.items.listing.attributeValues.attribute',
+            'rfq.items.listing.media',
+            'rfq.items.media',
+            'rfq.items.attributeValues.attribute.unit',
+            'rfq.items.attributeValues.attributeValue',
+            'items.offers.attributeValues.attribute.unit',
+            'items.offers.attributeValues.attributeValue',
             'items.offers.marketplaceProduct.primaryImage',
             'items.offers.marketplaceProduct.mainCategory',
             'items.offers.marketplaceProduct.brand',
             'items.offers.unit',
+            'deliveryAddresses',
         ]);
 
+        $rfq = $quotation->rfq;
+        $rfq?->loadMissing('buyerAccount.buyerProfile');
+
+        $account = $this->currentAccount();
+        $previousQuotations = $account->quotations()
+            ->where('rfq_id', '!=', $quotation->rfq_id)
+            ->whereIn('status', ['draft', 'submitted', 'under_review', 'revised', 'shortlisted', 'awarded', 'rejected'])
+            ->with('rfq')
+            ->latest()
+            ->limit(20)
+            ->get();
+
         return view('backend.supplier.procurement.quotations.edit', [
-            'account' => $this->currentAccount(),
+            'account' => $account,
             'user' => $this->currentUser(),
             'quotation' => $quotation,
-            'rfq' => $quotation->rfq,
+            'rfq' => $rfq,
+            'previousQuotations' => $previousQuotations,
         ] + $this->formLookups());
     }
 
@@ -292,7 +413,11 @@ class QuotationController extends Controller
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        return response()->json(['success' => true, 'items' => $service->getLastClientRefItemIds()]);
+        return response()->json([
+            'success' => true,
+            'items' => $service->getLastClientRefItemIds(),
+            'offers' => $service->getLastClientRefOfferIds(),
+        ]);
     }
 
     public function submit(Request $request, Quotation $quotation, QuotationService $service)
@@ -300,9 +425,18 @@ class QuotationController extends Controller
         $this->authorize('submitDraft', $quotation);
 
         try {
-            $service->submitDraft($quotation, $request->boolean('acknowledge_version_change'));
+            $service->submitDraft($quotation, $request->boolean('acknowledge_version_change'), $this->currentUser());
         } catch (ValidationException $e) {
-            return redirect()->route('supplier.quotations.show', $quotation)->withErrors($e->errors());
+            $errors = $e->errors();
+            $redirect = redirect()->route('supplier.quotations.show', $quotation)->withErrors($errors);
+
+            // rfq_version already gets its own persistent banner with change
+            // details on the show page — avoid a redundant toast for it.
+            if (!isset($errors['rfq_version'])) {
+                $redirect->with('error', collect($errors)->flatten()->first());
+            }
+
+            return $redirect;
         }
 
         return redirect()->route('supplier.quotations.show', $quotation)->with('success', 'Quotation submitted to the buyer.');
@@ -315,6 +449,20 @@ class QuotationController extends Controller
         $service->withdraw($quotation, $request->input('reason'));
 
         return redirect()->route('supplier.quotations.show', $quotation)->with('success', 'Quotation withdrawn.');
+    }
+
+    /**
+     * Pulls a submitted quotation back to draft — the "Undo Submit" action.
+     * Redirects to Edit since the natural next step is making a change and
+     * resubmitting.
+     */
+    public function undoSubmit(Quotation $quotation, QuotationService $service)
+    {
+        $this->authorize('undoSubmit', $quotation);
+
+        $service->undoSubmit($quotation, $this->currentUser());
+
+        return redirect()->route('supplier.quotations.edit', $quotation)->with('success', 'Quotation moved back to draft — make your changes and submit again when ready.');
     }
 
     /**
@@ -333,8 +481,9 @@ class QuotationController extends Controller
         ]);
 
         $file = $request->file('document');
+        $fileName = \App\Support\Media\QuotationDocumentPathGenerator::supplierFileName($quotation->supplier_account_id, $file->getClientOriginalName());
         $media = $quotation->addMedia($file)
-            ->usingFileName(sprintf('quo_%s_%s.%s', $quotation->id, uniqid(), $file->getClientOriginalExtension()))
+            ->usingFileName($fileName)
             ->toMediaCollection('combined_document');
 
         return response()->json([
@@ -371,7 +520,7 @@ class QuotationController extends Controller
     public function categoryAttributes(Request $request, Category $category)
     {
         $keepIds = collect(explode(',', (string) $request->query('keep_attribute_ids', '')))
-            ->map(fn ($id) => (int) trim($id))
+            ->map(fn($id) => (int) trim($id))
             ->filter()
             ->values()
             ->all();
@@ -393,12 +542,12 @@ class QuotationController extends Controller
 
         $listings = $this->currentAccount()->listings()
             ->where('approval_status', 'approved')
-            ->where('name', 'like', '%'.$request->string('q').'%')
-            ->when($request->filled('category_id'), fn ($q) => $q->where('main_category_id', $request->integer('category_id')))
+            ->where('name', 'like', '%' . $request->string('q') . '%')
+            ->when($request->filled('category_id'), fn($q) => $q->where('main_category_id', $request->integer('category_id')))
             ->with('mainCategory', 'unit')
             ->limit(15)
             ->get()
-            ->map(fn (Listing $l) => [
+            ->map(fn(Listing $l) => [
                 'id' => $l->id,
                 'name' => $l->name,
                 'listing_type' => $l->listing_type,
@@ -443,8 +592,9 @@ class QuotationController extends Controller
                 'slug' => $listing->slug,
             ],
             'category_attributes' => $listing->mainCategory ? $listing->mainCategory->attributesGroupedForForm() : null,
-            'attribute_values' => $listing->attributeValues->mapWithKeys(fn ($v) => [
+            'attribute_values' => $listing->attributeValues->mapWithKeys(fn($v) => [
                 $v->attribute_id => [
+                    'attribute_name' => $v->attribute?->name,
                     'attribute_value_id' => $v->attribute_value_id,
                     'custom_value' => $v->custom_value,
                     'value_text' => $v->value_text,
@@ -454,9 +604,9 @@ class QuotationController extends Controller
                     'value_json' => $v->value_json,
                 ],
             ])->all(),
-            'variants' => $listing->variants()->active()->get(['id', 'name', 'sku', 'price'])->map(fn ($v) => [
+            'variants' => $listing->variants()->active()->get(['id', 'name', 'sku', 'price'])->map(fn($v) => [
                 'id' => $v->id,
-                'label' => trim(($v->name ?: 'Variant').' — '.($v->sku ?: '')),
+                'label' => trim(($v->name ?: 'Variant') . ' — ' . ($v->sku ?: '')),
                 'price' => $v->price,
             ]),
         ]);

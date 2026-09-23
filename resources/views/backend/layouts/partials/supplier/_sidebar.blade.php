@@ -92,7 +92,6 @@
             <div class="sidebar-submenu ml-8" :class="open && 'open'">
                 <a href="{{ route('supplier.quotations.index') }}" class="sidebar-submenu-item {{ ($isActive('supplier.quotations.index') && !request('status')) || $isActive('supplier.quotations.show') || $isActive('supplier.quotations.create') || $isActive('supplier.quotations.revision') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">My Quotations</a>
                 <a href="{{ route('supplier.quotations.index', ['status' => 'draft']) }}" class="sidebar-submenu-item {{ $isActive('supplier.quotations.index') && request('status') === 'draft' ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Draft Quotations</a>
-                <a href="{{ route('supplier.quotations.index', ['status' => 'revision_requested']) }}" class="sidebar-submenu-item {{ $isActive('supplier.quotations.index') && request('status') === 'revision_requested' ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Revision Requests</a>
             </div>
         </div>
         @endcanany

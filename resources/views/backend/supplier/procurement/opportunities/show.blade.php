@@ -8,8 +8,8 @@
     <x-backend.page-header title="{{ $rfq->title }}" subtitle="RFQ Number: {{ $rfq->rfq_number }}">
         <x-slot:actions>
             @if($existingQuotation)
-                <a href="{{ route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5">
-                    <i class="fa-solid fa-sack-dollar"></i> View My Quotation ({{ $existingQuotation->quotation_number }})
+                <a href="{{ $existingQuotation->status === 'draft' ? route('supplier.quotations.edit', $existingQuotation) : route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5">
+                    <i class="fa-solid fa-sack-dollar"></i> {{ $existingQuotation->status === 'draft' ? 'Continue Draft' : 'View My Quotation' }} ({{ $existingQuotation->quotation_number }})
                 </a>
             @else
                 <a href="{{ route('supplier.quotations.create', $rfq) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5">
@@ -291,7 +291,7 @@
                         <i class="fa-solid fa-sack-dollar text-amber-500 text-2xl mb-2"></i>
                         <h4 class="text-sm font-bold text-gray-900">Draft In Progress</h4>
                         <p class="text-xs text-gray-600 mt-1 mb-3">Continue and submit your quotation before the deadline.</p>
-                        <a href="{{ route('supplier.quotations.show', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg inline-flex items-center gap-1.5">
+                        <a href="{{ route('supplier.quotations.edit', $existingQuotation) }}" class="btn-primary text-xs font-semibold px-4 py-2 rounded-lg inline-flex items-center gap-1.5">
                             <i class="fa-solid fa-sack-dollar"></i> Continue Draft
                         </a>
                     </div>

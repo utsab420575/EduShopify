@@ -140,7 +140,6 @@ class QuotationItemOffersTest extends TestCase
 
         $payload = [
             'currency_code' => 'USD',
-            'shipping_charge' => 200.00,
             'items' => [
                 [
                     'id' => null,
@@ -168,6 +167,7 @@ class QuotationItemOffersTest extends TestCase
                             'unit_price' => 850.00,
                             'tax_rate' => 5.0,
                             'discount' => 100.00,
+                            'shipping_charge' => 200.00,
                             'delivery_time' => 7,
                             'is_primary' => true,
                             'is_selected' => false,
@@ -340,7 +340,6 @@ class QuotationItemOffersTest extends TestCase
 
         $payload = [
             'currency_code' => 'USD',
-            'shipping_charge' => 50.00,
             'items' => [
                 [
                     'id' => null,
@@ -366,6 +365,7 @@ class QuotationItemOffersTest extends TestCase
                             'unit_price' => 3000.00,
                             'tax_rate' => 0.0,
                             'discount' => 0.0,
+                            'shipping_charge' => 50.00,
                             'is_primary' => true,
                             'is_selected' => false,
                             'sort_order' => 0,

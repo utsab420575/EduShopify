@@ -56,9 +56,9 @@ class UnifiedMessageController extends Controller
             }
 
             if ($senderAccount->id === $quotation->supplier_account_id) {
-                $this->quotationActivities->record($quotation, 'supplier_replied');
-            } elseif ($senderAccount->id === $quotation->rfq->buyer_account_id) {
-                $this->quotationActivities->record($quotation, 'buyer_messaged');
+                $this->quotationActivities->record($quotation, 'supplier_replied', null, 'supplier', auth()->id());
+            } elseif ($senderAccount->id === $quotation->rfq?->buyer_account_id) {
+                $this->quotationActivities->record($quotation, 'buyer_messaged', null, 'buyer', auth()->id());
             }
         }
     }

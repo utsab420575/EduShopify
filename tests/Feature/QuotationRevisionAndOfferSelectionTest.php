@@ -197,6 +197,68 @@ class QuotationRevisionAndOfferSelectionTest extends TestCase
         );
     }
 
+    /**
+     * Structured category attribute values belong in
+     * quotation_item_attribute_values (relational, per offer), not
+     * duplicated into quotation_item_offers.specifications (free-text) too —
+     * the comparison JSON must surface each offer's own structured
+     * `attributes` from that table, separate from its `specifications`,
+     * which should only ever contain what the supplier explicitly typed as
+     * an extra spec.
+     */
+    public function test_comparison_service_exposes_each_offers_own_structured_attributes_separately_from_free_text_specs(): void
+    {
+        $this->seedBase();
+        $supplier = $this->makeActiveAccount('supplier', 'revision-s4@example.com');
+        $buyer = $this->makeActiveAccount('buyer', 'revision-b4@example.com');
+        $rfq = $this->makeOpenRfq($buyer);
+        $rfqItemId = $rfq->items[0]->id;
+
+        $category = Category::create([
+            'name' => 'Laptop', 'slug' => 'laptop-comparison-'.uniqid(),
+            'type' => 'product', 'approval_status' => 'approved', 'is_active' => true,
+        ]);
+        $attribute = \App\Models\Attribute::create(['name' => 'RAM', 'slug' => 'ram-comparison-'.uniqid(), 'input_type' => 'text']);
+        $category->attributes()->attach($attribute->id);
+
+        $service = app(QuotationService::class);
+        $quotation = $service->saveDraft($rfq, $supplier->account, $supplier, [
+            'items' => [[
+                'rfq_item_id' => $rfqItemId, 'item_name' => 'Laptop', 'quantity' => 5, 'unit_price' => 900,
+                'offers' => [[
+                    'offer_method' => 'custom',
+                    'category_id' => $category->id,
+                    'product_name' => 'Custom Laptop',
+                    'quantity' => 5,
+                    'unit_price' => 900,
+                    'is_primary' => true,
+                    // What the fixed getOfferSpecsPayload() actually sends now:
+                    // structured attribute values separately, specifications
+                    // holding ONLY the free-form extra the supplier typed.
+                    'attribute_values' => [$attribute->id => ['value_text' => '32GB']],
+                    'specifications' => [['name' => 'Warranty', 'value' => '2 years']],
+                ]],
+            ]],
+        ]);
+        $quotation = $service->submitDraft($quotation);
+
+        $comparison = app(\App\Services\QuotationComparisonService::class);
+        $resolved = $comparison->resolve($rfq, [$quotation->id]);
+        $itemComparison = $comparison->buildItemComparison($rfq, $resolved['quotations']);
+
+        $offer = $itemComparison[0]['offers'][$quotation->id][0]['offers'][0];
+
+        // Structured attribute value came from quotation_item_attribute_values.
+        $this->assertCount(1, $offer['attributes']);
+        $this->assertEquals('RAM', $offer['attributes'][0]['name']);
+        $this->assertEquals('32GB', $offer['attributes'][0]['value']);
+
+        // specifications holds ONLY the supplier's free-form extra — RAM is not duplicated here.
+        $this->assertCount(1, $offer['specifications']);
+        $this->assertEquals('Warranty', $offer['specifications'][0]['name']);
+        $this->assertEquals('2 years', $offer['specifications'][0]['value']);
+    }
+
     public function test_buyer_can_select_a_specific_offer_and_it_drives_the_award_and_purchase_order(): void
     {
         $this->seedBase();

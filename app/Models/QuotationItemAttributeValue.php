@@ -8,18 +8,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Table: quotation_item_attribute_values — the supplier's structured
- * offered specification for one quotation item, mirroring
- * rfq_item_attribute_values exactly so it can be compared attribute-by-
- * attribute against the buyer's requested value. Exactly one of the value_*
- * columns is normally populated, chosen by the attribute's input_type.
- * quotation_items.specs remains for free-form extras.
+ * offered specification for one INDIVIDUAL OFFER (quotation_item_offer_id),
+ * mirroring rfq_item_attribute_values exactly so it can be compared
+ * attribute-by-attribute against the buyer's requested value. Exactly one of
+ * the value_* columns is normally populated, chosen by the attribute's
+ * input_type. quotation_item_offers.specifications remains for the flat,
+ * free-text combined view of both structured attributes and custom specs.
+ *
+ * The parent quotation_item is reached via the offer (quotation_item_offer_id
+ * -> quotation_item_offers.quotation_item_id) — there's no direct
+ * quotation_item_id column here, so it never needs to be kept in sync with
+ * the offer's own parent item.
  */
 class QuotationItemAttributeValue extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'quotation_item_id',
+        'quotation_item_offer_id',
         'attribute_id',
         'attribute_value_id',
         'value_text',
@@ -40,9 +46,9 @@ class QuotationItemAttributeValue extends Model
         ];
     }
 
-    public function quotationItem(): BelongsTo
+    public function offer(): BelongsTo
     {
-        return $this->belongsTo(QuotationItem::class, 'quotation_item_id');
+        return $this->belongsTo(QuotationItemOffer::class, 'quotation_item_offer_id');
     }
 
     public function attribute(): BelongsTo

@@ -22,6 +22,7 @@
     <div x-data="quotationProductSelector({
         returnUrl: {{ json_encode($returnUrl) }},
         itemToken: {{ json_encode($itemToken) }},
+        replaceOfferToken: {{ json_encode($replaceOfferToken) }},
         rfqItemId: {{ (int) $rfqItem->id }},
         activeTab: '{{ $activeTab ?? 'matching' }}',
         allowAlternativeProducts: {{ $rfq->allow_alternative_products ? 'true' : 'false' }}
@@ -533,6 +534,9 @@
                     url.searchParams.set('selected_listing_ids', this.selectedListings.map(p => p.id).join(','));
                     url.searchParams.set('item_token', config.itemToken);
                     url.searchParams.set('rfq_item_id', config.rfqItemId);
+                    if (config.replaceOfferToken) {
+                        url.searchParams.set('replace_offer_token', config.replaceOfferToken);
+                    }
                 }
                 return url.toString();
             },

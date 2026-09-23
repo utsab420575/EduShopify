@@ -66,4 +66,16 @@ class AwardPolicy
             && $award->isAwaitingResponse()
             && ! $award->responseOverdue();
     }
+
+    /**
+     * "Undo Award" — the buyer pulls back a still-pending award. Reuses
+     * 'quotation.award' (same permission QuotationPolicy::award() gates
+     * creating one with) since this is its direct inverse.
+     */
+    public function cancel(User $user, Award $award): bool
+    {
+        return $this->checkAccess($user, 'buyer', 'quotation.award') !== null
+            && $award->buyer_account_id === $user->accountMember?->account_id
+            && $award->isAwaitingResponse();
+    }
 }

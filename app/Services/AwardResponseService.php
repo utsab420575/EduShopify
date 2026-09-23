@@ -45,7 +45,7 @@ class AwardResponseService
             $award->rfq()->update(['status' => 'awarded', 'awarded_at' => now()]);
             $award->quotation()->update(['status' => 'awarded', 'decision_at' => now()]);
 
-            $this->quotationActivities->record($award->quotation()->first(), 'accepted', $note);
+            $this->quotationActivities->record($award->quotation()->first(), 'accepted', $note, 'supplier', auth()->id());
 
             $this->createPurchaseOrder($award);
 
@@ -73,6 +73,8 @@ class AwardResponseService
 
             $rfq = $award->rfq;
             $rfq->update(['status' => $rfq->deadlinePassed() ? 'closed' : 'open']);
+
+            $this->quotationActivities->record($award->quotation()->first(), 'rejected_by_supplier', $reason, 'supplier', auth()->id());
 
             $this->notifyBuyer($award, "The supplier declined the award for \"{$rfq->title}\" ({$reason}).");
 

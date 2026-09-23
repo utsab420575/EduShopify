@@ -65,6 +65,9 @@ class QuotationComparisonService
                 'items.offers.offeredVariant',
                 'items.offers.unit',
                 'items.offers.media',
+                'items.offers.attributeValues.attribute.attributeGroup',
+                'items.offers.attributeValues.attribute.unit',
+                'items.offers.attributeValues.attributeValue',
             ])
             ->get()
             ->sortBy(fn (Quotation $q) => $ids->search($q->id))
@@ -186,12 +189,16 @@ class QuotationComparisonService
 
     /**
      * One Product Response (quotation_items row) — the RFQ-item-level
-     * structured attribute comparison still lives here (offers don't carry
-     * structured attribute_values, only a free-text `specifications` JSON
-     * column each), plus the nested list of every individual Offer
-     * (quotation_item_offers) underneath it, so the buyer can compare
-     * Supplier A's Dell/HP/Lenovo alternatives against Supplier B's
-     * Asus/Acer alternatives directly.
+     * structured attribute comparison still lives here, sourced from the
+     * PRIMARY offer's attribute values specifically (every offer now has its
+     * own set, not just the primary — see QuotationItemOffer::attributeValues()
+     * — but this comparison view still shows one match/different/missing
+     * badge set per Product Response, same as before that change; each
+     * individual Offer's own `specifications` JSON, primary or alternative,
+     * is still shown in full via formatSingleOffer() below), plus the nested
+     * list of every individual Offer (quotation_item_offers) underneath it,
+     * so the buyer can compare Supplier A's Dell/HP/Lenovo alternatives
+     * against Supplier B's Asus/Acer alternatives directly.
      */
     private function formatProductResponse(QuotationItem $item, Collection $buyerAttrsByAttributeId): array
     {
@@ -199,7 +206,8 @@ class QuotationComparisonService
             ? 'alternative'
             : ($item->offered_listing_id ? 'existing_product' : 'custom');
 
-        $supplierAttrs = $item->attributeValues->keyBy('attribute_id');
+        $primaryOfferId = $item->offers->firstWhere('is_primary', true)?->id;
+        $supplierAttrs = $item->attributeValues->where('quotation_item_offer_id', $primaryOfferId)->keyBy('attribute_id');
 
         $matched = $buyerAttrsByAttributeId->map(function ($buyerValue, $attributeId) use ($supplierAttrs, $item) {
             $supplierValue = $supplierAttrs->get($attributeId);
@@ -263,8 +271,10 @@ class QuotationComparisonService
     /**
      * One individual Offer (quotation_item_offers row) under a Product
      * Response — its own method/price/quantity/delivery time/documents,
-     * plus its free-text specifications (offers don't carry structured
-     * attribute_values, only the parent Product Response does).
+     * its free-text "Additional Specifications" (specifications, supplier-
+     * typed only), and its own structured category attribute values
+     * (attributes — every offer has its own set now, not just the primary;
+     * see QuotationItemOffer::attributeValues()).
      */
     private function formatSingleOffer(QuotationItemOffer $offer): array
     {
@@ -291,6 +301,12 @@ class QuotationComparisonService
                 'url' => $m->getUrl(), 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
             ])->values()->all(),
             'specifications'   => is_array($offer->specifications) ? $offer->specifications : [],
+            'attributes'       => $offer->attributeValues->map(fn ($v) => [
+                'attribute_id' => $v->attribute_id,
+                'name'         => $v->attribute?->name,
+                'unit'         => $v->attribute?->unit?->symbol ?? $v->attribute?->unit?->name,
+                'value'        => $v->formattedValue(),
+            ])->values()->all(),
         ];
     }
 

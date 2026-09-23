@@ -35,6 +35,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Livewire's Blade compiler extension (ExtendBlade) wraps every
+        // @if/@foreach/@can app-wide — even on plain Blade views with no
+        // Livewire component — to track "blocks" for its DOM-diffing. On a
+        // large, heavily-conditional view this multiplies the compiler's
+        // regex work enough to hit PHP's default PCRE backtrack/recursion
+        // limits; preg_replace_callback() then silently returns null and
+        // Blade leaves the rest of that compile pass as raw, uncompiled
+        // text (observed: buyer quotations show page 500ing with a
+        // ParseError several hundred lines past the true cause). Raising
+        // these limits app-wide is the standard mitigation for this known
+        // Laravel+Livewire class of issue.
+        ini_set('pcre.backtrack_limit', '10000000');
+        ini_set('pcre.recursion_limit', '10000000');
+
         $this->registerMorphMap();
 
         // backend.layouts.master puts x-data on <body> itself (mobile sidebar,

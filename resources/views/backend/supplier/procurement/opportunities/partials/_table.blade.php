@@ -123,7 +123,7 @@
                                         <i class="fa-solid fa-sack-dollar text-emerald-600"></i> Quoted
                                     </a>
                                 @elseif($quotation)
-                                    <a href="{{ route('supplier.quotations.show', $quotation) }}"
+                                    <a href="{{ route('supplier.quotations.edit', $quotation) }}"
                                        class="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 flex items-center gap-1.5" title="Continue Draft Quotation">
                                         <i class="fa-solid fa-sack-dollar text-amber-500"></i> Continue Draft
                                     </a>

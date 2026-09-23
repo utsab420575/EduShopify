@@ -43,6 +43,7 @@ class SaveQuotationRequest extends FormRequest
             'items.*.custom_attributes' => ['nullable', 'array'],
             'items.*.offers' => ['nullable', 'array'],
             'items.*.offers.*.id' => ['nullable', 'integer'],
+            'items.*.offers.*.client_ref' => ['nullable', 'string', 'max:64'],
             'items.*.offers.*.offer_method' => ['nullable', 'in:marketplace,custom,document,copy_spec'],
             'items.*.offers.*.marketplace_product_id' => ['nullable', 'integer', 'exists:listings,id'],
             'items.*.offers.*.offered_variant_id' => ['nullable', 'integer', 'exists:listing_variants,id'],
@@ -56,12 +57,32 @@ class SaveQuotationRequest extends FormRequest
             'items.*.offers.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.offers.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.offers.*.discount' => ['nullable', 'numeric', 'min:0'],
+            'items.*.offers.*.shipping_charge' => ['nullable', 'numeric', 'min:0'],
             'items.*.offers.*.total_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.offers.*.delivery_time' => ['nullable', 'integer', 'min:0'],
             'items.*.offers.*.status' => ['nullable', 'in:draft,submitted,withdrawn'],
             'items.*.offers.*.is_primary' => ['nullable', 'boolean'],
             'items.*.offers.*.is_selected' => ['nullable', 'boolean'],
             'items.*.offers.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            // No 'array' type constraint, same as specifications above: a
+            // native Save Draft/Submit form post sends this as a JSON string
+            // (hidden input in _offer-card.blade.php), autosave's AJAX call
+            // sends it as a real array — QuotationService::syncItemOffers()
+            // decodes the string form back into an array.
+            'items.*.offers.*.attribute_values' => ['nullable'],
+            // Client-only signal (not a persisted column) read by
+            // QuotationService::isValidOffer() to tell "supplier just picked
+            // a file to upload" apart from an untouched Document offer —
+            // must survive validated() or it's silently stripped before it
+            // ever reaches the service. See uploadOfferDocument() in
+            // _form.blade.php.
+            'items.*.offers.*._uploadPreparing' => ['nullable', 'boolean'],
+            // Same idea, for Custom/Copy-Spec offers: tells "supplier
+            // manually changed category / typed an attribute value" apart
+            // from the "Copy buyer specifications" default-on auto-fill. Set
+            // by the $watch in _offer-card.blade.php on any genuine change
+            // after the offer card mounted.
+            'items.*.offers.*._hasUserEdited' => ['nullable', 'boolean'],
             'items.*.attribute_values' => ['nullable', 'array'],
             'items.*.attribute_values.*.attribute_value_id' => ['nullable'],
             'items.*.attribute_values.*.custom_value' => ['nullable', 'string', 'max:255'],
@@ -73,14 +94,21 @@ class SaveQuotationRequest extends FormRequest
 
             'current_step' => ['nullable', 'integer', 'min:1', 'max:3'],
             'max_completed_step' => ['nullable', 'integer', 'min:1', 'max:3'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'currency_code' => ['nullable', 'string', 'size:3'],
             'lead_time_days' => ['nullable', 'integer', 'min:0'],
             'valid_until' => ['nullable', 'date'],
-            'shipping_charge' => ['nullable', 'numeric', 'min:0'],
+            'expected_delivery_date' => ['nullable', 'date'],
             'warranty_terms' => ['nullable', 'string', 'max:1000'],
             'support_terms' => ['nullable', 'string', 'max:1000'],
             'payment_terms' => ['nullable', 'string', 'max:1000'],
             'proposal' => ['nullable', 'string', 'max:5000'],
+            'delivery_addresses' => ['nullable', 'array'],
+            'delivery_addresses.*.country_id' => ['nullable', 'integer', 'exists:countries,id'],
+            'delivery_addresses.*.state_id' => ['nullable', 'integer', 'exists:states,id'],
+            'delivery_addresses.*.city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'delivery_addresses.*.address' => ['nullable', 'string', 'max:2000'],
         ];
     }
 

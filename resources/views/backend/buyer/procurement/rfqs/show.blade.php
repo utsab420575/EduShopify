@@ -5,6 +5,26 @@
 
 @push('styles')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .custom-vertical-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar-track {
+            background: #f8fafc;
+            border-radius: 9999px;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
 @endpush
 
 @push('scripts')
@@ -428,24 +448,36 @@
                     <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
                         {{-- Supplier activity table --}}
                         <div class="lg:col-span-3">
-                            <x-backend.form-card title="Supplier Activity">
+                            <x-backend.form-card>
+                                <div class="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-sm font-semibold text-gray-900">Supplier Activity</h3>
+                                        @if(!empty($supplierEngagement))
+                                            <span class="px-2 py-0.5 text-[11px] font-semibold bg-gray-100 text-gray-700 rounded-full">
+                                                {{ count($supplierEngagement) }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <span class="text-[11px] text-gray-400">Engaged suppliers</span>
+                                </div>
+
                                 @if(empty($supplierEngagement))
                                     <p class="text-sm text-gray-400">No supplier activity yet — this will fill in as suppliers view, engage with, or quote on this RFQ.</p>
                                 @else
-                                    <div class="-mx-5 -mb-5 overflow-x-auto">
+                                    <div class="-mx-5 -mb-5 max-h-[520px] overflow-y-auto overflow-x-auto custom-vertical-scrollbar [scrollbar-gutter:stable]">
                                         <table class="w-full text-sm">
-                                            <thead>
+                                            <thead class="sticky top-0 bg-white z-10 shadow-xs">
                                                 <tr class="border-b border-gray-100 text-[11px] text-gray-500 uppercase tracking-wide">
-                                                    <th class="px-5 py-2.5 text-left">Supplier</th>
-                                                    <th class="px-5 py-2.5 text-left">Viewed</th>
-                                                    <th class="px-5 py-2.5 text-left">Interested</th>
-                                                    <th class="px-5 py-2.5 text-left">Messages</th>
-                                                    <th class="px-5 py-2.5 text-left">Quotation</th>
+                                                    <th class="px-5 py-2.5 text-left bg-white">Supplier</th>
+                                                    <th class="px-5 py-2.5 text-left bg-white">Viewed</th>
+                                                    <th class="px-5 py-2.5 text-left bg-white">Interested</th>
+                                                    <th class="px-5 py-2.5 text-left bg-white">Messages</th>
+                                                    <th class="px-5 py-2.5 text-left bg-white">Quotation</th>
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-gray-100">
                                                 @foreach($supplierEngagement as $row)
-                                                    <tr>
+                                                    <tr class="hover:bg-gray-50/60 transition-colors">
                                                         <td class="px-5 py-2.5">
                                                             <div class="flex items-center gap-2 min-w-0">
                                                                 <img src="{{ $row['logo_url'] }}" class="w-7 h-7 rounded-full object-cover border border-gray-200 shrink-0" alt="">
@@ -456,7 +488,7 @@
                                                                 @endif
                                                             </div>
                                                         </td>
-                                                        <td class="px-5 py-2.5">
+                                                        <td class="px-5 py-2.5 whitespace-nowrap">
                                                             @if($row['seen_at'])
                                                                 <span class="text-emerald-600"><i class="fa-solid fa-check"></i> {{ $row['seen_at']->diffForHumans() }}</span>
                                                             @else
@@ -495,26 +527,56 @@
 
                         {{-- Recent activity timeline --}}
                         <div class="lg:col-span-2">
-                            <x-backend.form-card title="Recent Activity">
+                            <x-backend.form-card>
+                                <div class="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-sm font-semibold text-gray-900">Recent Activity</h3>
+                                        @if(!empty($activityTimeline))
+                                            <span class="px-2 py-0.5 text-[11px] font-semibold bg-gray-100 text-gray-700 rounded-full">
+                                                {{ count($activityTimeline) }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <span class="text-[11px] text-gray-400">All activity</span>
+                                </div>
+
                                 @if(empty($activityTimeline))
                                     <p class="text-sm text-gray-400">No activity recorded yet.</p>
                                 @else
-                                    <ul class="-mb-1">
-                                        @foreach($activityTimeline as $event)
-                                            <li class="flex items-start gap-3 pb-4 relative">
-                                                @if(!$loop->last)
-                                                    <span class="absolute left-3.5 top-7 bottom-0 w-px bg-gray-100"></span>
-                                                @endif
-                                                <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 {{ $event['color'] }}">
-                                                    <i class="fa-solid {{ $event['icon'] }} text-[11px]"></i>
-                                                </div>
-                                                <div class="min-w-0 flex-1 pt-0.5">
-                                                    <p class="text-xs text-gray-700"><span class="font-semibold text-gray-900">{{ $event['supplier'] }}</span> {{ $event['action'] }}</p>
-                                                    <p class="text-[11px] text-gray-400">{{ \Illuminate\Support\Carbon::parse($event['at'])->diffForHumans() }}</p>
-                                                </div>
-                                            </li>
-                                        @endforeach
-                                    </ul>
+                                    <div class="max-h-[520px] overflow-y-auto pr-2 custom-vertical-scrollbar [scrollbar-gutter:stable]">
+                                        <ul class="relative pl-1 -mb-1">
+                                            @foreach($activityTimeline as $event)
+                                                <li class="flex items-start gap-3 pb-4 relative group">
+                                                    @if(!$loop->last)
+                                                        <span class="absolute left-3.5 top-7 bottom-0 w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                                    @endif
+                                                    <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 {{ $event['color'] }} shadow-xs relative z-10 ring-2 ring-white">
+                                                        <i class="fa-solid {{ $event['icon'] }} text-[11px]"></i>
+                                                    </div>
+                                                    <div class="min-w-0 flex-1 pt-0.5">
+                                                        <p class="text-xs text-gray-700 leading-snug">
+                                                            @if(!empty($event['account']))
+                                                                <a href="{{ route('buyer.suppliers.show', $event['account']) }}" class="font-semibold text-gray-900 hover:text-indigo-600 hover:underline">
+                                                                    {{ $event['supplier'] }}
+                                                                </a>
+                                                            @else
+                                                                <span class="font-semibold text-gray-900">{{ $event['supplier'] }}</span>
+                                                            @endif
+                                                            <span>{{ $event['action'] }}</span>
+                                                        </p>
+                                                        @if(!empty($event['note']))
+                                                            <p class="mt-1 text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-2 py-1 italic">
+                                                                {{ $event['note'] }}
+                                                            </p>
+                                                        @endif
+                                                        <p class="text-[11px] text-gray-400 mt-0.5" title="{{ \Illuminate\Support\Carbon::parse($event['at'])->format('M d, Y H:i') }}">
+                                                            {{ \Illuminate\Support\Carbon::parse($event['at'])->diffForHumans() }}
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
                                 @endif
                             </x-backend.form-card>
                         </div>

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('supplier_account_id');
             $table->unsignedBigInteger('buyer_account_id');
             $table->enum('activity_type', [
+                'drafted',
                 'submitted',
                 'viewed_by_buyer',
                 'buyer_messaged',

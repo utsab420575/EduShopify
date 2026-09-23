@@ -29,8 +29,9 @@ class QuotationItemDocumentController extends Controller
         ]);
 
         $file = $request->file('document');
+        $fileName = \App\Support\Media\QuotationDocumentPathGenerator::supplierFileName($quotation->supplier_account_id, $file->getClientOriginalName());
         $media = $item->addMedia($file)
-            ->usingFileName(sprintf('quo_item_%s_%s.%s', $item->id, uniqid(), $file->getClientOriginalExtension()))
+            ->usingFileName($fileName)
             ->toMediaCollection('document');
 
         return response()->json([

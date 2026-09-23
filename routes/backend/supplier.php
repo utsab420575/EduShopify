@@ -135,9 +135,13 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::put('/{quotation}/autosave', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'autosaveUpdate'])->name('autosave.update');
             Route::post('/{quotation}/items/{item}/document', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationItemDocumentController::class, 'store'])->name('items.document.store');
             Route::delete('/{quotation}/items/{item}/document/{media}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationItemDocumentController::class, 'destroy'])->name('items.document.destroy');
+            Route::post('/{quotation}/items/{item}/offers/{offer}/document', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationItemOfferDocumentController::class, 'store'])->name('items.offers.document.store');
+            Route::delete('/{quotation}/items/{item}/offers/{offer}/document/{media}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationItemOfferDocumentController::class, 'destroy'])->name('items.offers.document.destroy');
             Route::get('/{quotation}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'show'])->name('show');
             Route::post('/{quotation}/submit', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'submit'])->name('submit');
+            Route::post('/{quotation}/undo-submit', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'undoSubmit'])->name('undo-submit');
             Route::post('/{quotation}/withdraw', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'withdraw'])->name('withdraw');
+            Route::get('/{quotation}/statistics', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'statistics'])->name('statistics');
             Route::post('/{quotation}/combined-document', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'uploadCombinedDocument'])->name('combined-document.store');
             Route::delete('/{quotation}/combined-document/{media}', [\App\Http\Controllers\Backend\Supplier\Procurement\QuotationController::class, 'deleteCombinedDocument'])->name('combined-document.destroy');
 

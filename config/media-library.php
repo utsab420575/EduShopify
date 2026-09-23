@@ -156,6 +156,9 @@ return [
         // or
         // 'model_morph_alias' => PathGenerator::class
         \App\Models\Listing::class => \App\Support\Media\ProductImagePathGenerator::class,
+        \App\Models\Quotation::class => \App\Support\Media\QuotationDocumentPathGenerator::class,
+        \App\Models\QuotationItem::class => \App\Support\Media\QuotationDocumentPathGenerator::class,
+        \App\Models\QuotationItemOffer::class => \App\Support\Media\QuotationDocumentPathGenerator::class,
     ],
 
     /*

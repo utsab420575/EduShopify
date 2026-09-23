@@ -42,7 +42,7 @@ class QuotationProductSelectorController extends Controller
             abort(404, 'RFQ item required.');
         }
 
-        $this->authorize('create', [Quotation::class, $rfq]);
+        $this->authorize('selectProducts', [Quotation::class, $rfq]);
 
         $account = $this->currentAccount();
         $baseQuery = fn () => $account->listings()->where('approval_status', 'approved');
@@ -285,6 +285,7 @@ class QuotationProductSelectorController extends Controller
             'categories' => $categories,
             'returnUrl' => $returnUrl,
             'itemToken' => $request->string('item_token')->toString(),
+            'replaceOfferToken' => $request->string('replace_offer_token')->toString(),
             'activeTab' => $request->get('tab', 'matching'),
             'relevantCategories' => $relevantCategories,
         ]);

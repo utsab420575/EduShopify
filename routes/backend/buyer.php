@@ -109,6 +109,8 @@ Route::middleware(['auth', 'verified'])->prefix('buyer')->name('buyer.')->group(
             Route::post('/{quotation}/reject', [QuotationController::class, 'reject'])->name('reject');
             Route::post('/{quotation}/items/{item}/offers/{offer}/select', [QuotationController::class, 'selectOffer'])->name('items.offers.select');
             Route::post('/{quotation}/award', [QuotationController::class, 'award'])->name('award');
+            Route::delete('/{quotation}/award', [QuotationController::class, 'cancelAward'])->name('award.cancel');
+            Route::get('/{quotation}/statistics', [QuotationController::class, 'statistics'])->name('statistics');
         });
 
         Route::prefix('awards')->name('awards.')->group(function () {

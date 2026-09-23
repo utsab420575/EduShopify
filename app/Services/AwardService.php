@@ -7,17 +7,23 @@ use App\Models\Quotation;
 use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\DashboardNotification;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Buyer-side award creation only. Supplier accept/reject (which flips the RFQ
- * and quotation to their final 'awarded' state and creates the Purchase Order)
- * is a supplier-dashboard action and lives outside this service for now.
+ * Buyer-side award creation and cancellation. Supplier accept/reject (which
+ * flips the RFQ and quotation to their final 'awarded' state and creates the
+ * Purchase Order) is a supplier-dashboard action and lives in
+ * AwardResponseService instead.
  */
 class AwardService
 {
+    public function __construct(private QuotationActivityService $quotationActivities)
+    {
+    }
+
     public function create(Quotation $quotation, User $user, ?string $note = null): Award
     {
         return DB::transaction(function () use ($quotation, $user, $note) {
@@ -45,9 +51,43 @@ class AwardService
 
             $rfq->update(['status' => 'award_pending']);
 
+            $this->quotationActivities->record($quotation, 'awarded', $note, 'buyer', $user->id);
+
             $this->notifySupplier($award, "Congratulations — your quotation {$quotation->quotation_number} for \"{$rfq->title}\" has been awarded. Please respond within the deadline.");
 
             return $award;
+        });
+    }
+
+    /**
+     * "Undo Award" — the buyer pulls back a still-pending award before the
+     * supplier has responded. Reopens the RFQ (mirrors AwardResponseService
+     * ::reject()'s exact rfq-status logic) and leaves the quotation's own
+     * status untouched, since create() never changed it in the first place
+     * (only accept() promotes a quotation to 'awarded').
+     */
+    public function cancel(Award $award, ?string $reason = null): Award
+    {
+        return DB::transaction(function () use ($award, $reason) {
+            $award = Award::whereKey($award->id)->lockForUpdate()->firstOrFail();
+
+            if (! $award->isAwaitingResponse()) {
+                throw ValidationException::withMessages(['status' => 'This award has already been responded to.']);
+            }
+
+            $award->update([
+                'status'       => 'cancelled',
+                'cancelled_at' => now(),
+            ]);
+
+            $rfq = $award->rfq;
+            $rfq->update(['status' => $rfq->deadlinePassed() ? 'closed' : 'open']);
+
+            $this->quotationActivities->record($award->quotation, 'award_cancelled', $reason, 'buyer', Auth::id());
+
+            $this->notifySupplier($award, "The buyer cancelled the award for \"{$rfq->title}\".");
+
+            return $award->fresh();
         });
     }
 

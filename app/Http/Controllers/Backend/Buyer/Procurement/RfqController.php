@@ -547,21 +547,25 @@ class RfqController extends Controller
      * log, and quotation submissions into one chronological feed — three
      * different tables, one timeline, newest first.
      */
-    private function computeActivityTimeline(Rfq $rfq, int $limit = 25): array
+    private function computeActivityTimeline(Rfq $rfq, ?int $limit = null): array
     {
-        $supplierNames = \App\Models\RfqSupplierQueue::where('rfq_id', $rfq->id)
-            ->with('supplierAccount.supplierProfile')
+        $actionSupplierIds = \App\Models\SupplierRfqAction::where('rfq_id', $rfq->id)->pluck('supplier_account_id');
+        $queueSupplierIds = \App\Models\RfqSupplierQueue::where('rfq_id', $rfq->id)->pluck('supplier_account_id');
+        $quotationSupplierIds = \App\Models\Quotation::where('rfq_id', $rfq->id)->pluck('supplier_account_id');
+
+        $allSupplierIds = $actionSupplierIds->merge($queueSupplierIds)->merge($quotationSupplierIds)->filter()->unique();
+
+        $supplierAccounts = \App\Models\Account::whereIn('id', $allSupplierIds)
+            ->with('supplierProfile')
             ->get()
-            ->mapWithKeys(fn (\App\Models\RfqSupplierQueue $row) => [
-                $row->supplier_account_id => $row->supplierAccount?->supplierProfile?->display_name ?? ('Supplier #'.$row->supplier_account_id),
-            ]);
+            ->keyBy('id');
 
         $events = collect();
 
         $actionMeta = [
-            'viewed' => ['label' => 'viewed this RFQ', 'icon' => 'fa-eye', 'color' => 'text-gray-500 bg-gray-100'],
-            'interested' => ['label' => 'marked this RFQ as Interested', 'icon' => 'fa-hand-point-up', 'color' => 'text-blue-600 bg-blue-100'],
-            'not_interested' => ['label' => 'marked this RFQ as Not Interested', 'icon' => 'fa-ban', 'color' => 'text-gray-500 bg-gray-100'],
+            'viewed' => ['label' => 'viewed this RFQ', 'icon' => 'fa-eye', 'color' => 'text-slate-600 bg-slate-100'],
+            'interested' => ['label' => 'marked this RFQ as Interested', 'icon' => 'fa-thumbs-up', 'color' => 'text-blue-600 bg-blue-100'],
+            'not_interested' => ['label' => 'marked this RFQ as Not Interested', 'icon' => 'fa-ban', 'color' => 'text-rose-600 bg-rose-100'],
             'messaged' => ['label' => 'sent a message', 'icon' => 'fa-comment-dots', 'color' => 'text-purple-600 bg-purple-100'],
             'preparing_quote' => ['label' => 'started preparing a quotation', 'icon' => 'fa-file-pen', 'color' => 'text-amber-600 bg-amber-100'],
             'quoted' => ['label' => 'submitted a quotation', 'icon' => 'fa-sack-dollar', 'color' => 'text-emerald-600 bg-emerald-100'],
@@ -570,12 +574,22 @@ class RfqController extends Controller
         $suppliersWithViewedAction = [];
 
         foreach (\App\Models\SupplierRfqAction::where('rfq_id', $rfq->id)->get() as $action) {
-            $meta = $actionMeta[$action->action_type] ?? ['label' => $action->action_type, 'icon' => 'fa-circle-info', 'color' => 'text-gray-500 bg-gray-100'];
+            $account = $supplierAccounts->get($action->supplier_account_id);
+            $supplierName = $account?->supplierProfile?->display_name ?? ('Supplier #'.$action->supplier_account_id);
+            $meta = $actionMeta[$action->action_type] ?? [
+                'label' => str_replace('_', ' ', $action->action_type),
+                'icon' => 'fa-circle-info',
+                'color' => 'text-gray-500 bg-gray-100',
+            ];
             $events->push([
-                'supplier' => $supplierNames->get($action->supplier_account_id, 'A supplier'),
+                'account' => $account,
+                'supplier_account_id' => $action->supplier_account_id,
+                'supplier' => $supplierName,
                 'action' => $meta['label'],
-                'icon' => $meta['icon'], 'color' => $meta['color'],
+                'icon' => $meta['icon'],
+                'color' => $meta['color'],
                 'at' => $action->created_at,
+                'note' => $action->note,
             ]);
 
             if ($action->action_type === 'viewed') {
@@ -593,24 +607,53 @@ class RfqController extends Controller
                 continue;
             }
 
+            $account = $supplierAccounts->get($row->supplier_account_id);
+            $supplierName = $account?->supplierProfile?->display_name ?? ('Supplier #'.$row->supplier_account_id);
+
             $events->push([
-                'supplier' => $supplierNames->get($row->supplier_account_id, 'A supplier'),
+                'account' => $account,
+                'supplier_account_id' => $row->supplier_account_id,
+                'supplier' => $supplierName,
                 'action' => $actionMeta['viewed']['label'],
-                'icon' => $actionMeta['viewed']['icon'], 'color' => $actionMeta['viewed']['color'],
+                'icon' => $actionMeta['viewed']['icon'],
+                'color' => $actionMeta['viewed']['color'],
                 'at' => $row->seen_at,
+                'note' => null,
             ]);
         }
+
+        $quotedSuppliers = \App\Models\SupplierRfqAction::where('rfq_id', $rfq->id)
+            ->where('action_type', 'quoted')
+            ->pluck('supplier_account_id')
+            ->flip();
 
         foreach (\App\Models\Quotation::where('rfq_id', $rfq->id)->whereNotNull('submitted_at')->get() as $quotation) {
+            if (isset($quotedSuppliers[$quotation->supplier_account_id])) {
+                continue;
+            }
+
+            $account = $supplierAccounts->get($quotation->supplier_account_id);
+            $supplierName = $account?->supplierProfile?->display_name ?? ('Supplier #'.$quotation->supplier_account_id);
+
             $events->push([
-                'supplier' => $supplierNames->get($quotation->supplier_account_id, 'A supplier'),
+                'account' => $account,
+                'supplier_account_id' => $quotation->supplier_account_id,
+                'supplier' => $supplierName,
                 'action' => 'submitted a quotation',
-                'icon' => 'fa-sack-dollar', 'color' => 'text-emerald-600 bg-emerald-100',
+                'icon' => 'fa-sack-dollar',
+                'color' => 'text-emerald-600 bg-emerald-100',
                 'at' => $quotation->submitted_at,
+                'note' => null,
             ]);
         }
 
-        return $events->sortByDesc('at')->take($limit)->values()->all();
+        $sorted = $events->sortByDesc('at')->values();
+
+        if ($limit !== null) {
+            return $sorted->take($limit)->all();
+        }
+
+        return $sorted->all();
     }
 
     /**

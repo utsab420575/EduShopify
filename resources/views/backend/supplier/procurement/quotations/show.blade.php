@@ -3,6 +3,29 @@
 @section('title', 'Quotation — ' . $quotation->quotation_number)
 @section('breadcrumb', 'Quotations / ' . $quotation->quotation_number)
 
+@push('styles')
+    <style>
+        .custom-vertical-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar-track {
+            background: #f8fafc;
+            border-radius: 9999px;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .custom-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+@endpush
+
 @section('body')
 
     @php
@@ -18,35 +41,18 @@
         $quotedRfqItemIds = $quotation->items->pluck('rfq_item_id')->filter()->all();
         $unquotedRfqItems = $quotation->rfq ? $quotation->rfq->items->whereNotIn('id', $quotedRfqItemIds)->values() : collect();
         $canReviseForUpdate = ($versionChanged || $unquotedRfqItems->isNotEmpty()) && in_array($quotation->status, ['submitted', 'under_review', 'revised', 'shortlisted']);
+        $canUndoSubmit = auth()->user()?->can('undoSubmit', $quotation) ?? false;
+
+        $tabs = [
+            'overview' => ['label' => 'Overview', 'icon' => 'fa-house'],
+            'items' => ['label' => 'Items (' . $requestedItems->count() . ')', 'icon' => 'fa-boxes-stacked'],
+            'activity' => ['label' => 'Statistics', 'icon' => 'fa-chart-bar'],
+        ];
     @endphp
 
     <x-backend.page-header title="Quotation {{ $quotation->quotation_number }}" subtitle="For RFQ: {{ $quotation->rfq?->title ?? 'RFQ #' . $quotation->rfq_id }}">
         <x-slot:actions>
-            <div class="flex items-center gap-2">
-                @if($quotation->status === 'draft')
-                    <a href="{{ route('supplier.quotations.edit', $quotation) }}" class="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                    </a>
-                    <form method="POST" action="{{ route('supplier.quotations.submit', $quotation) }}">
-                        @csrf
-                        <button type="submit" class="btn-primary text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5">
-                            <i class="fa-solid fa-paper-plane"></i> Submit Quotation
-                        </button>
-                    </form>
-                @elseif($quotation->status === 'revision_requested' || $canReviseForUpdate)
-                    <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 {{ $quotation->status === 'revision_requested' ? 'animate-pulse' : '' }}">
-                        <i class="fa-solid fa-rotate"></i> Revise Quote
-                    </a>
-                @endif
-                @if(in_array($quotation->status, ['submitted', 'under_review', 'revision_requested', 'revised', 'shortlisted']))
-                    <form method="POST" action="{{ route('supplier.quotations.withdraw', $quotation) }}" onsubmit="return confirm('Withdraw this quotation? You will no longer be considered for award.')">
-                        @csrf
-                        <button type="submit" class="text-xs font-semibold px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50">
-                            Withdraw Quote
-                        </button>
-                    </form>
-                @endif
-            </div>
+            <x-backend.status-badge :status="$quotation->status" />
         </x-slot:actions>
     </x-backend.page-header>
 
@@ -138,242 +144,446 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+    {{-- Tab bar + all panes share this scope so the sidebar's "View Full
+         Activity" button (outside the panes) can also flip `tab`. The
+         initial tab is settable via ?_tab=xxx — the index page's Statistics
+         modal deep-links here with ?_tab=activity. --}}
+    <div x-data="{ tab: '{{ request('_tab', 'overview') }}' }">
 
-        {{-- Left / Items & Commercials --}}
-        <div class="xl:col-span-8 space-y-6">
+        <div class="bg-white rounded-xl border border-gray-200 p-1.5 mb-6 flex items-center gap-1 overflow-x-auto">
+            @foreach($tabs as $key => $t)
+                <button type="button" @click="tab = '{{ $key }}'"
+                        class="text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-colors"
+                        :class="tab === '{{ $key }}' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:bg-gray-50'">
+                    <i class="fa-solid {{ $t['icon'] }}"></i> {{ $t['label'] }}
+                </button>
+            @endforeach
+        </div>
 
-            <x-backend.form-card title="Quotation Overview">
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-100 text-xs">
-                    <div>
-                        <span class="text-gray-400 block">Status</span>
-                        <x-backend.status-badge :status="$quotation->status" />
-                    </div>
-                    <div>
-                        <span class="text-gray-400 block">Revision No.</span>
-                        <span class="font-bold text-gray-800">{{ $quotation->current_revision_no > 0 ? '#'.$quotation->current_revision_no : 'Not yet submitted' }}</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-400 block">Total Quoted</span>
-                        <span class="font-bold text-indigo-700 text-sm">{{ $quotation->currency_code }} {{ number_format($quotation->grand_total, 2) }}</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-400 block">Delivery Lead Time</span>
-                        <span class="font-semibold text-gray-800">{{ $quotation->lead_time_days ? $quotation->lead_time_days . ' days' : 'As requested' }}</span>
-                    </div>
-                </div>
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-                @if($quotation->proposal)
-                    <div class="text-xs text-gray-700 whitespace-pre-line bg-gray-50 p-3 rounded-lg border border-gray-100 mb-4">
-                        <span class="font-bold block mb-1 text-gray-900">Proposal Summary:</span>
-                        {{ $quotation->proposal }}
-                    </div>
-                @endif
+            {{-- Left / Tab content --}}
+            <div class="xl:col-span-8 space-y-6">
 
-                {{-- Terms --}}
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div>
-                        <span class="text-gray-400 block">Warranty:</span>
-                        <span class="font-semibold text-gray-800">{{ $quotation->warranty_terms ?? 'None' }}</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-400 block">Support:</span>
-                        <span class="font-semibold text-gray-800">{{ $quotation->support_terms ?? 'None' }}</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-400 block">Payment:</span>
-                        <span class="font-semibold text-gray-800">{{ $quotation->payment_terms ?? 'Standard' }}</span>
-                    </div>
-                </div>
-            </x-backend.form-card>
-
-            {{-- Items Quoted, with buyer-vs-supplier attribute comparison --}}
-            <x-backend.form-card title="Quoted Items">
-                <div class="space-y-4">
-                    @forelse($requestedItems as $item)
-                        @php($rfqItem = $item->rfqItem)
-                        <div class="border border-gray-200 rounded-xl p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
-                                        <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border {{ $sourceClass($item) }}">{{ $sourceLabel($item) }}</span>
-                                    </div>
-                                    @if($rfqItem)
-                                        <p class="text-xs text-gray-500 mt-0.5">
-                                            Responding to: <span class="font-medium text-gray-800">{{ $rfqItem->item_name }}</span>
-                                            @if($rfqItem->category)
-                                                <span class="text-gray-400">({{ $rfqItem->category->name }})</span>
-                                            @endif
-                                            @if($rfqItem->isRequirement())
-                                                <span class="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                                    <i class="fa-solid fa-file-invoice text-[9px] mr-0.5"></i> Requirement
-                                                </span>
-                                            @endif
-                                        </p>
-                                        @if($rfqItem->isRequirement() && !empty($rfqItem->specs['description']))
-                                            <p class="text-xs text-gray-600 mt-1 bg-amber-50/40 p-2 rounded border border-amber-100 leading-relaxed">
-                                                <strong class="text-amber-900 font-semibold">Scope:</strong> {{ $rfqItem->specs['description'] }}
-                                            </p>
-                                        @endif
-                                        @if($rfqItem->media->isNotEmpty())
-                                            <div class="mt-2 flex items-center gap-1.5 flex-wrap">
-                                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Buyer Files:</span>
-                                                @foreach($rfqItem->media as $file)
-                                                    <a href="{{ $file->getUrl() }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-indigo-700 hover:text-indigo-900 hover:border-indigo-300 font-medium transition shadow-2xs">
-                                                        <i class="fa-solid fa-paperclip text-[10px]"></i>
-                                                        <span class="truncate max-w-[120px]">{{ $file->file_name }}</span>
-                                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
-                                                    </a>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    @endif
-                                    @if($item->description)
-                                        <p class="text-xs text-gray-500 mt-1">{{ $item->description }}</p>
-                                    @endif
-                                </div>
-                                <div class="text-right shrink-0 text-xs">
-                                    <p class="text-gray-800 font-semibold">{{ (float) $item->quantity }} {{ $item->unit?->symbol ?? $item->custom_unit }}</p>
-                                    <p class="text-gray-500 mt-0.5">{{ $quotation->currency_code }} {{ number_format($item->unit_price, 2) }} / unit</p>
-                                    <p class="text-indigo-700 font-bold mt-0.5">{{ $quotation->currency_code }} {{ number_format($item->line_total, 2) }}</p>
-                                </div>
+                {{-- ═══════ Overview ═══════ --}}
+                <div x-show="tab === 'overview'" x-cloak class="space-y-6">
+                    <x-backend.form-card title="Quotation Overview">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-100 text-xs">
+                            <div>
+                                <span class="text-gray-400 block">Status</span>
+                                <x-backend.status-badge :status="$quotation->status" />
                             </div>
+                            <div>
+                                <span class="text-gray-400 block">Revision No.</span>
+                                <span class="font-bold text-gray-800">{{ $quotation->current_revision_no > 0 ? '#'.$quotation->current_revision_no : 'Not yet submitted' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block">Total Quoted</span>
+                                <span class="font-bold text-indigo-700 text-sm">{{ $quotation->currency_code }} {{ number_format($quotation->grand_total, 2) }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block">Expected Delivery</span>
+                                <span class="font-semibold text-gray-800">{{ $quotation->expected_delivery_date?->format('d M Y') ?? 'As requested' }}</span>
+                            </div>
+                        </div>
 
-                            @if($item->attributeValues->isNotEmpty())
-                                <div class="mt-3 pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
-                                    @foreach($item->attributeValues as $value)
-                                        @php($requestedValue = $rfqItem?->attributeValues->firstWhere('attribute_id', $value->attribute_id))
-                                        @php($differs = $requestedValue && $requestedValue->formattedValue() !== $value->formattedValue())
-                                        <div class="flex items-center justify-between text-[11px] gap-2">
-                                            <span class="text-gray-500">{{ $value->attribute?->name }}</span>
-                                            <span class="text-right">
-                                                <span class="text-gray-400">{{ $requestedValue?->formattedValue() ?? '—' }}</span>
-                                                <i class="fa-solid fa-arrow-right text-gray-300 mx-1"></i>
-                                                <span class="{{ $differs ? 'text-amber-700 font-semibold' : 'text-gray-700 font-semibold' }}">{{ $value->formattedValue() }}</span>
-                                            </span>
+                        @if($quotation->proposal)
+                            <div class="text-xs text-gray-700 whitespace-pre-line bg-gray-50 p-3 rounded-lg border border-gray-100 mb-4">
+                                <span class="font-bold block mb-1 text-gray-900">Proposal Summary:</span>
+                                {{ $quotation->proposal }}
+                            </div>
+                        @endif
+
+                        {{-- Terms --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            <div>
+                                <span class="text-gray-400 block">Warranty:</span>
+                                <span class="font-semibold text-gray-800">{{ $quotation->warranty_terms ?? 'None' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block">Support:</span>
+                                <span class="font-semibold text-gray-800">{{ $quotation->support_terms ?? 'None' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block">Payment:</span>
+                                <span class="font-semibold text-gray-800">{{ $quotation->payment_terms ?? 'Standard' }}</span>
+                            </div>
+                        </div>
+                    </x-backend.form-card>
+
+                    <x-backend.form-card title="Commercial Summary">
+                        <dl class="space-y-2 text-sm max-w-xs ml-auto">
+                            <div class="flex justify-between"><dt class="text-gray-500">Subtotal</dt><dd class="text-gray-800">{{ $quotation->currency_code }} {{ number_format($quotation->subtotal, 2) }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500">Tax</dt><dd class="text-gray-800">{{ $quotation->currency_code }} {{ number_format($quotation->tax_amount, 2) }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500">Discount</dt><dd class="text-gray-800">-{{ $quotation->currency_code }} {{ number_format($quotation->discount_amount, 2) }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500">Shipping</dt><dd class="text-gray-800">{{ $quotation->currency_code }} {{ number_format($quotation->shipping_charge, 2) }}</dd></div>
+                            <div class="flex justify-between pt-2 border-t border-gray-100"><dt class="font-semibold text-gray-700">Grand Total</dt><dd class="font-bold text-indigo-700">{{ $quotation->currency_code }} {{ number_format($quotation->grand_total, 2) }}</dd></div>
+                        </dl>
+                    </x-backend.form-card>
+                </div>
+
+                {{-- ═══════ Items ═══════ --}}
+                <div x-show="tab === 'items'" x-cloak class="space-y-6">
+                    <x-backend.form-card title="Quoted Items">
+                        <div class="space-y-4">
+                            @forelse($requestedItems as $item)
+                                @php($rfqItem = $item->rfqItem)
+                                <div class="border border-gray-200 rounded-xl p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
+                                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border {{ $sourceClass($item) }}">{{ $sourceLabel($item) }}</span>
+                                            </div>
+                                            @if($rfqItem)
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    Responding to: <span class="font-medium text-gray-800">{{ $rfqItem->item_name }}</span>
+                                                    @if($rfqItem->category)
+                                                        <span class="text-gray-400">({{ $rfqItem->category->name }})</span>
+                                                    @endif
+                                                    @if($rfqItem->isRequirement())
+                                                        <span class="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                                            <i class="fa-solid fa-file-invoice text-[9px] mr-0.5"></i> Requirement
+                                                        </span>
+                                                    @endif
+                                                </p>
+                                                @if($rfqItem->isRequirement() && !empty($rfqItem->specs['description']))
+                                                    <p class="text-xs text-gray-600 mt-1 bg-amber-50/40 p-2 rounded border border-amber-100 leading-relaxed">
+                                                        <strong class="text-amber-900 font-semibold">Scope:</strong> {{ $rfqItem->specs['description'] }}
+                                                    </p>
+                                                @endif
+                                                @if($rfqItem->media->isNotEmpty())
+                                                    <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                                                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Buyer Files:</span>
+                                                        @foreach($rfqItem->media as $file)
+                                                            <a href="{{ $file->getUrl() }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-indigo-700 hover:text-indigo-900 hover:border-indigo-300 font-medium transition shadow-2xs">
+                                                                <i class="fa-solid fa-paperclip text-[10px]"></i>
+                                                                <span class="truncate max-w-[120px]">{{ $file->file_name }}</span>
+                                                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
+                                                            </a>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                            @endif
+                                            @if($item->description)
+                                                <p class="text-xs text-gray-500 mt-1">{{ $item->description }}</p>
+                                            @endif
                                         </div>
-                                    @endforeach
+                                        <div class="text-right shrink-0 text-xs">
+                                            <p class="text-gray-800 font-semibold">{{ (float) $item->quantity }} {{ $item->unit?->symbol ?? $item->custom_unit }}</p>
+                                            <p class="text-gray-500 mt-0.5">{{ $quotation->currency_code }} {{ number_format($item->unit_price, 2) }} / unit</p>
+                                            <p class="text-indigo-700 font-bold mt-0.5">{{ $quotation->currency_code }} {{ number_format($item->line_total, 2) }}</p>
+                                        </div>
+                                    </div>
+
+                                    @php($primaryOfferAttributeValues = $item->attributeValues->where('quotation_item_offer_id', $item->offers->firstWhere('is_primary', true)?->id))
+                                    @if($primaryOfferAttributeValues->isNotEmpty())
+                                        <div class="mt-3 pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                                            @foreach($primaryOfferAttributeValues as $value)
+                                                @php($requestedValue = $rfqItem?->attributeValues->firstWhere('attribute_id', $value->attribute_id))
+                                                @php($differs = $requestedValue && $requestedValue->formattedValue() !== $value->formattedValue())
+                                                <div class="flex items-center justify-between text-[11px] gap-2">
+                                                    <span class="text-gray-500">{{ $value->attribute?->name }}</span>
+                                                    <span class="text-right">
+                                                        <span class="text-gray-400">{{ $requestedValue?->formattedValue() ?? '—' }}</span>
+                                                        <i class="fa-solid fa-arrow-right text-gray-300 mx-1"></i>
+                                                        <span class="{{ $differs ? 'text-amber-700 font-semibold' : 'text-gray-700 font-semibold' }}">{{ $value->formattedValue() }}</span>
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @empty
+                                <p class="text-sm text-gray-400">No items quoted yet.</p>
+                            @endforelse
+
+                            @if($unquotedRfqItems->isNotEmpty())
+                                <div class="mt-4 pt-4 border-t-2 border-dashed border-amber-200">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div>
+                                            <h5 class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                                                Buyer's Requested Items Not in this Quotation ({{ $unquotedRfqItems->count() }})
+                                            </h5>
+                                            <p class="text-[11px] text-gray-500 mt-0.5">These items were added to the RFQ after or separately from this quote.</p>
+                                        </div>
+                                        @if($canReviseForUpdate)
+                                            <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                                                <i class="fa-solid fa-plus text-[10px]"></i> Add to Quote
+                                            </a>
+                                        @endif
+                                    </div>
+                                    <div class="space-y-2">
+                                        @foreach($unquotedRfqItems as $uItem)
+                                            <div class="flex items-center justify-between p-3 rounded-xl bg-amber-50/50 border border-amber-200 text-xs">
+                                                <div class="min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="font-bold text-gray-900">{{ $uItem->item_name }}</span>
+                                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $uItem->isRequirement() ? 'bg-amber-50 text-amber-700 border border-amber-200' : ($uItem->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200') }}">
+                                                            {{ $uItem->isRequirement() ? 'Requirement (Quotation Only)' : ($uItem->listing_id ? 'Marketplace Product' : 'Custom Product') }}
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-[11px] text-gray-500 mt-0.5">{{ $uItem->category?->name ?? 'General' }}</p>
+                                                </div>
+                                                <div class="text-right shrink-0">
+                                                    <span class="font-bold text-gray-800">{{ (float)$uItem->quantity }} {{ $uItem->unit?->name ?? $uItem->custom_unit ?? 'units' }}</span>
+                                                    @if($uItem->estimated_unit_price)
+                                                        <p class="text-[11px] text-indigo-600 font-semibold">Target: {{ $quotation->currency_code }} {{ number_format((float)$uItem->estimated_unit_price, 2) }}</p>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
                             @endif
                         </div>
-                    @empty
-                        <p class="text-sm text-gray-400">No items quoted yet.</p>
-                    @endforelse
+                    </x-backend.form-card>
 
-                    @if($unquotedRfqItems->isNotEmpty())
-                        <div class="mt-4 pt-4 border-t-2 border-dashed border-amber-200">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <h5 class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                                        <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
-                                        Buyer's Requested Items Not in this Quotation ({{ $unquotedRfqItems->count() }})
-                                    </h5>
-                                    <p class="text-[11px] text-gray-500 mt-0.5">These items were added to the RFQ after or separately from this quote.</p>
-                                </div>
-                                @if($canReviseForUpdate)
-                                    <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                                        <i class="fa-solid fa-plus text-[10px]"></i> Add to Quote
-                                    </a>
-                                @endif
-                            </div>
+                    @if($addonItems->isNotEmpty())
+                        <x-backend.form-card title="Optional Add-Ons" description="Offered in addition to the buyer's requested items.">
                             <div class="space-y-2">
-                                @foreach($unquotedRfqItems as $uItem)
-                                    <div class="flex items-center justify-between p-3 rounded-xl bg-amber-50/50 border border-amber-200 text-xs">
-                                        <div class="min-w-0">
-                                            <div class="flex items-center gap-2">
-                                                <span class="font-bold text-gray-900">{{ $uItem->item_name }}</span>
-                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $uItem->isRequirement() ? 'bg-amber-50 text-amber-700 border border-amber-200' : ($uItem->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200') }}">
-                                                    {{ $uItem->isRequirement() ? 'Requirement (Quotation Only)' : ($uItem->listing_id ? 'Marketplace Product' : 'Custom Product') }}
-                                                </span>
-                                            </div>
-                                            <p class="text-[11px] text-gray-500 mt-0.5">{{ $uItem->category?->name ?? 'General' }}</p>
+                                @foreach($addonItems as $addon)
+                                    <div class="flex items-center justify-between p-3 bg-amber-50/40 border border-amber-200 rounded-lg text-xs">
+                                        <div>
+                                            <p class="font-semibold text-gray-900">{{ $addon->item_name }}</p>
+                                            <p class="text-gray-500">{{ (float) $addon->quantity }} {{ $addon->unit?->symbol }} &times; {{ $quotation->currency_code }} {{ number_format($addon->unit_price, 2) }}</p>
                                         </div>
-                                        <div class="text-right shrink-0">
-                                            <span class="font-bold text-gray-800">{{ (float)$uItem->quantity }} {{ $uItem->unit?->name ?? $uItem->custom_unit ?? 'units' }}</span>
-                                            @if($uItem->estimated_unit_price)
-                                                <p class="text-[11px] text-indigo-600 font-semibold">Target: {{ $quotation->currency_code }} {{ number_format((float)$uItem->estimated_unit_price, 2) }}</p>
-                                            @endif
-                                        </div>
+                                        <span class="font-bold text-amber-700">{{ $quotation->currency_code }} {{ number_format($addon->line_total, 2) }}</span>
                                     </div>
                                 @endforeach
                             </div>
-                        </div>
+                        </x-backend.form-card>
                     @endif
                 </div>
-            </x-backend.form-card>
 
-            @if($addonItems->isNotEmpty())
-                <x-backend.form-card title="Optional Add-Ons" description="Offered in addition to the buyer's requested items.">
-                    <div class="space-y-2">
-                        @foreach($addonItems as $addon)
-                            <div class="flex items-center justify-between p-3 bg-amber-50/40 border border-amber-200 rounded-lg text-xs">
-                                <div>
-                                    <p class="font-semibold text-gray-900">{{ $addon->item_name }}</p>
-                                    <p class="text-gray-500">{{ (float) $addon->quantity }} {{ $addon->unit?->symbol }} &times; {{ $quotation->currency_code }} {{ number_format($addon->unit_price, 2) }}</p>
+                {{-- ═══════ Statistics ═══════ --}}
+                <div x-show="tab === 'activity'" x-cloak class="space-y-5">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <p class="text-[11px] text-gray-500">Status</p>
+                            <p class="text-sm font-bold text-gray-900 mt-1"><x-backend.status-badge :status="$quotation->status" /></p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <p class="text-[11px] text-gray-500">Viewed by Buyer</p>
+                            <p class="text-xl font-bold {{ $stats['viewed_by_buyer'] ? 'text-emerald-600' : 'text-gray-900' }}">{{ $stats['viewed_by_buyer'] ? 'Yes' : 'Not yet' }}</p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <p class="text-[11px] text-gray-500">Messages</p>
+                            <p class="text-xl font-bold text-gray-900">{{ $stats['messages_count'] }}</p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <p class="text-[11px] text-gray-500">Revision Requests</p>
+                            <p class="text-xl font-bold text-gray-900">{{ $stats['revision_requests_count'] }}</p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <p class="text-[11px] text-gray-500">Revision No.</p>
+                            <p class="text-xl font-bold text-gray-900">{{ $quotation->current_revision_no > 0 ? '#'.$quotation->current_revision_no : '—' }}</p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <p class="text-[11px] text-gray-500">Last Activity</p>
+                            <p class="text-sm font-bold text-gray-900 mt-1.5">{{ $stats['last_activity_human'] ?? '—' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+                        {{-- Buyer activity table --}}
+                        <div class="lg:col-span-3">
+                            <x-backend.form-card>
+                                <div class="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-sm font-semibold text-gray-900">Buyer Activity</h3>
+                                        @if($buyerActivity->isNotEmpty())
+                                            <span class="px-2 py-0.5 text-[11px] font-semibold bg-gray-100 text-gray-700 rounded-full">{{ $buyerActivity->count() }}</span>
+                                        @endif
+                                    </div>
+                                    <span class="text-[11px] text-gray-400">What the buyer has done</span>
                                 </div>
-                                <span class="font-bold text-amber-700">{{ $quotation->currency_code }} {{ number_format($addon->line_total, 2) }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </x-backend.form-card>
-            @endif
 
-            <x-backend.form-card title="Commercial Summary">
-                <dl class="space-y-2 text-sm max-w-xs ml-auto">
-                    <div class="flex justify-between"><dt class="text-gray-500">Subtotal</dt><dd class="text-gray-800">{{ $quotation->currency_code }} {{ number_format($quotation->subtotal, 2) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">Tax</dt><dd class="text-gray-800">{{ $quotation->currency_code }} {{ number_format($quotation->tax_amount, 2) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">Discount</dt><dd class="text-gray-800">-{{ $quotation->currency_code }} {{ number_format($quotation->discount_amount, 2) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">Shipping</dt><dd class="text-gray-800">{{ $quotation->currency_code }} {{ number_format($quotation->shipping_charge, 2) }}</dd></div>
-                    <div class="flex justify-between pt-2 border-t border-gray-100"><dt class="font-semibold text-gray-700">Grand Total</dt><dd class="font-bold text-indigo-700">{{ $quotation->currency_code }} {{ number_format($quotation->grand_total, 2) }}</dd></div>
-                </dl>
-            </x-backend.form-card>
+                                @if($buyerActivity->isEmpty())
+                                    <p class="text-sm text-gray-400">No buyer activity yet — this will fill in once the buyer views, messages, or decides on this quotation.</p>
+                                @else
+                                    <div class="-mx-5 -mb-5 max-h-[420px] overflow-y-auto overflow-x-auto custom-vertical-scrollbar [scrollbar-gutter:stable]">
+                                        <table class="w-full text-sm">
+                                            <thead class="sticky top-0 bg-white z-10 shadow-xs">
+                                                <tr class="border-b border-gray-100 text-[11px] text-gray-500 uppercase tracking-wide">
+                                                    <th class="px-5 py-2.5 text-left bg-white whitespace-nowrap">Event</th>
+                                                    <th class="px-5 py-2.5 text-left bg-white">Note</th>
+                                                    <th class="px-5 py-2.5 text-left bg-white whitespace-nowrap">When</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100">
+                                                @foreach($buyerActivity as $event)
+                                                    <tr class="hover:bg-gray-50/60 transition-colors">
+                                                        <td class="px-5 py-2.5 whitespace-nowrap">
+                                                            <span class="inline-flex items-center gap-1.5 font-medium text-gray-800">
+                                                                <span class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 {{ $event->colorClass() }}">
+                                                                    <i class="fa-solid {{ $event->icon() }} text-[9px]"></i>
+                                                                </span>
+                                                                <span>
+                                                                    {{ $event->label() }}
+                                                                    @if($event->user)
+                                                                        <span class="block text-[11px] font-normal text-gray-400">by {{ $event->user->name }}</span>
+                                                                    @endif
+                                                                </span>
+                                                            </span>
+                                                        </td>
+                                                        <td class="px-5 py-2.5 text-gray-500 max-w-xs truncate" title="{{ $event->message }}">{{ $event->message ?? '—' }}</td>
+                                                        <td class="px-5 py-2.5 text-gray-400 whitespace-nowrap" title="{{ $event->created_at->format('M d, Y H:i') }}">{{ $event->created_at->diffForHumans() }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @endif
+                            </x-backend.form-card>
+                        </div>
 
-            {{-- Revision History --}}
-            @if($quotation->revisions->isNotEmpty())
-                <x-backend.form-card title="Revision History">
-                    <div class="space-y-3">
-                        @foreach($quotation->revisions as $rev)
-                            <div class="p-3 bg-gray-50 rounded-lg text-xs flex justify-between items-center">
-                                <div>
-                                    <p class="font-bold text-gray-900">Revision #{{ $rev->revision_no }} &middot; {{ $rev->created_at->format('d M Y, h:i A') }}</p>
-                                    @if($rev->change_summary)
-                                        <p class="text-gray-600 mt-0.5">{{ $rev->change_summary }}</p>
-                                    @endif
+                        {{-- Recent activity timeline — every lifecycle/communication
+                             event, most recent first (both buyer- and
+                             supplier-originated). --}}
+                        <div class="lg:col-span-2">
+                            <x-backend.form-card>
+                                <div class="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-sm font-semibold text-gray-900">Recent Activity</h3>
+                                        @if($quotation->activities->isNotEmpty())
+                                            <span class="px-2 py-0.5 text-[11px] font-semibold bg-gray-100 text-gray-700 rounded-full">{{ $quotation->activities->count() }}</span>
+                                        @endif
+                                    </div>
+                                    <span class="text-[11px] text-gray-400">All activity</span>
                                 </div>
-                                <span class="font-bold text-gray-800">{{ $rev->currency_code }} {{ number_format($rev->grand_total, 2) }}</span>
+
+                                @if($quotation->activities->isEmpty())
+                                    <p class="text-sm text-gray-400">No activity recorded yet.</p>
+                                @else
+                                    <div class="max-h-[420px] overflow-y-auto pr-2 custom-vertical-scrollbar [scrollbar-gutter:stable]">
+                                        <ul class="relative pl-1 -mb-1">
+                                            @foreach($quotation->activities as $activity)
+                                                <li class="flex items-start gap-3 pb-4 relative">
+                                                    @if(!$loop->last)
+                                                        <span class="absolute left-3.5 top-7 bottom-0 w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                                    @endif
+                                                    <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 {{ $activity->colorClass() }} shadow-xs relative z-10 ring-2 ring-white">
+                                                        <i class="fa-solid {{ $activity->icon() }} text-[11px]"></i>
+                                                    </div>
+                                                    <div class="min-w-0 flex-1 pt-0.5">
+                                                        <p class="text-xs font-semibold text-gray-900 leading-snug">{{ $activity->label() }}</p>
+                                                        @if($activity->message)
+                                                            <p class="mt-1 text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-2 py-1 italic">{{ $activity->message }}</p>
+                                                        @endif
+                                                        <p class="text-[11px] text-gray-400 mt-0.5" title="{{ $activity->created_at->format('M d, Y H:i') }}">{{ $activity->created_at->diffForHumans() }}</p>
+                                                    </div>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
+                            </x-backend.form-card>
+                        </div>
+                    </div>
+
+                    @if($quotation->revisions->isNotEmpty())
+                        <x-backend.form-card title="Revision History">
+                            <div class="space-y-3">
+                                @foreach($quotation->revisions as $rev)
+                                    <div class="p-3 bg-gray-50 rounded-lg text-xs flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-gray-900">Revision #{{ $rev->revision_no }} &middot; {{ $rev->created_at->format('d M Y, h:i A') }}</p>
+                                            @if($rev->change_summary)
+                                                <p class="text-gray-600 mt-0.5">{{ $rev->change_summary }}</p>
+                                            @endif
+                                        </div>
+                                        <span class="font-bold text-gray-800">{{ $rev->currency_code }} {{ number_format($rev->grand_total, 2) }}</span>
+                                    </div>
+                                @endforeach
                             </div>
-                        @endforeach
-                    </div>
-                </x-backend.form-card>
-            @endif
-
-        </div>
-
-        {{-- Right / Buyer & RFQ Card --}}
-        <div class="xl:col-span-4 space-y-6">
-            <x-backend.form-card title="Buyer Details">
-                <div class="space-y-2 text-xs">
-                    <p class="font-bold text-gray-900 text-sm">{{ $quotation->rfq?->buyerAccount?->buyerProfile?->organization_name ?? $quotation->rfq?->buyerAccount?->display_name }}</p>
-                    <p class="text-gray-500"><i class="fa-solid fa-location-dot mr-1"></i>{{ $quotation->rfq?->buyerAccount?->buyerProfile?->country?->name ?? 'Location specified in RFQ' }}</p>
-                    <div class="pt-3 border-t border-gray-100">
-                        <a href="{{ route('supplier.opportunities.show', $quotation->rfq) }}" class="text-indigo-600 font-semibold hover:underline">
-                            View Original RFQ &rarr;
-                        </a>
-                    </div>
+                        </x-backend.form-card>
+                    @endif
                 </div>
-            </x-backend.form-card>
 
-            <x-backend.form-card title="RFQ Version">
-                <p class="text-xs text-gray-500">This quotation responds to <span class="font-semibold text-gray-800">version {{ $quotation->rfq_version_no }}</span>.</p>
-                @if($versionChanged)
-                    <p class="text-xs text-amber-700 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>The RFQ is now at version {{ $quotation->rfq->current_version_no }}.</p>
-                @else
-                    <p class="text-xs text-emerald-700 mt-1"><i class="fa-solid fa-circle-check mr-1"></i>Up to date with the current RFQ version.</p>
-                @endif
-            </x-backend.form-card>
+            </div>
+
+            {{-- Right / persistent sidebar — outside the tab panes but inside
+                 the same x-data scope, so its buttons can also flip `tab`. --}}
+            <div class="xl:col-span-4 space-y-6">
+
+                <x-backend.form-card title="Actions">
+                    <div class="space-y-2">
+                        @if($quotation->status === 'draft')
+                            <a href="{{ route('supplier.quotations.edit', $quotation) }}" class="w-full text-xs font-semibold px-3 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit Draft
+                            </a>
+                            <form method="POST" action="{{ route('supplier.quotations.submit', $quotation) }}">
+                                @csrf
+                                <button type="submit" class="btn-primary w-full text-xs font-bold px-3 py-2.5 rounded-lg flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-paper-plane"></i> Submit Quotation
+                                </button>
+                            </form>
+                        @else
+                            @if($quotation->status === 'revision_requested' || $canReviseForUpdate)
+                                <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary w-full text-xs font-bold px-3 py-2.5 rounded-lg flex items-center justify-center gap-1.5 {{ $quotation->status === 'revision_requested' ? 'animate-pulse' : '' }}">
+                                    <i class="fa-solid fa-rotate"></i> Revise Quote
+                                </a>
+                            @endif
+                            @if($canUndoSubmit)
+                                <form method="POST" action="{{ route('supplier.quotations.undo-submit', $quotation) }}"
+                                      onsubmit="return confirmSwal(this, 'Undo this submission?', 'The quotation goes back to draft so you can make changes, then submit again when ready.', 'question', 'Yes, undo submit')">
+                                    @csrf
+                                    <button type="submit" class="w-full text-xs font-semibold px-3 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-1.5">
+                                        <i class="fa-solid fa-rotate-left"></i> Undo Submit
+                                    </button>
+                                </form>
+                            @endif
+                        @endif
+                    </div>
+                </x-backend.form-card>
+
+                <x-backend.form-card title="Activity">
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Viewed by Buyer</span>
+                            <span class="font-semibold {{ $stats['viewed_by_buyer'] ? 'text-emerald-600' : 'text-gray-400' }}">
+                                {{ $stats['viewed_by_buyer'] ? 'Yes, ' . $stats['viewed_at_human'] : 'Not yet' }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Messages</span>
+                            <span class="font-semibold text-gray-800">{{ $stats['messages_count'] }}</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span class="text-gray-500">Last Activity</span>
+                            <span class="font-semibold text-gray-800">{{ $stats['last_activity_human'] ?? '—' }}</span>
+                        </div>
+                    </div>
+                    <button type="button" @click="tab = 'activity'" class="w-full text-xs font-semibold py-2 mt-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                        View Full Statistics
+                    </button>
+                </x-backend.form-card>
+
+                <x-backend.form-card title="Buyer Details">
+                    <div class="space-y-2 text-xs">
+                        <p class="font-bold text-gray-900 text-sm">{{ $quotation->rfq?->buyerAccount?->buyerProfile?->organization_name ?? $quotation->rfq?->buyerAccount?->display_name }}</p>
+                        <p class="text-gray-500"><i class="fa-solid fa-location-dot mr-1"></i>{{ $quotation->rfq?->buyerAccount?->buyerProfile?->country?->name ?? 'Location specified in RFQ' }}</p>
+                        <div class="pt-3 border-t border-gray-100">
+                            <a href="{{ route('supplier.opportunities.show', $quotation->rfq) }}" class="text-indigo-600 font-semibold hover:underline">
+                                View Original RFQ &rarr;
+                            </a>
+                        </div>
+                    </div>
+                </x-backend.form-card>
+
+                <x-backend.form-card title="RFQ Version">
+                    <p class="text-xs text-gray-500">This quotation responds to <span class="font-semibold text-gray-800">version {{ $quotation->rfq_version_no }}</span>.</p>
+                    @if($versionChanged)
+                        <p class="text-xs text-amber-700 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>The RFQ is now at version {{ $quotation->rfq->current_version_no }}.</p>
+                    @else
+                        <p class="text-xs text-emerald-700 mt-1"><i class="fa-solid fa-circle-check mr-1"></i>Up to date with the current RFQ version.</p>
+                    @endif
+                </x-backend.form-card>
+            </div>
+
         </div>
-
     </div>
 
 @endsection

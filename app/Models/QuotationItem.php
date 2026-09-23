@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -97,9 +98,23 @@ class QuotationItem extends Model implements HasMedia
         return $this->hasMany(PurchaseOrderItem::class, 'quotation_item_id');
     }
 
-    public function attributeValues(): HasMany
+    /**
+     * All attribute values across EVERY offer under this Product Response —
+     * quotation_item_attribute_values has no quotation_item_id column of its
+     * own (dropped as redundant; reached only via the offer it belongs to),
+     * so this goes through quotation_item_offers rather than a direct
+     * hasMany. Individual call sites needing one specific offer's set still
+     * filter this by quotation_item_offer_id (or just use
+     * QuotationItemOffer::attributeValues() directly on that offer).
+     */
+    public function attributeValues(): HasManyThrough
     {
-        return $this->hasMany(QuotationItemAttributeValue::class, 'quotation_item_id');
+        return $this->hasManyThrough(
+            QuotationItemAttributeValue::class,
+            QuotationItemOffer::class,
+            'quotation_item_id',
+            'quotation_item_offer_id'
+        );
     }
 
     public function offers(): HasMany

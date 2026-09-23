@@ -138,6 +138,33 @@ class QuotationPolicy
         return ! $rfq->quotations()->where('supplier_account_id', $account->id)->exists();
     }
 
+    /**
+     * Usage: $this->authorize('selectProducts', [Quotation::class, $rfq]);
+     * Allows selecting marketplace products if the supplier can either create a new quotation
+     * for this RFQ, or is currently editing an active draft / revision of their existing quotation.
+     */
+    public function selectProducts(User $user, Rfq $rfq): bool
+    {
+        $account = $this->checkAccess($user, 'supplier', 'quotation.create')
+            ?? $this->checkAccess($user, 'supplier', 'quotation.submit');
+
+        if (! $account) {
+            return false;
+        }
+
+        if (! $rfq->acceptsQuotations()) {
+            return false;
+        }
+
+        $existing = $rfq->quotations()->where('supplier_account_id', $account->id)->first();
+        if (! $existing) {
+            return true;
+        }
+
+        return $this->ownsAsSupplier($user, $existing)
+            && in_array($existing->status, ['draft', 'revision_requested'], true);
+    }
+
     public function update(User $user, Quotation $quotation): bool
     {
         $versionChanged = $quotation->rfq && $quotation->rfq_version_no !== $quotation->rfq->current_version_no;
@@ -178,5 +205,23 @@ class QuotationPolicy
         return $this->checkAccess($user, 'supplier', 'quotation.withdraw') !== null
             && $this->ownsAsSupplier($user, $quotation)
             && ! in_array($quotation->status, ['withdrawn', 'awarded', 'rejected', 'expired', 'draft'], true);
+    }
+
+    /**
+     * Pulling a submitted quotation back to draft — same reachable-status
+     * gate as withdraw() (any live, non-terminal status), just the opposite
+     * destination. Reuses the 'quotation.submit' permission since it's the
+     * direct inverse of that action.
+     */
+    public function undoSubmit(User $user, Quotation $quotation): bool
+    {
+        $hasActiveAward = $quotation->status === 'awarded'
+            || $quotation->award()->whereIn('status', ['pending_supplier_response', 'accepted'])->exists()
+            || ($quotation->rfq && $quotation->rfq->awards()->whereIn('status', ['pending_supplier_response', 'accepted'])->exists());
+
+        return $this->checkAccess($user, 'supplier', 'quotation.submit') !== null
+            && $this->ownsAsSupplier($user, $quotation)
+            && ! in_array($quotation->status, ['withdrawn', 'awarded', 'rejected', 'expired', 'draft'], true)
+            && ! $hasActiveAward;
     }
 }

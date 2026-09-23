@@ -31,6 +31,8 @@ class Quotation extends Model implements HasMedia
 
     protected $fillable = [
         'quotation_number',
+        'title',
+        'description',
         'rfq_id',
         'supplier_account_id',
         'submitted_by_user_id',
@@ -46,6 +48,7 @@ class Quotation extends Model implements HasMedia
         'currency_code',
         'lead_time_days',
         'valid_until',
+        'expected_delivery_date',
         'warranty_terms',
         'support_terms',
         'payment_terms',
@@ -75,6 +78,7 @@ class Quotation extends Model implements HasMedia
             'grand_total'         => 'decimal:2',
             'lead_time_days'      => 'integer',
             'valid_until'         => 'date',
+            'expected_delivery_date' => 'date',
             'rejected_at'         => 'datetime',
             'buyer_viewed_at'     => 'datetime',
             'decision_at'         => 'datetime',
@@ -139,6 +143,11 @@ class Quotation extends Model implements HasMedia
     public function shortlists(): HasMany
     {
         return $this->hasMany(RfqShortlist::class, 'quotation_id');
+    }
+
+    public function deliveryAddresses(): HasMany
+    {
+        return $this->hasMany(QuotationDeliveryAddress::class, 'quotation_id')->orderBy('sort_order');
     }
 
     /* ── Outcome ────────────────────────────────────────────────────────── */

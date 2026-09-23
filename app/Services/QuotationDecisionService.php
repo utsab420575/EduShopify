@@ -36,6 +36,8 @@ class QuotationDecisionService
             ]
         );
 
+        $this->quotationActivities->record($quotation, 'shortlisted', $notes, 'buyer', $user->id);
+
         $this->notifySupplier($quotation, "Your quotation {$quotation->quotation_number} was shortlisted by the buyer.");
 
         return $shortlist;
@@ -61,7 +63,7 @@ class QuotationDecisionService
 
             $quotation->update(['status' => 'revision_requested']);
 
-            $this->quotationActivities->record($quotation, 'buyer_requested_revision', $requestedChanges);
+            $this->quotationActivities->record($quotation, 'buyer_requested_revision', $requestedChanges, 'buyer', $user->id);
 
             $this->notifySupplier($quotation, "The buyer requested changes to your quotation {$quotation->quotation_number}.", route('supplier.quotations.revision.create', $quotation));
 
@@ -69,7 +71,7 @@ class QuotationDecisionService
         });
     }
 
-    public function reject(Quotation $quotation, string $reason): Quotation
+    public function reject(Quotation $quotation, string $reason, ?User $user = null): Quotation
     {
         if (in_array($quotation->status, ['rejected', 'withdrawn', 'awarded', 'expired'], true)) {
             throw ValidationException::withMessages(['status' => 'This quotation can no longer be rejected.']);
@@ -81,7 +83,7 @@ class QuotationDecisionService
             'rejected_at'        => now(),
         ]);
 
-        $this->quotationActivities->record($quotation, 'rejected', $reason);
+        $this->quotationActivities->record($quotation, 'rejected', $reason, 'buyer', $user?->id ?? auth()->id());
 
         $this->notifySupplier($quotation, "Your quotation {$quotation->quotation_number} was not selected by the buyer.");
 
@@ -107,7 +109,7 @@ class QuotationDecisionService
     {
         if ($quotation->buyer_viewed_at === null) {
             $quotation->update(['buyer_viewed_at' => now()]);
-            $this->quotationActivities->record($quotation, 'viewed_by_buyer');
+            $this->quotationActivities->record($quotation, 'viewed_by_buyer', null, 'buyer', auth()->id());
         }
     }
 
