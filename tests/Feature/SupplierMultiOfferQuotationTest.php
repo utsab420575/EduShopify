@@ -312,7 +312,7 @@ class SupplierMultiOfferQuotationTest extends TestCase
         $this->assertEquals('8000.00', $quotation->grand_total);
     }
 
-    public function test_a_different_supplier_cannot_offer_another_suppliers_marketplace_listing(): void
+    public function test_a_different_supplier_can_offer_another_suppliers_marketplace_listing(): void
     {
         $this->seedBase();
         $supplierA = $this->makeActiveAccount('supplier', 'multioffer-sA@example.com');
@@ -324,10 +324,8 @@ class SupplierMultiOfferQuotationTest extends TestCase
 
         $service = app(QuotationService::class);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
-
-        // supplierB tries to submit a draft offering supplierA's own listing.
-        $service->submitDraft($service->saveDraft($rfq, $supplierB->account, $supplierB, [
+        // supplierB submits a draft offering supplierA's listing.
+        $quotation = $service->submitDraft($service->saveDraft($rfq, $supplierB->account, $supplierB, [
             'items' => [[
                 'rfq_item_id' => $rfqItemId, 'item_name' => 'Model X', 'quantity' => 1, 'unit_price' => 700,
                 'offered_listing_id' => $listingA->id,
@@ -336,9 +334,12 @@ class SupplierMultiOfferQuotationTest extends TestCase
                 ],
             ]],
         ]));
+
+        $this->assertEquals('submitted', $quotation->status);
+        $this->assertEquals($listingA->id, $quotation->items->first()->offered_listing_id);
     }
 
-    public function test_product_selector_page_shows_matching_and_browsable_listings_scoped_to_the_supplier(): void
+    public function test_product_selector_page_shows_matching_and_browsable_marketplace_listings_across_all_suppliers(): void
     {
         $this->seedBase();
         $supplier = $this->makeActiveAccount('supplier', 'multioffer-sel1@example.com');
@@ -356,7 +357,57 @@ class SupplierMultiOfferQuotationTest extends TestCase
 
         $response->assertOk();
         $response->assertSee($ownListing->name);
-        $response->assertDontSee($otherListing->name);
+        $response->assertSee($otherListing->name);
+
+        // Verify that prefill endpoint also works for marketplace listings from other suppliers
+        $prefillResponse = $this->actingAs($supplier)->get(
+            route('supplier.quotations.listings.prefill', $otherListing)
+        );
+        $prefillResponse->assertOk();
+        $prefillResponse->assertJsonPath('item.marketplace_product_id', $otherListing->id);
+        $prefillResponse->assertJsonPath('item.product_name', $otherListing->name);
+    }
+
+    public function test_supplier_can_save_and_submit_quotation_offering_marketplace_product_owned_by_another_supplier(): void
+    {
+        $this->seedBase();
+        $supplierA = $this->makeActiveAccount('supplier', 'supplier_offera@example.com');
+        $supplierB = $this->makeActiveAccount('supplier', 'supplier_offerb@example.com');
+        $buyer = $this->makeActiveAccount('buyer', 'buyer_offerab@example.com');
+        $rfq = $this->makeOpenRfq($buyer);
+        $rfqItemId = $rfq->items[0]->id;
+
+        $otherListing = $this->makeListing($supplierB, 'MarketplacePick');
+
+        $service = app(QuotationService::class);
+        $draft = $service->saveDraft($rfq, $supplierA->account, $supplierA, [
+            'items' => [
+                [
+                    'rfq_item_id' => $rfqItemId,
+                    'item_name' => 'Marketplace Picked Item',
+                    'quantity' => 10,
+                    'unit_price' => 500,
+                    'offered_listing_id' => $otherListing->id,
+                    'offers' => [
+                        [
+                            'offer_method' => 'marketplace',
+                            'marketplace_product_id' => $otherListing->id,
+                            'product_name' => $otherListing->name,
+                            'quantity' => 10,
+                            'unit_price' => 500,
+                            'is_primary' => true,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertNotNull($draft);
+        $this->assertEquals('draft', $draft->status);
+
+        $submitted = $service->submitDraft($draft, false, $supplierA);
+        $this->assertEquals('submitted', $submitted->status);
+        $this->assertEquals($otherListing->id, $submitted->items[0]->offered_listing_id);
     }
 
     public function test_product_selector_page_requires_quotation_creation_eligibility(): void

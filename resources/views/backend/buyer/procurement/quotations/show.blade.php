@@ -264,7 +264,7 @@
                                                     @if($offers->count() > 1)
                                                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2.5 flex items-center gap-1.5">
                                                             <i class="fa-solid fa-layer-group text-indigo-500"></i>
-                                                            {{ $offers->count() }} offers provided for this product &mdash; choose which one to award:
+                                                            {{ $offers->count() }} offers provided for this product:
                                                         </p>
                                                     @endif
 
@@ -313,16 +313,6 @@
                                                                         <p class="text-xs font-bold text-gray-900">{{ number_format($offer->total_price, 2) }} {{ $quotation->currency_code }}</p>
                                                                         <p class="text-[11px] text-gray-400">{{ $offer->delivery_time ? $offer->delivery_time . ' days delivery' : 'Delivery: standard' }}</p>
                                                                     </div>
-
-                                                                    @if(\Illuminate\Support\Facades\Gate::allows('selectOffer', $quotation) && $offers->count() > 1)
-                                                                        <form method="POST" action="{{ route('buyer.quotations.items.offers.select', [$quotation, $item, $offer]) }}" class="shrink-0">
-                                                                            @csrf
-                                                                            <button type="submit" {{ $offer->is_selected ? 'disabled' : '' }}
-                                                                                    class="text-xs font-bold px-3 py-1.5 rounded-lg border transition-all {{ $offer->is_selected ? 'bg-emerald-600 text-white border-emerald-600 cursor-default shadow-2xs' : 'border-gray-300 text-gray-700 hover:bg-gray-100' }}">
-                                                                                {{ $offer->is_selected ? 'Selected' : 'Select Offer' }}
-                                                                            </button>
-                                                                        </form>
-                                                                    @endif
                                                                 </div>
                                                             </div>
                                                         @endforeach

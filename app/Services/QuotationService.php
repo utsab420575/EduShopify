@@ -593,11 +593,34 @@ class QuotationService
             throw ValidationException::withMessages(['items' => 'This RFQ does not allow alternative products.']);
         }
 
-        $listingIds = $items->map(fn($i) => $field($i, 'offered_listing_id'))->filter()->unique();
+        $listingIds = $items->flatMap(function ($item) use ($field) {
+            $ids = [];
+            $offeredId = $field($item, 'offered_listing_id');
+            if ($offeredId) {
+                $ids[] = $offeredId;
+            }
+            $offers = $field($item, 'offers');
+            if (is_iterable($offers)) {
+                foreach ($offers as $offer) {
+                    $pid = is_array($offer) ? ($offer['marketplace_product_id'] ?? null) : ($offer->marketplace_product_id ?? null);
+                    if ($pid) {
+                        $ids[] = $pid;
+                    }
+                }
+            }
+
+            return $ids;
+        })->filter()->unique();
+
         if ($listingIds->isNotEmpty()) {
-            $ownedCount = Listing::where('supplier_account_id', $supplierAccountId)->whereIn('id', $listingIds)->count();
-            if ($ownedCount !== $listingIds->count()) {
-                throw ValidationException::withMessages(['items' => 'One of the offered listings does not belong to your account.']);
+            $validCount = Listing::whereIn('id', $listingIds)
+                ->where(function ($q) use ($supplierAccountId) {
+                    $q->where('approval_status', 'approved')
+                        ->orWhere('supplier_account_id', $supplierAccountId);
+                })
+                ->count();
+            if ($validCount !== $listingIds->count()) {
+                throw ValidationException::withMessages(['items' => 'One of the offered marketplace products is no longer available.']);
             }
         }
     }

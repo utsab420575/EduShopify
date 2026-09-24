@@ -108,6 +108,38 @@ class QuotationItemOffer extends Model implements HasMedia
         return $this->hasMany(QuotationItemAttributeValue::class, 'quotation_item_offer_id');
     }
 
+    /**
+     * This offer's structured attribute values grouped by attribute group,
+     * sorted the same way Listing specifications are (see e.g.
+     * Supplier\Catalog\ListingController's groupedSpecifications building) —
+     * so read-only display can reuse the exact same
+     * backend.*.listings.partials.preview-specifications partial. Caller
+     * must have eager-loaded attributeValues.attribute.attributeGroup (+
+     * .unit, .attributeValue) or this triggers N+1 queries.
+     *
+     * @return \Illuminate\Support\Collection<int, array{group_id: int, group_name: string, sort_order: int, items: \Illuminate\Support\Collection}>
+     */
+    public function groupedSpecifications(): \Illuminate\Support\Collection
+    {
+        return $this->attributeValues
+            ->groupBy(fn ($val) => $val->attribute?->attribute_group_id ?? 0)
+            ->map(function ($items, $groupId) {
+                $group = $groupId > 0 ? $items->first()->attribute?->attributeGroup : null;
+
+                return [
+                    'group_id'   => $groupId,
+                    'group_name' => $group?->name ?? 'General Specifications',
+                    'sort_order' => $group?->sort_order ?? 9999,
+                    'items'      => $items->sortBy([
+                        ['attribute.sort_order', 'asc'],
+                        ['attribute.name', 'asc'],
+                    ]),
+                ];
+            })
+            ->sortBy('sort_order')
+            ->values();
+    }
+
     public function scopePrimary(Builder $query): Builder
     {
         return $query->where('is_primary', true);

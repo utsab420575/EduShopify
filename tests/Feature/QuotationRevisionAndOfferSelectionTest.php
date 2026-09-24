@@ -364,4 +364,60 @@ class QuotationRevisionAndOfferSelectionTest extends TestCase
         $response->assertForbidden();
         $this->assertFalse((bool) $hpOffer->fresh()->is_selected);
     }
+
+    public function test_compare_page_loads_and_exposes_comparison_data_and_ajax_offer_selection(): void
+    {
+        $this->seedBase();
+        $supplier = $this->makeActiveAccount('supplier', 'revision-s6@example.com');
+        $buyer = $this->makeActiveAccount('buyer', 'revision-b6@example.com');
+        $rfq = $this->makeOpenRfq($buyer);
+        $rfqItemId = $rfq->items[0]->id;
+
+        $service = app(QuotationService::class);
+        $quotation = $service->saveDraft($rfq, $supplier->account, $supplier, [
+            'items' => [[
+                'rfq_item_id' => $rfqItemId, 'item_name' => 'Model X', 'quantity' => 10, 'unit_price' => 700,
+                'offers' => [
+                    ['offer_method' => 'marketplace', 'product_name' => 'Dell Model X', 'quantity' => 10, 'unit_price' => 700, 'is_primary' => true],
+                    ['offer_method' => 'custom', 'product_name' => 'HP Model X', 'quantity' => 10, 'unit_price' => 900, 'is_primary' => false],
+                ],
+            ]],
+        ]);
+        $quotation = $service->submitDraft($quotation);
+
+        // 1. Compare page renders successfully
+        $response = $this->actingAs($buyer)->get(route('buyer.quotations.compare', $rfq));
+        $response->assertOk();
+        $response->assertViewHas('defaultQuotationIds', [$quotation->id]);
+
+        // 2. Compare data API returns enriched payload
+        $dataResponse = $this->actingAs($buyer)->postJson(route('buyer.quotations.compare.data', $rfq), [
+            'quotation_ids' => [$quotation->id],
+        ]);
+        $dataResponse->assertOk();
+        $data = $dataResponse->json();
+        $this->assertEquals(7000.0, $data['commercial']['rows'][0]['effective_grand_total']);
+        $this->assertFalse($data['commercial']['rows'][0]['has_alternative_selected']);
+
+        // 3. Select alternative offer via AJAX
+        $item = $quotation->items->first();
+        $hpOffer = $item->offers()->where('is_primary', false)->first();
+
+        $selectResponse = $this->actingAs($buyer)->postJson(
+            route('buyer.quotations.items.offers.select', [$quotation, $item, $hpOffer])
+        );
+        $selectResponse->assertOk();
+        $selectResponse->assertJson([
+            'success' => true,
+            'selected_offer_id' => $hpOffer->id,
+        ]);
+
+        // 4. Data API now reflects the alternative offer in effective_grand_total
+        $dataResponseAfter = $this->actingAs($buyer)->postJson(route('buyer.quotations.compare.data', $rfq), [
+            'quotation_ids' => [$quotation->id],
+        ]);
+        $dataAfter = $dataResponseAfter->json();
+        $this->assertEquals(9000.0, $dataAfter['commercial']['rows'][0]['effective_grand_total']);
+        $this->assertTrue($dataAfter['commercial']['rows'][0]['has_alternative_selected']);
+    }
 }

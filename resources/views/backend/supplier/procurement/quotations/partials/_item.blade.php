@@ -81,7 +81,7 @@
                         <span class="text-xs font-bold text-indigo-950">Marketplace Product</span>
                     </div>
                     <p class="text-[11px] text-gray-500 leading-tight">
-                        Pick matching items from your catalog. Supports selecting multiple offers.
+                        Pick matching items from the marketplace. Supports selecting multiple offers.
                     </p>
                 </button>
 

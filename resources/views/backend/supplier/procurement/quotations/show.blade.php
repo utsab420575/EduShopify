@@ -222,122 +222,51 @@
                     </x-backend.form-card>
                 </div>
 
-                {{-- ═══════ Items ═══════ --}}
+                {{-- ═══════ Items ═══════
+                     Accordion per buyer RFQ item — same visual language as
+                     the edit form's Step 1 ("Buyer Requested" panel +
+                     Product Response/Offer cards), just read-only, so the
+                     supplier's own already-submitted quotation is just as
+                     easy to review as it was to build. --}}
                 <div x-show="tab === 'items'" x-cloak class="space-y-6">
                     <x-backend.form-card title="Quoted Items">
-                        <div class="space-y-4">
-                            @forelse($requestedItems as $item)
-                                @php($rfqItem = $item->rfqItem)
-                                <div class="border border-gray-200 rounded-xl p-4">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div class="min-w-0">
-                                            <div class="flex items-center gap-2 flex-wrap">
+                        @if($canReviseForUpdate && $unquotedRfqItems->isNotEmpty())
+                            <div class="flex items-center justify-between gap-3 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p class="text-xs text-amber-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ $unquotedRfqItems->count() }} buyer item(s) below aren't quoted yet.</p>
+                                <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-1.5 rounded-lg shrink-0">
+                                    <i class="fa-solid fa-plus text-[10px]"></i> Add to Quote
+                                </a>
+                            </div>
+                        @endif
+
+                        @forelse($quotation->rfq?->items->sortBy('sort_order') ?? [] as $rfqItem)
+                            @include('backend.supplier.procurement.quotations.partials._show-item-accordion', [
+                                'rfqItem' => $rfqItem,
+                                'productResponses' => $requestedItems->where('rfq_item_id', $rfqItem->id)->values(),
+                            ])
+                        @empty
+                            <p class="text-sm text-gray-400">No RFQ items.</p>
+                        @endforelse
+
+                        @php($extraItems = $requestedItems->whereNull('rfq_item_id'))
+                        @if($extraItems->isNotEmpty())
+                            <div class="mt-4 pt-4 border-t-2 border-dashed border-indigo-200">
+                                <h5 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Additional Items You Offered</h5>
+                                <div class="space-y-2">
+                                    @foreach($extraItems as $item)
+                                        <div class="border border-gray-200 rounded-xl p-3.5">
+                                            <div class="flex items-center justify-between gap-3">
                                                 <p class="text-sm font-semibold text-gray-900">{{ $item->item_name }}</p>
-                                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border {{ $sourceClass($item) }}">{{ $sourceLabel($item) }}</span>
+                                                <p class="text-indigo-700 font-bold text-sm shrink-0">{{ $quotation->currency_code }} {{ number_format($item->line_total, 2) }}</p>
                                             </div>
-                                            @if($rfqItem)
-                                                <p class="text-xs text-gray-500 mt-0.5">
-                                                    Responding to: <span class="font-medium text-gray-800">{{ $rfqItem->item_name }}</span>
-                                                    @if($rfqItem->category)
-                                                        <span class="text-gray-400">({{ $rfqItem->category->name }})</span>
-                                                    @endif
-                                                    @if($rfqItem->isRequirement())
-                                                        <span class="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                                            <i class="fa-solid fa-file-invoice text-[9px] mr-0.5"></i> Requirement
-                                                        </span>
-                                                    @endif
-                                                </p>
-                                                @if($rfqItem->isRequirement() && !empty($rfqItem->specs['description']))
-                                                    <p class="text-xs text-gray-600 mt-1 bg-amber-50/40 p-2 rounded border border-amber-100 leading-relaxed">
-                                                        <strong class="text-amber-900 font-semibold">Scope:</strong> {{ $rfqItem->specs['description'] }}
-                                                    </p>
-                                                @endif
-                                                @if($rfqItem->media->isNotEmpty())
-                                                    <div class="mt-2 flex items-center gap-1.5 flex-wrap">
-                                                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Buyer Files:</span>
-                                                        @foreach($rfqItem->media as $file)
-                                                            <a href="{{ $file->getUrl() }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-indigo-700 hover:text-indigo-900 hover:border-indigo-300 font-medium transition shadow-2xs">
-                                                                <i class="fa-solid fa-paperclip text-[10px]"></i>
-                                                                <span class="truncate max-w-[120px]">{{ $file->file_name }}</span>
-                                                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
-                                                            </a>
-                                                        @endforeach
-                                                    </div>
-                                                @endif
-                                            @endif
                                             @if($item->description)
                                                 <p class="text-xs text-gray-500 mt-1">{{ $item->description }}</p>
                                             @endif
                                         </div>
-                                        <div class="text-right shrink-0 text-xs">
-                                            <p class="text-gray-800 font-semibold">{{ (float) $item->quantity }} {{ $item->unit?->symbol ?? $item->custom_unit }}</p>
-                                            <p class="text-gray-500 mt-0.5">{{ $quotation->currency_code }} {{ number_format($item->unit_price, 2) }} / unit</p>
-                                            <p class="text-indigo-700 font-bold mt-0.5">{{ $quotation->currency_code }} {{ number_format($item->line_total, 2) }}</p>
-                                        </div>
-                                    </div>
-
-                                    @php($primaryOfferAttributeValues = $item->attributeValues->where('quotation_item_offer_id', $item->offers->firstWhere('is_primary', true)?->id))
-                                    @if($primaryOfferAttributeValues->isNotEmpty())
-                                        <div class="mt-3 pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
-                                            @foreach($primaryOfferAttributeValues as $value)
-                                                @php($requestedValue = $rfqItem?->attributeValues->firstWhere('attribute_id', $value->attribute_id))
-                                                @php($differs = $requestedValue && $requestedValue->formattedValue() !== $value->formattedValue())
-                                                <div class="flex items-center justify-between text-[11px] gap-2">
-                                                    <span class="text-gray-500">{{ $value->attribute?->name }}</span>
-                                                    <span class="text-right">
-                                                        <span class="text-gray-400">{{ $requestedValue?->formattedValue() ?? '—' }}</span>
-                                                        <i class="fa-solid fa-arrow-right text-gray-300 mx-1"></i>
-                                                        <span class="{{ $differs ? 'text-amber-700 font-semibold' : 'text-gray-700 font-semibold' }}">{{ $value->formattedValue() }}</span>
-                                                    </span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                    @endforeach
                                 </div>
-                            @empty
-                                <p class="text-sm text-gray-400">No items quoted yet.</p>
-                            @endforelse
-
-                            @if($unquotedRfqItems->isNotEmpty())
-                                <div class="mt-4 pt-4 border-t-2 border-dashed border-amber-200">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <div>
-                                            <h5 class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                                                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
-                                                Buyer's Requested Items Not in this Quotation ({{ $unquotedRfqItems->count() }})
-                                            </h5>
-                                            <p class="text-[11px] text-gray-500 mt-0.5">These items were added to the RFQ after or separately from this quote.</p>
-                                        </div>
-                                        @if($canReviseForUpdate)
-                                            <a href="{{ route('supplier.quotations.revision.create', $quotation) }}" class="btn-primary text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                                                <i class="fa-solid fa-plus text-[10px]"></i> Add to Quote
-                                            </a>
-                                        @endif
-                                    </div>
-                                    <div class="space-y-2">
-                                        @foreach($unquotedRfqItems as $uItem)
-                                            <div class="flex items-center justify-between p-3 rounded-xl bg-amber-50/50 border border-amber-200 text-xs">
-                                                <div class="min-w-0">
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="font-bold text-gray-900">{{ $uItem->item_name }}</span>
-                                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $uItem->isRequirement() ? 'bg-amber-50 text-amber-700 border border-amber-200' : ($uItem->listing_id ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200') }}">
-                                                            {{ $uItem->isRequirement() ? 'Requirement (Quotation Only)' : ($uItem->listing_id ? 'Marketplace Product' : 'Custom Product') }}
-                                                        </span>
-                                                    </div>
-                                                    <p class="text-[11px] text-gray-500 mt-0.5">{{ $uItem->category?->name ?? 'General' }}</p>
-                                                </div>
-                                                <div class="text-right shrink-0">
-                                                    <span class="font-bold text-gray-800">{{ (float)$uItem->quantity }} {{ $uItem->unit?->name ?? $uItem->custom_unit ?? 'units' }}</span>
-                                                    @if($uItem->estimated_unit_price)
-                                                        <p class="text-[11px] text-indigo-600 font-semibold">Target: {{ $quotation->currency_code }} {{ number_format((float)$uItem->estimated_unit_price, 2) }}</p>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
+                            </div>
+                        @endif
                     </x-backend.form-card>
 
                     @if($addonItems->isNotEmpty())

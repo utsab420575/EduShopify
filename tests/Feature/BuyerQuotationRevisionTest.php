@@ -100,7 +100,7 @@ class BuyerQuotationRevisionTest extends TestCase
         $this->actingAs($buyer)->get(route('buyer.quotations.show', $quotation))
             ->assertOk()
             ->assertSee('Revision History')
-            ->assertSee('Revision 1')
-            ->assertSee('Revision 2');
+            ->assertSee('Revision #1')
+            ->assertSee('Revision #2');
     }
 }

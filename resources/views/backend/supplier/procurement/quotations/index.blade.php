@@ -114,9 +114,9 @@
                     </tbody>
                 </table>
             </div>
-            @if($quotations->hasPages())
+            @if($quotations->total() > 0)
                 <div class="p-4 border-t border-gray-100">
-                    {{ $quotations->links() }}
+                    <x-backend.pagination :paginator="$quotations" />
                 </div>
             @endif
         @endif

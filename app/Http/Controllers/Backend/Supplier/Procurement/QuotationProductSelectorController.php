@@ -45,11 +45,25 @@ class QuotationProductSelectorController extends Controller
         $this->authorize('selectProducts', [Quotation::class, $rfq]);
 
         $account = $this->currentAccount();
-        $baseQuery = fn () => $account->listings()->where('approval_status', 'approved');
+        $baseQuery = fn () => Listing::query()->where(function (Builder $query) use ($account) {
+            $query->where(function (Builder $q) {
+                $q->published()
+                    ->orWhere(function (Builder $p) {
+                        $p->where('approval_status', 'approved')
+                            ->where('is_active', true);
+                    });
+            });
+            if ($account) {
+                $query->orWhere(function (Builder $q) use ($account) {
+                    $q->where('supplier_account_id', $account->id)
+                        ->where('approval_status', 'approved');
+                });
+            }
+        });
 
         // ── 1. Smart Matching Engine ──────────────────────────────────────────
         $candidates = $baseQuery()
-            ->with(['mainCategory', 'primaryImage', 'attributeValues.attribute', 'attributeValues.attributeValue'])
+            ->with(['mainCategory', 'primaryImage', 'brand', 'supplierAccount.supplierProfile', 'attributeValues.attribute', 'attributeValues.attributeValue'])
             ->get();
 
         // A. Resolve All Relevant Categories (Primary + Buyer Category Suggestions)
@@ -258,7 +272,7 @@ class QuotationProductSelectorController extends Controller
             ->when($request->filled('brand'), fn ($q) => $q->where('brand_id', $request->integer('brand')))
             ->when($request->filled('price_min'), fn ($q) => $q->where('base_price', '>=', $request->float('price_min')))
             ->when($request->filled('price_max'), fn ($q) => $q->where('base_price', '<=', $request->float('price_max')))
-            ->with(['mainCategory', 'primaryImage', 'brand'])
+            ->with(['mainCategory', 'primaryImage', 'brand', 'supplierAccount.supplierProfile'])
             ->orderByDesc('is_featured')
             ->latest('published_at')
             ->paginate(12)

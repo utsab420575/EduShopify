@@ -61,7 +61,7 @@ class QuotationComparisonService
                 'items.offeredVariant',
                 'items.unit',
                 'items.media',
-                'items.offers.marketplaceProduct',
+                'items.offers.marketplaceProduct.media',
                 'items.offers.offeredVariant',
                 'items.offers.unit',
                 'items.offers.media',
@@ -85,13 +85,25 @@ class QuotationComparisonService
      */
     public function buildSummary(Rfq $rfq, Collection $quotations): array
     {
-        return $quotations->map(function (Quotation $q) use ($rfq) {
+        // Computed once for the whole RFQ (not per quotation) — mirrors
+        // QuotationPolicy::award()'s "only one non-rejected/non-cancelled
+        // award may be active per RFQ" exclusivity check.
+        $hasPendingAward = $rfq->awards()->where('status', 'pending_supplier_response')->exists();
+
+        return $quotations->map(function (Quotation $q) use ($rfq, $hasPendingAward) {
+            $profile = $q->supplierAccount?->supplierProfile;
+            $logoUrl = null;
+            if ($profile && ! empty($profile->logo)) {
+                $logoUrl = str_starts_with($profile->logo, 'http') ? $profile->logo : asset('storage/' . $profile->logo);
+            }
+
             return [
                 'quotation_id'      => $q->id,
                 'quotation_number'  => $q->quotation_number,
                 'status'            => $q->status,
-                'supplier_name'     => $q->supplierAccount?->supplierProfile?->display_name,
-                'supplier_slug'     => $q->supplierAccount?->supplierProfile?->slug,
+                'supplier_name'     => $profile?->display_name ?? 'Supplier',
+                'supplier_slug'     => $profile?->slug,
+                'supplier_logo'     => $logoUrl,
                 'supplier_account_id' => $q->supplier_account_id,
                 'rfq_version_no'    => $q->rfq_version_no,
                 'rfq_version_stale' => $q->rfq_version_no !== null && $q->rfq_version_no < $rfq->current_version_no,
@@ -100,11 +112,18 @@ class QuotationComparisonService
                 'valid_until'       => $q->valid_until?->format('d M Y'),
                 'is_expired'        => $q->hasExpired(),
                 'is_shortlisted'    => $q->shortlists->isNotEmpty(),
+                'supplier_rating'   => $profile?->rating !== null
+                    ? (float) $profile->rating : null,
+                'supplier_reviews_count' => $profile?->reviews_count,
                 // Every quotation reaching this point is already scoped
                 // through $rfq->quotations() (resolve()), so ownership is
                 // guaranteed — only the status gate from
-                // QuotationPolicy::selectOffer() needs repeating here.
+                // QuotationPolicy::selectOffer()/::award() needs repeating
+                // here (award() also single-flights on "no pending award
+                // already in flight for the RFQ", checked once below).
                 'can_select_offer'  => in_array($q->status, ['submitted', 'revised', 'shortlisted', 'under_review'], true),
+                'can_award'         => in_array($q->status, ['submitted', 'revised', 'shortlisted', 'under_review'], true)
+                    && ! $hasPendingAward,
             ];
         })->values()->all();
     }
@@ -117,28 +136,62 @@ class QuotationComparisonService
      */
     public function buildCommercial(Collection $quotations): array
     {
-        $rows = $quotations->map(fn (Quotation $q) => [
-            'quotation_id'    => $q->id,
-            'currency_code'   => $q->currency_code,
-            'subtotal'        => (float) $q->subtotal,
-            'tax_amount'      => (float) $q->tax_amount,
-            'discount_amount' => (float) $q->discount_amount,
-            'shipping_charge' => (float) $q->shipping_charge,
-            'grand_total'     => (float) $q->grand_total,
-            'lead_time_days'  => $q->lead_time_days,
-            'valid_until'     => $q->valid_until?->format('d M Y'),
-            'payment_terms'   => $q->payment_terms,
-            'warranty_terms'  => $q->warranty_terms,
-            'support_terms'   => $q->support_terms,
-            'proposal'        => $q->proposal,
-        ])->values();
+        $rows = $quotations->map(function (Quotation $q) {
+            $effectiveSubtotal = 0.0;
+            $effectiveTax = 0.0;
+            $effectiveDiscount = 0.0;
+            $hasAlternativeSelected = false;
+
+            foreach ($q->items as $item) {
+                if (! $item->rfq_item_id) {
+                    continue;
+                }
+                $activeOffer = $item->offers->firstWhere('is_selected', true)
+                    ?? $item->offers->firstWhere('is_primary', true)
+                    ?? $item->offers->first();
+
+                if ($activeOffer) {
+                    if ($activeOffer->is_selected && ! $activeOffer->is_primary) {
+                        $hasAlternativeSelected = true;
+                    }
+                    $effectiveSubtotal += round((float) $activeOffer->quantity * (float) $activeOffer->unit_price, 2);
+                    $effectiveTax += (float) ($activeOffer->tax_amount ?? 0);
+                    $effectiveDiscount += (float) ($activeOffer->discount ?? 0);
+                } else {
+                    $effectiveSubtotal += round((float) $item->quantity * (float) $item->unit_price, 2);
+                    $effectiveTax += (float) ($item->tax_amount ?? 0);
+                    $effectiveDiscount += (float) ($item->discount_amount ?? 0);
+                }
+            }
+
+            $shipping = (float) $q->shipping_charge;
+            $effectiveGrandTotal = round($effectiveSubtotal - $effectiveDiscount + $effectiveTax + $shipping, 2);
+
+            return [
+                'quotation_id'            => $q->id,
+                'currency_code'           => $q->currency_code,
+                'subtotal'                => (float) $q->subtotal,
+                'tax_amount'              => (float) $q->tax_amount,
+                'discount_amount'         => (float) $q->discount_amount,
+                'shipping_charge'         => $shipping,
+                'grand_total'             => (float) $q->grand_total,
+                'effective_grand_total'   => $effectiveGrandTotal,
+                'has_alternative_selected'=> $hasAlternativeSelected,
+                'lead_time_days'          => $q->lead_time_days,
+                'valid_until'             => $q->valid_until?->format('d M Y'),
+                'payment_terms'           => $q->payment_terms,
+                'warranty_terms'          => $q->warranty_terms,
+                'support_terms'           => $q->support_terms,
+                'proposal'                => $q->proposal,
+            ];
+        })->values();
 
         $currencies = $rows->pluck('currency_code')->unique();
         $sameCurrency = $currencies->count() === 1;
 
         $badges = [
             'same_currency'          => $sameCurrency,
-            'lowest_grand_total_id'  => $sameCurrency ? $rows->sortBy('grand_total')->first()['quotation_id'] ?? null : null,
+            'lowest_grand_total_id'  => $sameCurrency ? $rows->sortBy('effective_grand_total')->first()['quotation_id'] ?? null : null,
             'shortest_lead_time_id'  => $rows->filter(fn ($r) => $r['lead_time_days'] !== null)->sortBy('lead_time_days')->first()['quotation_id'] ?? null,
             'longest_validity_id'    => $rows->filter(fn ($r) => $r['valid_until'] !== null)
                 ->sortByDesc(fn ($r) => $quotations->firstWhere('id', $r['quotation_id'])?->valid_until)
@@ -150,9 +203,11 @@ class QuotationComparisonService
 
     /**
      * One section per rfq_item (spec §20), Buyer requirement first, then
-     * each quotation's matched non-addon offer(s) — a primary AND an
-     * alternative both mapped to the same rfq_item_id are both rendered
-     * (spec §22/T), never silently collapsed to one.
+     * each quotation's Product Response(s) for that item, each with every
+     * one of its Offers rendered (never collapsed to just the primary) —
+     * spec §22/T's "never silently collapse an alternative" intent, now
+     * carried entirely by quotation_item_offers rather than
+     * quotation_items.is_alternative (unused).
      */
     public function buildItemComparison(Rfq $rfq, Collection $quotations): array
     {
@@ -166,10 +221,14 @@ class QuotationComparisonService
                 'value'        => $v->formattedValue(),
             ])->values();
 
+            // rfq_item_id is never null for a real RFQ-item response, and
+            // add-on quotation_items are always created with rfq_item_id
+            // null (QuotationService::syncItems()) — this where() alone
+            // already excludes them, no need to also check
+            // is_optional_addon (unused per the finalized decision).
             $offersByQuotation = $quotations->mapWithKeys(function (Quotation $q) use ($rfqItem, $buyerAttrs) {
                 $productResponses = $q->items
                     ->where('rfq_item_id', $rfqItem->id)
-                    ->where('is_optional_addon', false)
                     ->map(fn (QuotationItem $item) => $this->formatProductResponse($item, $buyerAttrs))
                     ->values();
 
@@ -177,12 +236,24 @@ class QuotationComparisonService
             });
 
             return [
-                'rfq_item_id'      => $rfqItem->id,
-                'item_name'        => $rfqItem->item_name,
-                'quantity'         => rtrim(rtrim((string) $rfqItem->quantity, '0'), '.'),
-                'unit'             => $rfqItem->unit?->symbol ?? $rfqItem->unit?->name ?? $rfqItem->custom_unit,
-                'buyer_attributes' => $buyerAttributeRows,
-                'offers'           => $offersByQuotation,
+                'rfq_item_id'          => $rfqItem->id,
+                'item_name'            => $rfqItem->item_name,
+                'category_name'        => $rfqItem->category?->name,
+                'quantity'             => rtrim(rtrim((string) $rfqItem->quantity, '0'), '.'),
+                'unit'                 => $rfqItem->unit?->symbol ?? $rfqItem->unit?->name ?? $rfqItem->custom_unit,
+                'estimated_unit_price' => $rfqItem->estimated_unit_price ? (float) $rfqItem->estimated_unit_price : null,
+                'description'          => $rfqItem->description,
+                // Which of the three RFQ-item creation modes the buyer used —
+                // drives the per-item type badge on the comparison page.
+                'item_type'            => $rfqItem->isMarketplaceProduct()
+                    ? 'marketplace_product'
+                    : ($rfqItem->isRequirement() ? 'quotation_only' : 'custom_product'),
+                'buyer_attributes'     => $buyerAttributeRows,
+                'buyer_attachments'    => method_exists($rfqItem, 'getMedia') ? $rfqItem->getMedia('attachments')->map(fn ($m) => [
+                    'id' => $m->id, 'name' => $m->file_name, 'size' => $m->human_readable_size,
+                    'url' => $m->getUrl(), 'is_image' => str_starts_with($m->mime_type ?? '', 'image/'),
+                ])->values()->all() : [],
+                'offers'               => $offersByQuotation,
             ];
         })->values()->all();
     }
@@ -190,31 +261,26 @@ class QuotationComparisonService
     /**
      * One Product Response (quotation_items row) — the RFQ-item-level
      * structured attribute comparison still lives here, sourced from the
-     * PRIMARY offer's attribute values specifically (every offer now has its
-     * own set, not just the primary — see QuotationItemOffer::attributeValues()
-     * — but this comparison view still shows one match/different/missing
-     * badge set per Product Response, same as before that change; each
-     * individual Offer's own `specifications` JSON, primary or alternative,
-     * is still shown in full via formatSingleOffer() below), plus the nested
-     * list of every individual Offer (quotation_item_offers) underneath it,
-     * so the buyer can compare Supplier A's Dell/HP/Lenovo alternatives
-     * against Supplier B's Asus/Acer alternatives directly.
+     * ACTIVE offer's attribute values (selected if buyer chose one, else primary),
+     * plus the nested list of every individual Offer (quotation_item_offers).
      */
     private function formatProductResponse(QuotationItem $item, Collection $buyerAttrsByAttributeId): array
     {
-        $offerType = $item->is_alternative
-            ? 'alternative'
-            : ($item->offered_listing_id ? 'existing_product' : 'custom');
+        // Find the active offer: explicit buyer selection first, else primary, else first offer
+        $activeOffer = $item->offers->firstWhere('is_selected', true)
+            ?? $item->offers->firstWhere('is_primary', true)
+            ?? $item->offers->first();
+        $activeOfferId = $activeOffer?->id;
 
-        $primaryOfferId = $item->offers->firstWhere('is_primary', true)?->id;
-        $supplierAttrs = $item->attributeValues->where('quotation_item_offer_id', $primaryOfferId)->keyBy('attribute_id');
+        $supplierAttrs = $item->attributeValues->where('quotation_item_offer_id', $activeOfferId)->keyBy('attribute_id');
+        if ($supplierAttrs->isEmpty()) {
+            $supplierAttrs = $item->attributeValues->whereNull('quotation_item_offer_id')->keyBy('attribute_id');
+        }
 
-        $matched = $buyerAttrsByAttributeId->map(function ($buyerValue, $attributeId) use ($supplierAttrs, $item) {
+        $matched = $buyerAttrsByAttributeId->map(function ($buyerValue, $attributeId) use ($supplierAttrs) {
             $supplierValue = $supplierAttrs->get($attributeId);
 
-            if ($item->is_alternative) {
-                $status = 'alternative';
-            } elseif (! $supplierValue) {
+            if (! $supplierValue) {
                 $status = 'missing';
             } else {
                 $status = $this->valuesMatch($buyerValue, $supplierValue) ? 'match' : 'different';
@@ -230,11 +296,6 @@ class QuotationComparisonService
             ];
         })->values();
 
-        // Not ->only($extraAttributeIds): $supplierAttrs is an Eloquent
-        // Collection, whose only() filters by each model's DB primary key
-        // (quotation_item_attribute_values.id) rather than by the
-        // keyBy('attribute_id') index — silently dropping every "additional"
-        // spec. filter() keys on the collection's actual keys instead.
         $extraAttributeIds = $supplierAttrs->keys()->diff($buyerAttrsByAttributeId->keys())->all();
         $additional = $supplierAttrs->filter(fn ($v, $attributeId) => in_array($attributeId, $extraAttributeIds))->map(fn ($v) => [
             'attribute_id' => $v->attribute_id,
@@ -245,9 +306,6 @@ class QuotationComparisonService
 
         return [
             'quotation_item_id' => $item->id,
-            'offer_type'        => $offerType,
-            'is_alternative'    => (bool) $item->is_alternative,
-            'response_method'   => $item->response_method,
             'item_name'         => $item->item_name,
             'quantity'          => rtrim(rtrim((string) $item->quantity, '0'), '.'),
             'unit'              => $item->unit?->symbol ?? $item->unit?->name ?? $item->custom_unit,
@@ -256,6 +314,7 @@ class QuotationComparisonService
             'discount_amount'   => (float) $item->discount_amount,
             'line_total'        => (float) $item->line_total,
             'lead_time_days'    => $item->lead_time_days,
+            'active_offer_id'   => $activeOfferId,
             'offered_listing'   => $item->offeredListing ? ['id' => $item->offeredListing->id, 'name' => $item->offeredListing->name, 'slug' => $item->offeredListing->slug] : null,
             'offered_variant'   => $item->offeredVariant ? ['id' => $item->offeredVariant->id, 'name' => $item->offeredVariant->name] : null,
             'documents'         => $item->getMedia('document')->map(fn ($m) => [
@@ -264,20 +323,63 @@ class QuotationComparisonService
             ])->values()->all(),
             'attributes'        => $matched->all(),
             'additional_specifications' => $additional->all(),
-            'offers'            => $item->offers->map(fn (QuotationItemOffer $offer) => $this->formatSingleOffer($offer))->values()->all(),
+            'offers'            => $item->offers->map(fn (QuotationItemOffer $offer) => $this->formatSingleOffer($offer, $buyerAttrsByAttributeId, $activeOfferId))->values()->all(),
         ];
     }
 
     /**
      * One individual Offer (quotation_item_offers row) under a Product
      * Response — its own method/price/quantity/delivery time/documents,
-     * its free-text "Additional Specifications" (specifications, supplier-
-     * typed only), and its own structured category attribute values
-     * (attributes — every offer has its own set now, not just the primary;
-     * see QuotationItemOffer::attributeValues()).
+     * its free-text "Additional Specifications", its own structured category attribute values,
+     * and its matched attribute statuses against buyer requirements.
      */
-    private function formatSingleOffer(QuotationItemOffer $offer): array
+    private function formatSingleOffer(QuotationItemOffer $offer, ?Collection $buyerAttrsByAttributeId = null, ?int $activeOfferId = null): array
     {
+        $offerAttrs = $offer->attributeValues->keyBy('attribute_id');
+        $matched = collect();
+        $additional = collect();
+
+        if ($buyerAttrsByAttributeId && $buyerAttrsByAttributeId->isNotEmpty()) {
+            $matched = $buyerAttrsByAttributeId->map(function ($buyerValue, $attributeId) use ($offerAttrs) {
+                $offerValue = $offerAttrs->get($attributeId);
+
+                if (! $offerValue) {
+                    $status = 'missing';
+                } else {
+                    $status = $this->valuesMatch($buyerValue, $offerValue) ? 'match' : 'different';
+                }
+
+                return [
+                    'attribute_id'   => $attributeId,
+                    'name'           => $buyerValue->attribute?->name,
+                    'unit'           => $buyerValue->attribute?->unit?->symbol ?? $buyerValue->attribute?->unit?->name,
+                    'buyer_value'    => $buyerValue->formattedValue(),
+                    'supplier_value' => $offerValue?->formattedValue(),
+                    'status'         => $status,
+                ];
+            })->values();
+
+            $extraAttributeIds = $offerAttrs->keys()->diff($buyerAttrsByAttributeId->keys())->all();
+            $additional = $offerAttrs->filter(fn ($v, $attributeId) => in_array($attributeId, $extraAttributeIds))->map(fn ($v) => [
+                'attribute_id' => $v->attribute_id,
+                'name'         => $v->attribute?->name,
+                'unit'         => $v->attribute?->unit?->symbol ?? $v->attribute?->unit?->name,
+                'value'        => $v->formattedValue(),
+            ])->values();
+        }
+
+        $isActive = $activeOfferId !== null
+            ? $offer->id === $activeOfferId
+            : (bool) ($offer->is_selected || ($offer->is_primary && ! $offer->quotationItem?->offers->contains('is_selected', true)));
+
+        $thumbUrl = null;
+        if ($offer->marketplaceProduct) {
+            $mp = $offer->marketplaceProduct;
+            $thumbUrl = $mp->relationLoaded('media')
+                ? ($mp->media->where('collection_name', 'gallery')->first()?->getUrl() ?: null)
+                : ($mp->getFirstMediaUrl('gallery') ?: null);
+        }
+
         return [
             'id'               => $offer->id,
             'offer_method'     => $offer->offer_method,
@@ -292,8 +394,12 @@ class QuotationComparisonService
             'delivery_time'    => $offer->delivery_time,
             'is_primary'       => (bool) $offer->is_primary,
             'is_selected'      => (bool) $offer->is_selected,
+            'is_active'        => $isActive,
             'offered_listing'  => $offer->marketplaceProduct ? [
-                'id' => $offer->marketplaceProduct->id, 'name' => $offer->marketplaceProduct->name, 'slug' => $offer->marketplaceProduct->slug,
+                'id'        => $offer->marketplaceProduct->id,
+                'name'      => $offer->marketplaceProduct->name,
+                'slug'      => $offer->marketplaceProduct->slug,
+                'thumb_url' => $thumbUrl,
             ] : null,
             'offered_variant'  => $offer->offeredVariant ? ['id' => $offer->offeredVariant->id, 'name' => $offer->offeredVariant->name] : null,
             'documents'        => $offer->getMedia('document')->map(fn ($m) => [
@@ -307,6 +413,8 @@ class QuotationComparisonService
                 'unit'         => $v->attribute?->unit?->symbol ?? $v->attribute?->unit?->name,
                 'value'        => $v->formattedValue(),
             ])->values()->all(),
+            'matched_attributes' => $matched->all(),
+            'additional_attributes' => $additional->all(),
         ];
     }
 
@@ -363,8 +471,10 @@ class QuotationComparisonService
         $totalItems = $rfq->items->count();
 
         return $quotations->mapWithKeys(function (Quotation $q) use ($totalItems) {
+            // ->filter() alone already drops add-ons (rfq_item_id is always
+            // null for them) — is_optional_addon is unused per the
+            // finalized decision.
             $quoted = $q->items
-                ->where('is_optional_addon', false)
                 ->pluck('rfq_item_id')
                 ->filter()
                 ->unique()

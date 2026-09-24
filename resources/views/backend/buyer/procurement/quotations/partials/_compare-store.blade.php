@@ -161,7 +161,7 @@
             },
         }));
 
-        Alpine.data('quotationComparePage', (rfqId, maxItems, dataUrl, quotationsUrlBase) => ({
+        Alpine.data('quotationComparePage', (rfqId, maxItems, dataUrl, quotationsUrlBase, defaultQuotationIds = []) => ({
             loading: true,
             count: 0,
             maxItems: maxItems,
@@ -171,16 +171,29 @@
             highlightDiffs: true,
             showDiffsOnly: false,
             showAdditional: false,
+            selectingOfferId: null,
+            viewedOffers: {},
+            expandedOffers: {},
+            awardModalOpen: false,
+            awardQuotationData: null,
+            awardNote: '',
+            awardSubmitting: false,
+            allOffersModalOpen: false,
+            activeModalProductResponse: null,
 
             init() {
                 QuotationCompareStore.maxItems = maxItems;
+                const state = QuotationCompareStore.get(rfqId);
+                if (state.quotation_ids.length === 0 && Array.isArray(defaultQuotationIds) && defaultQuotationIds.length > 0) {
+                    QuotationCompareStore.save(rfqId, defaultQuotationIds.slice(0, maxItems));
+                }
                 this.refresh();
                 window.addEventListener('quotation-compare:changed', (e) => {
                     if (e.detail.rfqId === rfqId) this.refresh();
                 });
             },
 
-            refresh() {
+            refresh(showSpinner = true) {
                 const state = QuotationCompareStore.get(rfqId);
                 this.count = state.quotation_ids.length;
 
@@ -190,7 +203,9 @@
                     return;
                 }
 
-                this.loading = true;
+                if (showSpinner) {
+                    this.loading = true;
+                }
                 fetch(this.dataUrl, {
                     method: 'POST',
                     headers: {
@@ -226,6 +241,86 @@
                 QuotationCompareStore.clear(rfqId);
             },
 
+            selectOfferAjax(quotationId, quotationItemId, offerId) {
+                if (this.selectingOfferId) return;
+                this.selectingOfferId = offerId;
+                const url = this.selectOfferUrl(quotationId, quotationItemId, offerId);
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    body: JSON.stringify({}),
+                })
+                    .then((r) => r.json())
+                    .then((res) => {
+                        this.selectingOfferId = null;
+                        if (res.success) {
+                            toast('success', res.message || 'Offer selected.');
+                            this.setViewedOffer(quotationItemId, offerId);
+                            this.refresh(false);
+                        } else {
+                            toast('error', res.message || 'Could not select offer.');
+                        }
+                    })
+                    .catch(() => {
+                        this.selectingOfferId = null;
+                        toast('error', 'Failed to select offer.');
+                    });
+            },
+
+            getViewedOffer(productResponse) {
+                if (!productResponse || !productResponse.offers || productResponse.offers.length === 0) return null;
+                const viewedId = this.viewedOffers[productResponse.quotation_item_id];
+                if (viewedId) {
+                    const match = productResponse.offers.find((o) => o.id === viewedId);
+                    if (match) return match;
+                }
+                return productResponse.offers.find((o) => o.is_selected)
+                    || productResponse.offers.find((o) => o.is_primary)
+                    || productResponse.offers[0];
+            },
+
+            setViewedOffer(quotationItemId, offerId) {
+                this.viewedOffers[quotationItemId] = offerId;
+            },
+
+            toggleOfferExpansion(quotationItemId) {
+                this.expandedOffers[quotationItemId] = !this.expandedOffers[quotationItemId];
+            },
+
+            isOffersExpanded(quotationItemId) {
+                return !!this.expandedOffers[quotationItemId];
+            },
+
+            openAllOffersModal(productResponse, supplierName) {
+                this.activeModalProductResponse = { ...productResponse, supplierName };
+                this.allOffersModalOpen = true;
+            },
+
+            closeAllOffersModal() {
+                this.allOffersModalOpen = false;
+                this.activeModalProductResponse = null;
+            },
+
+            openAwardModal(quotation) {
+                this.awardQuotationData = quotation;
+                this.awardNote = '';
+                this.awardModalOpen = true;
+            },
+
+            closeAwardModal() {
+                this.awardModalOpen = false;
+                this.awardQuotationData = null;
+                this.awardSubmitting = false;
+            },
+
+            awardUrl(quotationId) {
+                return this.quotationsUrlBase + '/' + quotationId + '/award';
+            },
+
             rowDiffers(values) {
                 const present = values.filter((v) => v !== null && v !== undefined && v !== '');
                 if (present.length <= 1) return present.length !== values.length;
@@ -236,11 +331,11 @@
             commercialFor(qid) {
                 return (this.data?.commercial?.rows || []).find((r) => r.quotation_id === qid) || {};
             },
+            summaryFor(qid) {
+                return (this.data?.summary || []).find((s) => s.quotation_id === qid) || {};
+            },
             partialFor(qid) {
                 return (this.data?.partial || {})[qid] || { quoted_count: 0, total_count: 0, is_full: true };
-            },
-            addonsFor(qid) {
-                return (this.data?.addons || {})[qid] || { items: [], addon_line_total: 0 };
             },
             offersFor(item, qid) {
                 return (item.offers || {})[qid] || [];
@@ -248,8 +343,11 @@
             selectOfferUrl(quotationId, quotationItemId, offerId) {
                 return this.quotationsUrlBase + '/' + quotationId + '/items/' + quotationItemId + '/offers/' + offerId + '/select';
             },
-            offerTypeLabel(type) {
-                return { existing_product: 'Existing Supplier Product', custom: 'Custom RFQ Offer', alternative: 'Alternative Offer' }[type] || type;
+            methodLabel(method) {
+                return { marketplace: 'Marketplace Product', custom: 'Custom Offer', copy_spec: 'Copied Spec', document: 'Document Quotation' }[method] || method;
+            },
+            itemTypeLabel(type) {
+                return { marketplace_product: 'Marketplace Product', custom_product: 'Custom Product', quotation_only: 'Quotation Only (PDF/Description)' }[type] || type;
             },
             attrStatusClass(status) {
                 return {
@@ -266,8 +364,8 @@
             buyerAttrStatuses(item, attributeId) {
                 const statuses = [];
                 (this.data?.summary || []).forEach((q) => {
-                    this.offersFor(item, q.quotation_id).forEach((offer) => {
-                        const a = (offer.attributes || []).find((x) => x.attribute_id === attributeId);
+                    this.offersFor(item, q.quotation_id).forEach((productResponse) => {
+                        const a = (productResponse.attributes || []).find((x) => x.attribute_id === attributeId);
                         if (a) statuses.push(a.status);
                     });
                 });

@@ -98,7 +98,7 @@
 
     <template x-if="rfqItemsById[{{ $rid }}]?.attributes && rfqItemsById[{{ $rid }}]?.attributes.length > 0">
         <div class="mt-2.5 pt-2.5 border-t border-slate-200/60" x-data="{ expanded: false }">
-            <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center justify-between mb-2">
                 <p class="text-[10px] font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1">
                     <i class="fa-solid fa-list-check text-indigo-500 text-[11px]"></i>
                     <span x-text="rfqItemsById[{{ $rid }}]?.is_marketplace ? 'Product Specifications:' : 'Category Specifications:'"></span>
@@ -106,18 +106,43 @@
                 </p>
                 <button type="button" x-show="rfqItemsById[{{ $rid }}]?.attributes.length > 6"
                         @click="expanded = !expanded"
-                        class="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800">
+                        class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition">
                     <span x-text="expanded ? 'Show Less' : 'Show All (' + rfqItemsById[{{ $rid }}]?.attributes.length + ')'"></span>
                 </button>
             </div>
-            <div class="flex flex-wrap gap-1.5">
-                <template x-for="(attr, aIdx) in (expanded ? rfqItemsById[{{ $rid }}]?.attributes : rfqItemsById[{{ $rid }}]?.attributes.slice(0, 6))" :key="aIdx">
-                    <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-700 shadow-2xs">
-                        <span class="text-gray-500 font-medium" x-text="attr.name + ':'"></span>
-                        <span class="font-semibold text-gray-900" x-text="attr.value"></span>
-                    </span>
-                </template>
-            </div>
+
+            {{-- Compact view: top 6 pills --}}
+            <template x-if="!expanded">
+                <div class="flex flex-wrap gap-1.5">
+                    <template x-for="(attr, aIdx) in rfqItemsById[{{ $rid }}]?.attributes.slice(0, 6)" :key="aIdx">
+                        <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-700 shadow-2xs">
+                            <span class="text-gray-500 font-medium" x-text="attr.name + ':'"></span>
+                            <span class="font-semibold text-gray-900" x-text="attr.value"></span>
+                        </span>
+                    </template>
+                </div>
+            </template>
+
+            {{-- Expanded view: Group-wise detailed specification cards --}}
+            <template x-if="expanded">
+                <div class="space-y-3.5 mt-2">
+                    <template x-for="(group, gIdx) in (rfqItemsById[{{ $rid }}]?.grouped_attributes && rfqItemsById[{{ $rid }}]?.grouped_attributes.length > 0 ? rfqItemsById[{{ $rid }}]?.grouped_attributes : [{ group_name: 'Key Features', attributes: rfqItemsById[{{ $rid }}]?.attributes }])" :key="gIdx">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
+                            <div class="bg-slate-50/80 px-4 py-2.5 border-b border-gray-200/80">
+                                <h5 class="text-xs font-bold text-gray-800" x-text="group.group_name"></h5>
+                            </div>
+                            <div class="divide-y divide-gray-100 text-xs">
+                                <template x-for="(attr, aIdx) in group.attributes" :key="aIdx">
+                                    <div class="px-4 py-2.5 flex items-center justify-between gap-4 hover:bg-slate-50/30 transition">
+                                        <span class="text-gray-600 font-normal" x-text="attr.name"></span>
+                                        <span class="text-gray-900 font-semibold text-right" x-text="attr.value"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
         </div>
     </template>
 

@@ -78,9 +78,9 @@
                     </tbody>
                 </table>
             </div>
-            @if($purchaseOrders->hasPages())
+            @if($purchaseOrders->total() > 0)
                 <div class="p-4 border-t border-gray-100">
-                    {{ $purchaseOrders->links() }}
+                    <x-backend.pagination :paginator="$purchaseOrders" />
                 </div>
             @endif
         @endif

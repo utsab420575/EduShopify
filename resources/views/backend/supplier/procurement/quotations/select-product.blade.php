@@ -29,7 +29,7 @@
     })" class="pb-28">
 
         {{-- Page Header --}}
-        <x-backend.page-header title="Select Products to Offer" subtitle="Choose one or multiple products from your catalog to quote against the buyer's requirement.">
+        <x-backend.page-header title="Select Products to Offer" subtitle="Choose one or multiple products from the marketplace to quote against the buyer's requirement.">
             <x-slot:actions>
                 <a href="{{ $returnUrl }}" @click.prevent="cancel()"
                    class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-1.5 transition-colors">
@@ -132,7 +132,7 @@
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h3 class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Suggested Matches from Your Catalog
+                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Suggested Matches from Marketplace
                     </h3>
                     <p class="text-xs text-gray-500 mt-0.5">Ranked by similarity in category, keywords, and specifications against this buyer's requirement.</p>
                 </div>
@@ -147,9 +147,9 @@
                         <i class="fa-solid fa-lightbulb text-2xl"></i>
                     </div>
                     <h4 class="text-sm font-bold text-gray-900">No close matches found</h4>
-                    <p class="text-xs text-gray-500 mt-1 max-w-md">We couldn't automatically match this requirement to your existing listings with high confidence.</p>
+                    <p class="text-xs text-gray-500 mt-1 max-w-md">We couldn't automatically match this requirement to marketplace listings with high confidence.</p>
                     <button type="button" @click="tab = 'browse'" class="mt-4 btn-primary text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5">
-                        <i class="fa-solid fa-magnifying-glass"></i> Browse all your catalog products
+                        <i class="fa-solid fa-magnifying-glass"></i> Browse all marketplace products
                     </button>
                 </div>
             @else
@@ -217,7 +217,7 @@
                                     <span class="truncate">{{ $listing->mainCategory?->name ?? 'General' }}</span>
                                 </div>
 
-                                <div class="flex items-start justify-between gap-1.5 mb-2">
+                                <div class="flex items-start justify-between gap-1.5 mb-1">
                                     <h4 class="text-sm font-bold text-gray-900 leading-snug line-clamp-2" title="{{ $listing->name }}">
                                         {{ $listing->name }}
                                     </h4>
@@ -227,6 +227,12 @@
                                         <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
                                     </a>
                                 </div>
+
+                                @if($listing->brand)
+                                    <p class="text-[11px] text-gray-500 mb-2">
+                                        Brand: <span class="font-medium text-gray-700">{{ $listing->brand->name }}</span>
+                                    </p>
+                                @endif
 
                                 {{-- Matched Reasons --}}
                                 @if(!empty($listing->matched_reasons))
@@ -244,7 +250,7 @@
                                 {{-- Footer: Price & Select Action --}}
                                 <div class="mt-auto pt-2.5 flex items-center justify-between border-t border-gray-100">
                                     <div>
-                                        <span class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Catalog Price</span>
+                                        <span class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Base Price</span>
                                         @if($listing->base_price)
                                             <span class="text-sm font-bold text-indigo-600">{{ $listing->currency_code }} {{ number_format($listing->base_price, 2) }}</span>
                                         @else

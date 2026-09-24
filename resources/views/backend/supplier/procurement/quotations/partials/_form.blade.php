@@ -62,24 +62,51 @@
         // key type, same as attributes_by_id further below relies on.
         $attrsRawById = [];
         if ($i->listing && $i->listing->relationLoaded('attributeValues')) {
-            $attrs = $i->listing->attributeValues->map(fn ($v) => [
-                'name' => $v->attribute?->name,
-                'value' => $v->custom_value ?? $v->value_text ?? $v->value_number ?? ($v->attributeValue?->name ?? null),
-            ])->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
+            $attrs = $i->listing->attributeValues->map(function ($v) {
+                $val = $v->custom_value ?? $v->value_text;
+                if ($val === null && $v->value_number !== null) {
+                    $val = rtrim(rtrim((string)$v->value_number, '0'), '.');
+                }
+                if ($val === null) {
+                    $val = $v->attributeValue?->name;
+                }
+                return [
+                    'id'         => $v->attribute_id,
+                    'name'       => $v->attribute?->name,
+                    'value'      => $val,
+                    'group_name' => $v->attribute?->attributeGroup?->name ?: 'Key Features',
+                    'group_sort' => $v->attribute?->attributeGroup?->sort_order ?? 999,
+                    'attr_sort'  => $v->attribute?->sort_order ?? 999,
+                ];
+            })->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
             foreach ($i->listing->attributeValues as $v) {
                 $attrsRawById[$v->attribute_id] = $toRawAttrValue($v);
             }
         }
         if ($i->attributeValues->isNotEmpty()) {
-            $customAttrs = $i->attributeValues->map(fn ($v) => [
-                'name' => $v->attribute?->name,
-                'value' => $v->formattedValue(),
-            ])->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
+            $customAttrs = $i->attributeValues->map(function ($v) {
+                return [
+                    'id'         => $v->attribute_id,
+                    'name'       => $v->attribute?->name,
+                    'value'      => $v->formattedValue(),
+                    'group_name' => $v->attribute?->attributeGroup?->name ?: 'Key Features',
+                    'group_sort' => $v->attribute?->attributeGroup?->sort_order ?? 999,
+                    'attr_sort'  => $v->attribute?->sort_order ?? 999,
+                ];
+            })->filter(fn ($a) => !empty($a['name']) && !empty($a['value']));
             $attrs = $attrs->keyBy('name')->merge($customAttrs->keyBy('name'))->values();
             foreach ($i->attributeValues as $v) {
                 $attrsRawById[$v->attribute_id] = $toRawAttrValue($v);
             }
         }
+
+        $groupedAttributes = $attrs->groupBy('group_name')->map(function ($groupAttrs, $groupName) {
+            return [
+                'group_name' => $groupName,
+                'group_sort' => $groupAttrs->first()['group_sort'] ?? 999,
+                'attributes' => $groupAttrs->sortBy('attr_sort')->values()->all(),
+            ];
+        })->sortBy('group_sort')->values()->all();
 
         $imageUrl = $i->listing?->primaryImage?->getUrl()
             ?? ($i->listing?->relationLoaded('media') && $i->listing?->media->isNotEmpty() ? $i->listing?->media->first()?->getUrl() : null)
@@ -137,6 +164,7 @@
             'estimated_unit_price' => $i->estimated_unit_price ? number_format((float)$i->estimated_unit_price, 2) : ($i->listing?->base_price ? number_format((float)$i->listing->base_price, 2) : null),
             'specs' => is_array($i->specs) ? array_values(array_filter($i->specs, fn($s) => is_array($s) && !in_array($s['name'] ?? '', ['__is_requirement', '__category_ids'], true) && (!empty(trim((string)($s['name'] ?? ''))) || !empty(trim((string)($s['value'] ?? '')))))) : [],
             'attributes' => $attrs->values(),
+            'grouped_attributes' => $groupedAttributes,
             'attributes_by_id' => $i->attributeValues->mapWithKeys(fn ($v) => [$v->attribute_id => $v->formattedValue()]),
             'attribute_values_raw' => $attrsRawById,
         ];

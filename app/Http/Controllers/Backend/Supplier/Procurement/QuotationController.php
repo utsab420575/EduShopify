@@ -14,6 +14,7 @@ use App\Models\Rfq;
 use App\Models\Unit;
 use App\Services\QuotationService;
 use App\Services\SupplierRfqActionService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -115,9 +116,10 @@ class QuotationController extends Controller
         $rfq->load([
             'items.unit',
             'items.category',
-            'items.listing.attributeValues.attribute',
+            'items.listing.attributeValues.attribute.attributeGroup',
             'items.listing.media',
             'items.media',
+            'items.attributeValues.attribute.attributeGroup',
             'items.attributeValues.attribute.unit',
             'items.attributeValues.attributeValue',
             'buyerAccount.buyerProfile'
@@ -221,9 +223,16 @@ class QuotationController extends Controller
     {
         $this->authorize('selectProducts', [Quotation::class, $rfq]);
 
-        $listings = $this->currentAccount()->listings()
+        $account = $this->currentAccount();
+        $ownListings = $account ? $account->listings()
             ->where('approval_status', 'approved')
-            ->get(['id', 'name', 'main_category_id']);
+            ->get(['id', 'name', 'main_category_id']) : collect();
+
+        $listings = $ownListings->isNotEmpty()
+            ? $ownListings
+            : Listing::where('approval_status', 'approved')
+                ->where('is_active', true)
+                ->get(['id', 'name', 'main_category_id']);
 
         $matches = [];
 
@@ -265,14 +274,22 @@ class QuotationController extends Controller
             'rfq.buyerAccount.buyerProfile',
             'rfq.items.unit',
             'rfq.items.category',
-            'rfq.items.listing.attributeValues.attribute',
+            'rfq.items.listing.attributeValues.attribute.attributeGroup',
+            'rfq.items.listing.attributeValues.attributeValue',
             'rfq.items.listing.media',
             'rfq.items.media',
+            'rfq.items.attributeValues.attribute.attributeGroup',
             'rfq.items.attributeValues.attribute.unit',
             'rfq.items.attributeValues.attributeValue',
             'items.attributeValues.attribute.unit',
             'items.attributeValues.attributeValue',
-            'items.offers',
+            'items.offers.marketplaceProduct',
+            'items.offers.offeredVariant',
+            'items.offers.unit',
+            'items.offers.media',
+            'items.offers.attributeValues.attribute.attributeGroup',
+            'items.offers.attributeValues.attribute.unit',
+            'items.offers.attributeValues.attributeValue',
             'items.offeredListing',
             'items.offeredVariant',
             'items.unit',
@@ -350,9 +367,10 @@ class QuotationController extends Controller
         $quotation->load([
             'rfq.items.unit',
             'rfq.items.category',
-            'rfq.items.listing.attributeValues.attribute',
+            'rfq.items.listing.attributeValues.attribute.attributeGroup',
             'rfq.items.listing.media',
             'rfq.items.media',
+            'rfq.items.attributeValues.attribute.attributeGroup',
             'rfq.items.attributeValues.attribute.unit',
             'rfq.items.attributeValues.attributeValue',
             'items.offers.attributeValues.attribute.unit',
@@ -540,8 +558,23 @@ class QuotationController extends Controller
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
-        $listings = $this->currentAccount()->listings()
-            ->where('approval_status', 'approved')
+        $account = $this->currentAccount();
+        $listings = Listing::query()
+            ->where(function (Builder $query) use ($account) {
+                $query->where(function (Builder $q) {
+                    $q->published()
+                        ->orWhere(function (Builder $p) {
+                            $p->where('approval_status', 'approved')
+                                ->where('is_active', true);
+                        });
+                });
+                if ($account) {
+                    $query->orWhere(function (Builder $q) use ($account) {
+                        $q->where('supplier_account_id', $account->id)
+                            ->where('approval_status', 'approved');
+                    });
+                }
+            })
             ->where('name', 'like', '%' . $request->string('q') . '%')
             ->when($request->filled('category_id'), fn($q) => $q->where('main_category_id', $request->integer('category_id')))
             ->with('mainCategory', 'unit')
@@ -566,7 +599,12 @@ class QuotationController extends Controller
      */
     public function listingPrefill(Listing $listing)
     {
-        abort_unless($listing->supplier_account_id === $this->currentAccount()->id, 404);
+        abort_unless(
+            $listing->isPublished()
+            || $listing->approval_status === 'approved'
+            || ($this->currentAccount() && $listing->supplier_account_id === $this->currentAccount()->id),
+            404
+        );
 
         $listing->load(['mainCategory', 'primaryImage', 'brand', 'attributeValues.attribute.unit', 'attributeValues.attributeValue']);
 

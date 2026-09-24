@@ -147,9 +147,18 @@ class QuotationController extends Controller
 
         $rfq->loadCount('items');
 
+        $eligibleQuotations = $rfq->quotations()
+            ->whereIn('status', config('quotation_comparison.eligible_statuses', []))
+            ->with(['supplierAccount.supplierProfile'])
+            ->orderByDesc('submitted_at')
+            ->take((int) config('quotation_comparison.max_items', 5))
+            ->get();
+
         return view('backend.buyer.procurement.quotations.compare', [
             'rfq' => $rfq,
             'maxItems' => (int) config('quotation_comparison.max_items', 5),
+            'defaultQuotationIds' => $eligibleQuotations->pluck('id')->values()->all(),
+            'eligibleQuotations' => $eligibleQuotations,
         ]);
     }
 
@@ -162,6 +171,9 @@ class QuotationController extends Controller
             'items.attributeValues.attribute.unit',
             'items.attributeValues.attributeValue',
             'items.unit',
+            'items.media',
+            'items.category',
+            'items.listing',
         ]);
 
         ['quotations' => $quotations, 'removed_ids' => $removedIds] = $service->resolve($rfq, $request->input('quotation_ids', []));
@@ -179,7 +191,6 @@ class QuotationController extends Controller
             'summary' => $service->buildSummary($rfq, $quotations),
             'commercial' => $service->buildCommercial($quotations),
             'items' => $service->buildItemComparison($rfq, $quotations),
-            'addons' => $service->buildAddons($quotations),
             'partial' => $service->buildPartialSummary($rfq, $quotations),
         ]);
     }
@@ -261,6 +272,16 @@ class QuotationController extends Controller
         abort_unless($offer->quotation_item_id === $item->id, 404);
 
         $decisions->selectOffer($item, $offer);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success'           => true,
+                'message'           => 'Offer selected for this product.',
+                'selected_offer_id' => $offer->id,
+                'quotation_item_id' => $item->id,
+                'quotation_id'      => $quotation->id,
+            ]);
+        }
 
         return back()->with('success', 'Offer selected for this product.');
     }

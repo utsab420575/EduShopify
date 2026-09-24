@@ -115,4 +115,72 @@ class RfqItem extends Model implements HasMedia
     {
         return ! $this->isMarketplaceProduct() && ! $this->isRequirement();
     }
+
+    /**
+     * Get all resolved attribute values for this RFQ item (merging marketplace listing attributes and custom RFQ item attributes).
+     *
+     * @return \Illuminate\Support\Collection<int, array{id: int|null, name: string, value: string, group_name: string, group_sort: int, attr_sort: int}>
+     */
+    public function resolvedAttributes(): \Illuminate\Support\Collection
+    {
+        $attrs = collect();
+        if ($this->listing && $this->listing->relationLoaded('attributeValues')) {
+            $attrs = $this->listing->attributeValues->map(function ($v) {
+                $val = $v->custom_value ?? $v->value_text;
+                if ($val === null && $v->value_number !== null) {
+                    $val = rtrim(rtrim((string) $v->value_number, '0'), '.');
+                }
+                if ($val === null) {
+                    $val = $v->attributeValue?->name;
+                }
+
+                return [
+                    'id'         => $v->attribute_id,
+                    'name'       => $v->attribute?->name,
+                    'value'      => $val,
+                    'group_name' => $v->attribute?->attributeGroup?->name ?: 'Key Features',
+                    'group_sort' => $v->attribute?->attributeGroup?->sort_order ?? 999,
+                    'attr_sort'  => $v->attribute?->sort_order ?? 999,
+                ];
+            })->filter(fn ($a) => ! empty($a['name']) && ! empty($a['value']));
+        }
+
+        if ($this->relationLoaded('attributeValues') ? $this->attributeValues->isNotEmpty() : $this->attributeValues()->exists()) {
+            $customAttrs = $this->attributeValues->map(function ($v) {
+                return [
+                    'id'         => $v->attribute_id,
+                    'name'       => $v->attribute?->name,
+                    'value'      => $v->formattedValue(),
+                    'group_name' => $v->attribute?->attributeGroup?->name ?: 'Key Features',
+                    'group_sort' => $v->attribute?->attributeGroup?->sort_order ?? 999,
+                    'attr_sort'  => $v->attribute?->sort_order ?? 999,
+                ];
+            })->filter(fn ($a) => ! empty($a['name']) && ! empty($a['value']));
+
+            $attrs = $attrs->keyBy('name')->merge($customAttrs->keyBy('name'))->values();
+        }
+
+        return $attrs;
+    }
+
+    /**
+     * Group resolved attribute values by attribute group.
+     *
+     * @return \Illuminate\Support\Collection<int, array{group_name: string, group_sort: int, attributes: array}>
+     */
+    public function groupedSpecifications(): \Illuminate\Support\Collection
+    {
+        $attrs = $this->resolvedAttributes();
+        if ($attrs->isEmpty()) {
+            return collect();
+        }
+
+        return $attrs->groupBy('group_name')->map(function ($groupAttrs, $groupName) {
+            return [
+                'group_name' => $groupName,
+                'group_sort' => $groupAttrs->first()['group_sort'] ?? 999,
+                'attributes' => $groupAttrs->sortBy('attr_sort')->values()->all(),
+            ];
+        })->sortBy('group_sort')->values();
+    }
 }

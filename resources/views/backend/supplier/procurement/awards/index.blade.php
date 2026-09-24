@@ -80,9 +80,9 @@
                     </tbody>
                 </table>
             </div>
-            @if($awards->hasPages())
+            @if($awards->total() > 0)
                 <div class="p-4 border-t border-gray-100">
-                    {{ $awards->links() }}
+                    <x-backend.pagination :paginator="$awards" />
                 </div>
             @endif
         @endif
