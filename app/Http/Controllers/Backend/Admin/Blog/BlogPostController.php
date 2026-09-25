@@ -31,7 +31,7 @@ class BlogPostController extends Controller
         $posts = BlogPost::query()
             ->when($request->filled('search'), fn ($q) => $q->where('title', 'like', '%'.$request->string('search').'%'))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->with(['category', 'authorUser'])
+            ->with(['category', 'authorUser', 'account.supplierProfile'])
             ->latest()
             ->paginate(20)
             ->withQueryString();
@@ -183,6 +183,11 @@ class BlogPostController extends Controller
             $post->approved_by_user_id = $admin->id;
             $post->approved_at ??= now();
             $post->published_at ??= now();
+            $post->rejection_reason = null;
+        } elseif ($status === 'rejected') {
+            $post->approved_by_user_id = $admin->id;
+            $post->approved_at = now();
+            $post->published_at = null;
         } else {
             $post->approved_by_user_id = null;
             $post->approved_at = null;

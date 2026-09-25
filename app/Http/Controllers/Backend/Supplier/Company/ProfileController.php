@@ -13,6 +13,7 @@ use App\Models\DocumentType;
 use App\Models\Exhibition;
 use App\Models\Icon;
 use App\Models\Service;
+use App\Models\SocialPlatform;
 use App\Models\State;
 use App\Models\SupplierType;
 use Illuminate\Http\Request;
@@ -103,6 +104,8 @@ class ProfileController extends Controller
                 ->orderBy('name')->get(),
             'myAchievementClaims' => $account->accountAchievements()->with('achievement')->latest()->get(),
             'myCertifications' => $account->certifications()->latest()->get(),
+            'socialPlatforms' => SocialPlatform::active()->orderBy('sort_order')->get(),
+            'socialLinks' => $account->socialLinks()->with('platform')->orderBy('sort_order')->get(),
         ]);
     }
 }

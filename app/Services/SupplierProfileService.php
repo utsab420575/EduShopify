@@ -110,7 +110,17 @@ class SupplierProfileService
             if ($key === 'logo' || $key === 'profile_photo') {
                 $img->cover(512, 512);
             } else {
-                $img->cover(1200, 400); // banner ratio
+                // Width matches the public supplier profile's .hero-banner
+                // box (frontend_new.css: max-w-7xl container, 1232px content
+                // width); height is intentionally NOT forced — the banner
+                // upload UI (Cropper.js) lets the supplier pick a taller or
+                // shorter crop than the hero's 280px display height, which
+                // .hero-banner img's own object-fit:cover then center-crops
+                // to fit at render time, same as any other image there.
+                // scaleDown only shrinks (never crops/upscales), preserving
+                // whatever composition the client already cropped to; the
+                // 1200 height cap is just a sanity ceiling against abuse.
+                $img->scaleDown(width: 1760, height: 1200);
             }
 
             $ext     = strtolower($file->getClientOriginalExtension());

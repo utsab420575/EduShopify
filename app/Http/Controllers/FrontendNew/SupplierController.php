@@ -115,8 +115,9 @@ class SupplierController extends Controller
             'country',
             'city',
             'account.supplierTypes',
-            'account.socialLinks',
+            'account.socialLinks.platform',
             'businessHours',
+            'gallery' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
             'videos' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
         ]);
 

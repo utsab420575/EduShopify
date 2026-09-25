@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend\Supplier\Company;
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backend\Supplier\Company\StoreVideoRequest;
+use App\Http\Requests\Backend\Supplier\Company\UpdateVideoRequest;
 use App\Models\SupplierVideo;
 use Illuminate\Support\Facades\Auth;
 
@@ -41,6 +42,33 @@ class VideoController extends Controller
 
         return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
             ->with('success', 'Video added.');
+    }
+
+    public function update(UpdateVideoRequest $request, SupplierVideo $video)
+    {
+        abort_unless($video->supplier_account_id === $this->currentAccount()->id, 404);
+        $data = $request->validated();
+
+        $provider = 'other';
+        $videoId = null;
+        if (str_contains($data['video_url'], 'vimeo.com')) {
+            $provider = 'vimeo';
+            $videoId = SupplierVideo::extractVimeoId($data['video_url']);
+        } elseif (str_contains($data['video_url'], 'youtube.com') || str_contains($data['video_url'], 'youtu.be')) {
+            $provider = 'youtube';
+            $videoId = SupplierVideo::extractYoutubeId($data['video_url']);
+        }
+
+        $video->update([
+            'provider' => $provider,
+            'video_id' => $videoId,
+            'title' => $data['title'],
+            'video_url' => $data['video_url'],
+            'caption' => $data['caption'] ?? null,
+        ]);
+
+        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+            ->with('success', 'Video updated.');
     }
 
     public function destroy(SupplierVideo $video)

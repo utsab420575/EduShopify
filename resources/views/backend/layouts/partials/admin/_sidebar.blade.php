@@ -13,7 +13,8 @@
         'communication' => ['admin.communication.*'],
         'moderation' => ['admin.reviews.*'],
         'access-control' => ['admin.access-control.*'],
-        'system' => ['admin.system.*'],
+        'ui-settings' => ['admin.system.hero-section.*'],
+        'system' => ['admin.system.settings.*', 'admin.system.theme.*', 'admin.system.geography.*', 'admin.system.languages.*', 'admin.system.jobs.*', 'admin.system.deploy.*'],
     ];
 @endphp
 
@@ -276,6 +277,21 @@
                 <a href="{{ route('admin.access-control.user-roles.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.user-roles.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">User Role Assignment</a>
                 <a href="{{ route('admin.access-control.audit-logs.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.audit-logs.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Permission Audit Logs</a>
                 <a href="{{ route('admin.access-control.role-requests.index') }}" class="sidebar-submenu-item {{ $isActive('admin.access-control.role-requests.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Account Role Requests</a>
+            </div>
+        </div>
+        @endcan
+
+        @can('platform.homepage_content.manage')
+        <div class="pt-3 mt-3 border-t" style="border-color:var(--sidebar-border)">
+            <div x-data="{ open: {{ $groupActive($groups['ui-settings']) ? 'true' : 'false' }} }">
+                <button @click="open = !open" class="sidebar-menu-item {{ $groupActive($groups['ui-settings']) ? 'active' : '' }} w-full flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive($groups['ui-settings']) ? '' : 'border-transparent' }}">
+                    <i class="fa-solid fa-swatchbook sidebar-menu-icon w-5 text-center"></i>
+                    <span class="ml-3 flex-1 text-sm font-medium text-left">UI Settings</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+                </button>
+                <div class="sidebar-submenu ml-8" :class="open && 'open'">
+                    <a href="{{ route('admin.system.hero-section.edit') }}" class="sidebar-submenu-item {{ $isActive('admin.system.hero-section.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Hero Section</a>
+                </div>
             </div>
         </div>
         @endcan

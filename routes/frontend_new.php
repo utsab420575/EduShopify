@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v2')->name('v2.')->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/products', [CategoryController::class, 'index'])->name('products.index');
     Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
     Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->name('suppliers.show');
     Route::post('/supplier/{supplier:slug}/save', [SupplierController::class, 'toggleSave'])->name('suppliers.save');

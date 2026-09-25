@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Backend\Admin\Blog;
+namespace App\Http\Requests\Backend\Supplier\Blog;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class BlogPostRequest extends FormRequest
+class SupplierBlogPostRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,8 +19,7 @@ class BlogPostRequest extends FormRequest
             'excerpt' => 'nullable|string|max:500',
             'content' => 'required|string',
             'cover_image' => 'nullable|image|max:10240',
-            'featured' => 'nullable|boolean',
-            'status' => 'required|in:draft,pending,approved,rejected',
+            'status' => 'required|in:draft,pending',
             'tags' => 'nullable|string|max:500',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
@@ -31,8 +30,9 @@ class BlogPostRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.required' => 'Please enter a title.',
-            'content.required' => 'Please write the post content.',
+            'title.required' => 'Please enter a title for your blog post.',
+            'content.required' => 'Please write the blog post content.',
+            'status.in' => 'Invalid status selected.',
         ];
     }
 }

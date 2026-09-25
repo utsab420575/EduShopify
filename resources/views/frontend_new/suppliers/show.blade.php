@@ -3,7 +3,10 @@
 @section('title', $supplier->display_name . ' – Supplier Profile – Edushopify')
 
 @section('content')
-<div class="supplier-profile-page">
+<div class="supplier-profile-page"
+     @auth
+     x-data="supplierContactChat({ recipientAccountId: {{ (int) $supplier->account_id }}, recipientName: {{ Illuminate\Support\Js::from($supplier->display_name) }} })"
+     @endauth>
 <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
 
   {{-- Hero + Stats --}}
@@ -44,9 +47,15 @@
           <a href="{{ auth()->check() ? route('buyer.rfqs.create', ['supplier' => $supplier->account_id]) : route('v2.handoff.request-quote-supplier', $supplier->slug) }}" class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-5 py-2.5 rounded-md flex items-center gap-2 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Request Quotation
           </a>
-          <a href="{{ route('v2.handoff.contact-supplier', $supplier->slug) }}" class="bg-white/90 hover:bg-white text-gray-800 text-sm font-medium px-5 py-2.5 rounded-md flex items-center gap-2 border border-white/40 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
-          </a>
+          @auth
+            <button type="button" @click="openChat()" class="bg-white/90 hover:bg-white text-gray-800 text-sm font-medium px-5 py-2.5 rounded-md flex items-center gap-2 border border-white/40 transition-colors cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
+            </button>
+          @else
+            <a href="{{ route('v2.handoff.contact-supplier', $supplier->slug) }}" class="bg-white/90 hover:bg-white text-gray-800 text-sm font-medium px-5 py-2.5 rounded-md flex items-center gap-2 border border-white/40 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
+            </a>
+          @endauth
         </div>
       </div>
     </div>
@@ -66,7 +75,7 @@
     <button class="tab-btn active" onclick="switchTab(this,'about')">About Us</button>
     <button class="tab-btn" onclick="switchTab(this,'products')">Products</button>
     <button class="tab-btn" onclick="switchTab(this,'services')">Services</button>
-    <button class="tab-btn" onclick="switchTab(this,'videos')">Videos</button>
+    <button class="tab-btn" data-tab="gallery-videos" id="tab-btn-gallery-videos" onclick="switchTab(this,'gallery-videos')">Gallery &amp; Video</button>
     <button class="tab-btn" onclick="switchTab(this,'certifications')">Certifications</button>
     <button class="tab-btn" onclick="switchTab(this,'reviews')">Reviews</button>
     <button class="tab-btn" onclick="switchTab(this,'contact')">Contact</button>
@@ -94,11 +103,19 @@
             </div>
             @if($supplier->videos->isNotEmpty())
               @php($firstVideo = $supplier->videos->first())
-              <div class="shrink-0 w-36 h-24 relative rounded-lg overflow-hidden cursor-pointer group" onclick="switchTab(document.querySelectorAll('.tab-btn')[3],'videos')">
+              <div class="shrink-0 w-36 h-24 relative rounded-lg overflow-hidden cursor-pointer group" onclick="switchTab(document.getElementById('tab-btn-gallery-videos') || document.querySelector('[data-tab=gallery-videos]'),'gallery-videos')">
                 @if($firstVideo->thumbnailUrl())
                   <img src="{{ $firstVideo->thumbnailUrl() }}" alt="{{ $firstVideo->title }}" class="absolute inset-0 w-full h-full object-cover" />
                 @else
-                  <div class="absolute inset-0 bg-emerald-900"></div>
+                  <div class="absolute inset-0 bg-slate-900 flex items-center justify-center">
+                    @if($firstVideo->isDirectVideo() || !in_array($firstVideo->resolvedProvider(), ['youtube', 'vimeo']))
+                      <video src="{{ $firstVideo->video_url }}" class="w-full h-full object-cover opacity-60" preload="metadata" muted></video>
+                    @else
+                      <div class="w-full h-full bg-emerald-950 flex items-center justify-center">
+                        <i class="fa-solid fa-film text-xl text-emerald-400/80"></i>
+                      </div>
+                    @endif
+                  </div>
                 @endif
                 <div class="absolute inset-0 bg-black/30 flex items-end justify-center pb-2">
                   <div class="absolute inset-0 flex items-center justify-center">
@@ -237,28 +254,150 @@
         </div>
       </div>
 
-      {{-- VIDEOS TAB --}}
-      <div id="tab-videos" class="tab-panel">
+      {{-- GALLERY & VIDEO TAB --}}
+      <div id="tab-gallery-videos" class="tab-panel flex flex-col gap-5" style="display:none;flex-direction:column;gap:20px;">
+
+        {{-- ── 1. GALLERY IMAGES (CAROUSEL / SLIDER) ── --}}
         <div class="sec-card">
-          <h2 class="text-[15px] font-bold text-gray-900 mb-1">Videos</h2>
-          <p class="text-sm text-gray-500 mb-5">Watch our product demos, company overview, and classroom showcase videos.</p>
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-[15px] font-bold text-gray-900 mb-0.5">Gallery Images</h2>
+              <p class="text-xs text-gray-500">Explore facilities, showroom, production process, and operations.</p>
+            </div>
+            @if($supplier->gallery->isNotEmpty())
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span id="gallery-counter">1</span> / {{ $supplier->gallery->count() }} photos
+              </span>
+            @endif
+          </div>
+
+          @if($supplier->gallery->isNotEmpty())
+            {{-- Professional Image Carousel / Slider --}}
+            <div class="gallery-slider-wrapper relative select-none" id="supplier-gallery-carousel">
+              {{-- Main Slide Stage --}}
+              <div class="relative w-full rounded-2xl overflow-hidden bg-gray-950 border border-gray-200 shadow-sm aspect-16/10 sm:aspect-16/9 max-h-[480px] flex items-center justify-center group">
+
+                {{-- Slide Items --}}
+                <div class="gallery-track relative w-full h-full overflow-hidden">
+                  @foreach($supplier->gallery as $index => $img)
+                    <div class="gallery-slide absolute inset-0 w-full h-full transition-all duration-300 ease-out flex items-center justify-center {{ $index === 0 ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 pointer-events-none scale-98' }}"
+                         data-index="{{ $index }}"
+                         data-caption="{{ $img->caption ?? '' }}"
+                         data-src="{{ $img->image_url }}">
+                      <img src="{{ $img->image_url }}"
+                           alt="{{ $img->alt_text ?? ($img->caption ?? 'Gallery photo '.($index+1)) }}"
+                           class="w-full h-full object-contain select-none"
+                           loading="{{ $index === 0 ? 'eager' : 'lazy' }}">
+                    </div>
+                  @endforeach
+                </div>
+
+                {{-- Floating Left & Right Navigation Arrows --}}
+                @if($supplier->gallery->count() > 1)
+                  <button type="button"
+                          id="gallery-prev-btn"
+                          aria-label="Previous slide"
+                          class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/85 hover:bg-white text-gray-800 shadow-md backdrop-blur-xs flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer opacity-90 hover:opacity-100">
+                    <svg class="w-5 h-5 -ml-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                  </button>
+                  <button type="button"
+                          id="gallery-next-btn"
+                          aria-label="Next slide"
+                          class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/85 hover:bg-white text-gray-800 shadow-md backdrop-blur-xs flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer opacity-90 hover:opacity-100">
+                    <svg class="w-5 h-5 -mr-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                  </button>
+                @endif
+
+                {{-- Floating Fullscreen Lightbox Button --}}
+                <button type="button"
+                        id="gallery-expand-btn"
+                        aria-label="Expand image"
+                        class="absolute top-3 right-3 z-20 w-9 h-9 rounded-xl bg-black/50 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-xs flex items-center justify-center transition cursor-pointer"
+                        title="View fullscreen">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                </button>
+
+                {{-- Bottom Caption Overlay --}}
+                <div id="gallery-caption-bar" class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-10 text-white z-10 pointer-events-none transition-opacity duration-300 {{ empty($supplier->gallery->first()->caption) ? 'opacity-0' : 'opacity-100' }}">
+                  <p id="gallery-caption-text" class="text-xs sm:text-sm font-medium tracking-wide drop-shadow-sm text-center line-clamp-2">
+                    {{ $supplier->gallery->first()->caption ?? '' }}
+                  </p>
+                </div>
+              </div>
+
+              {{-- Thumbnail Navigation Strip --}}
+              @if($supplier->gallery->count() > 1)
+                <div class="gallery-thumbs-strip mt-3 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                  @foreach($supplier->gallery as $index => $img)
+                    <button type="button"
+                            class="gallery-thumb-btn shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all cursor-pointer {{ $index === 0 ? 'border-emerald-600 ring-2 ring-emerald-500/20 scale-102' : 'border-gray-200 opacity-60 hover:opacity-100' }}"
+                            data-index="{{ $index }}"
+                            aria-label="Go to slide {{ $index + 1 }}">
+                      <img src="{{ $img->image_url }}" alt="" class="w-full h-full object-cover pointer-events-none">
+                    </button>
+                  @endforeach
+                </div>
+              @endif
+            </div>
+          @else
+            <div class="py-8 text-center text-gray-400 bg-gray-50/60 rounded-xl border border-dashed border-gray-200">
+              <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <p class="text-sm font-medium text-gray-600">No gallery photos published yet.</p>
+              <p class="text-xs text-gray-400 mt-0.5">Photos uploaded by this supplier will appear here in an interactive carousel.</p>
+            </div>
+          @endif
+        </div>
+
+        {{-- ── 2. VIDEO SECTION ── --}}
+        <div class="sec-card">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-[15px] font-bold text-gray-900 mb-0.5">Company &amp; Product Videos</h2>
+              <p class="text-xs text-gray-500">Watch product demonstrations, factory overviews, and classroom showcase videos.</p>
+            </div>
+            @if($supplier->videos->isNotEmpty())
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
+                {{ $supplier->videos->count() }} video{{ $supplier->videos->count() === 1 ? '' : 's' }}
+              </span>
+            @endif
+          </div>
+
           @if($supplier->videos->isNotEmpty())
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
               @foreach($supplier->videos as $video)
-                <div class="vid-card">
-                  <div class="relative" style="padding-bottom:56.25%; height:0; overflow:hidden;">
+                @php($badge = $video->providerBadge())
+                <div class="vid-card bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:border-gray-300 transition-all">
+                  <div class="relative bg-black" style="padding-bottom:56.25%; height:0; overflow:hidden;">
                     @if(in_array($video->resolvedProvider(), ['youtube', 'vimeo']) && $video->embedUrl())
-                      <iframe src="{{ $video->embedUrl() }}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen title="{{ $video->title }}"></iframe>
+                      <iframe src="{{ $video->embedUrl() }}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" title="{{ $video->title }}"></iframe>
                     @else
-                      <video src="{{ $video->video_url }}" poster="{{ $video->thumbnailUrl() }}" class="absolute top-0 left-0 w-full h-full object-cover" controls></video>
+                      <video src="{{ $video->video_url }}" poster="{{ $video->thumbnailUrl() }}" class="absolute top-0 left-0 w-full h-full object-cover" controls playsinline preload="metadata">
+                        <source src="{{ $video->video_url }}" type="video/mp4">
+                        <source src="{{ $video->video_url }}" type="video/webm">
+                        <p class="text-xs text-white p-4">Your browser does not support HTML5 video playback. <a href="{{ $video->video_url }}" target="_blank" class="text-emerald-400 underline">Click to watch video</a>.</p>
+                      </video>
                     @endif
                   </div>
-                  <div class="p-3"><p class="text-sm font-semibold text-emerald-600">{{ $video->title }}</p></div>
+                  <div class="p-3.5">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border {{ $badge['bg_class'] }}">
+                        <i class="{{ $badge['icon'] }}"></i> {{ $badge['label'] }}
+                      </span>
+                    </div>
+                    <h3 class="text-sm font-bold text-gray-900 line-clamp-1">{{ $video->title }}</h3>
+                    @if($video->caption)
+                      <p class="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{{ $video->caption }}</p>
+                    @endif
+                  </div>
                 </div>
               @endforeach
             </div>
           @else
-            <p class="text-sm text-gray-400">No videos published yet.</p>
+            <div class="py-8 text-center text-gray-400 bg-gray-50/60 rounded-xl border border-dashed border-gray-200">
+              <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              <p class="text-sm font-medium text-gray-600">No videos published yet.</p>
+              <p class="text-xs text-gray-400 mt-0.5">Videos added by this supplier will be playable directly here.</p>
+            </div>
           @endif
         </div>
       </div>
@@ -406,13 +545,23 @@
               <div class="contact-tile"><div class="contact-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div><p class="text-[10px] text-gray-400 mb-0.5">Head Office</p><p class="text-sm text-gray-800 font-medium">{{ collect([$supplier->city?->name, $supplier->country?->name])->filter()->implode(', ') }}</p></div></div>
             @endif
           </div>
-          @if($supplier->account?->socialLinks?->isNotEmpty())
-            <div class="flex items-center gap-2">
-              @foreach($supplier->account->socialLinks as $link)
-                <a href="{{ $link->url }}" target="_blank" rel="noopener" class="soc-icon" title="{{ $link->label ?? 'Social link' }}">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                </a>
-              @endforeach
+          @php($contactSocials = $supplier->account?->socialLinks ? $supplier->account->socialLinks->where('is_public', true) : collect())
+          @if($contactSocials->isNotEmpty())
+            <div class="mt-4 pt-4 border-t border-gray-100">
+              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2.5">Official Social Channels</p>
+              <div class="flex flex-wrap items-center gap-2">
+                @foreach($contactSocials as $link)
+                  <a href="{{ $link->url }}" target="_blank" rel="noopener noreferrer"
+                     class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 {{ $link->platform_brand_color }} transition-colors shadow-xs"
+                     title="{{ $link->platform_name }}">
+                    <i class="{{ $link->platform_icon }} text-sm"></i>
+                    <span>{{ $link->platform_name }}</span>
+                    @if($link->handle)
+                      <span class="text-[10px] text-gray-400">({{ $link->handle }})</span>
+                    @endif
+                  </a>
+                @endforeach
+              </div>
             </div>
           @endif
         </div>
@@ -428,22 +577,56 @@
         <a href="{{ auth()->check() ? route('buyer.rfqs.create', ['supplier' => $supplier->account_id]) : route('v2.handoff.request-quote-supplier', $supplier->slug) }}" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-md flex items-center justify-center gap-2 mb-2.5 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Request Quotation
         </a>
-        <a href="{{ route('v2.handoff.contact-supplier', $supplier->slug) }}" class="w-full border border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
-          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
-        </a>
+        @auth
+          <button type="button" @click="openChat()" class="w-full border border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors cursor-pointer">
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
+          </button>
+        @else
+          <a href="{{ route('v2.handoff.contact-supplier', $supplier->slug) }}" class="w-full border border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Supplier
+          </a>
+        @endauth
       </div>
 
-      @if($supplier->contact_email || $supplier->website)
+      @php($sidebarSocials = $supplier->account?->socialLinks ? $supplier->account->socialLinks->where('is_public', true) : collect())
+      @if($supplier->contact_email || $supplier->website || $supplier->contact_phone || $sidebarSocials->isNotEmpty())
         <div class="side-card">
           <p class="text-sm font-semibold text-gray-900 mb-3">Contact Information</p>
           <div class="flex flex-col gap-2.5">
+            @if($supplier->contact_phone)
+              <div class="flex items-center gap-2 text-sm text-gray-600">
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.27 2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                <span>{{ $supplier->contact_phone }}</span>
+              </div>
+            @endif
             @if($supplier->contact_email)
-              <div class="flex items-center gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>{{ $supplier->contact_email }}</div>
+              <div class="flex items-center gap-2 text-sm text-gray-600 truncate">
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <a href="mailto:{{ $supplier->contact_email }}" class="hover:underline truncate">{{ $supplier->contact_email }}</a>
+              </div>
             @endif
             @if($supplier->website)
-              <div class="flex items-center gap-2 text-sm text-emerald-600"><svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><a href="{{ $supplier->website }}" target="_blank" rel="noopener" class="hover:underline">{{ $supplier->website }}</a></div>
+              <div class="flex items-center gap-2 text-sm text-emerald-600 truncate">
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <a href="{{ $supplier->website }}" target="_blank" rel="noopener noreferrer" class="hover:underline truncate">{{ $supplier->website }}</a>
+              </div>
             @endif
           </div>
+
+          @if($sidebarSocials->isNotEmpty())
+            <div class="mt-3.5 pt-3 border-t border-gray-100">
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Social Channels</p>
+              <div class="flex flex-wrap items-center gap-2">
+                @foreach($sidebarSocials as $link)
+                  <a href="{{ $link->url }}" target="_blank" rel="noopener noreferrer"
+                     class="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-600 {{ $link->platform_brand_color }} transition-all shadow-xs"
+                     title="{{ $link->platform_name }}">
+                    <i class="{{ $link->platform_icon }} text-sm"></i>
+                  </a>
+                @endforeach
+              </div>
+            </div>
+          @endif
         </div>
       @endif
 
@@ -502,6 +685,29 @@
   @endif
 
 </main>
+@auth
+  @include('frontend_new.components.supplier-contact-chat-modal')
+@endauth
+</div>
+
+{{-- Public Lightbox Modal --}}
+<div id="public-gallery-lightbox" class="fixed inset-0 z-[300] bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 select-none">
+  <button type="button" id="lightbox-close-btn" class="absolute top-4 right-4 text-white/80 hover:text-white text-2xl p-2 cursor-pointer z-20" aria-label="Close fullscreen">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
+
+  <button type="button" id="lightbox-prev-btn" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition cursor-pointer z-20" aria-label="Previous image">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+  </button>
+
+  <button type="button" id="lightbox-next-btn" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition cursor-pointer z-20" aria-label="Next image">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+  </button>
+
+  <div class="relative max-w-5xl max-h-[85vh] flex flex-col items-center justify-center">
+    <img id="lightbox-img" src="" class="max-h-[80vh] w-auto max-w-full rounded-xl object-contain shadow-2xl" alt="">
+    <p id="lightbox-caption" class="text-white/90 text-sm mt-3 text-center bg-black/60 backdrop-blur-xs px-4 py-1.5 rounded-full font-medium hidden"></p>
+  </div>
 </div>
 
 <script>
@@ -513,6 +719,9 @@
       active.style.flexDirection = 'column';
       active.style.gap = '16px';
     }
+
+    // Initialize Gallery Slider
+    initGallerySlider();
   });
 
   function toggleAboutReadMore(btn) {
@@ -520,6 +729,197 @@
     if (!p) return;
     var expanded = p.classList.toggle('expanded');
     btn.textContent = expanded ? 'Read less' : 'Read more';
+  }
+
+  function initGallerySlider() {
+    var wrapper = document.getElementById('supplier-gallery-carousel');
+    if (!wrapper) return;
+
+    var slides = wrapper.querySelectorAll('.gallery-slide');
+    var thumbs = wrapper.querySelectorAll('.gallery-thumb-btn');
+    var prevBtn = document.getElementById('gallery-prev-btn');
+    var nextBtn = document.getElementById('gallery-next-btn');
+    var expandBtn = document.getElementById('gallery-expand-btn');
+    var counterEl = document.getElementById('gallery-counter');
+    var captionBar = document.getElementById('gallery-caption-bar');
+    var captionText = document.getElementById('gallery-caption-text');
+
+    var lightbox = document.getElementById('public-gallery-lightbox');
+    var lightboxImg = document.getElementById('lightbox-img');
+    var lightboxCaption = document.getElementById('lightbox-caption');
+    var lightboxClose = document.getElementById('lightbox-close-btn');
+    var lightboxPrev = document.getElementById('lightbox-prev-btn');
+    var lightboxNext = document.getElementById('lightbox-next-btn');
+
+    if (!slides.length) return;
+
+    var currentIndex = 0;
+    var total = slides.length;
+
+    function showSlide(index) {
+      if (index < 0) index = total - 1;
+      if (index >= total) index = 0;
+      currentIndex = index;
+
+      slides.forEach(function (slide, idx) {
+        if (idx === currentIndex) {
+          slide.classList.remove('opacity-0', 'z-0', 'pointer-events-none', 'scale-98');
+          slide.classList.add('opacity-100', 'z-10', 'scale-100');
+        } else {
+          slide.classList.remove('opacity-100', 'z-10', 'scale-100');
+          slide.classList.add('opacity-0', 'z-0', 'pointer-events-none', 'scale-98');
+        }
+      });
+
+      thumbs.forEach(function (thumb, idx) {
+        if (idx === currentIndex) {
+          thumb.classList.remove('border-gray-200', 'opacity-60');
+          thumb.classList.add('border-emerald-600', 'ring-2', 'ring-emerald-500/20', 'scale-102', 'opacity-100');
+          thumb.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+        } else {
+          thumb.classList.remove('border-emerald-600', 'ring-2', 'ring-emerald-500/20', 'scale-102');
+          thumb.classList.add('border-gray-200', 'opacity-60');
+        }
+      });
+
+      if (counterEl) {
+        counterEl.textContent = currentIndex + 1;
+      }
+
+      var currentSlide = slides[currentIndex];
+      var caption = currentSlide ? currentSlide.getAttribute('data-caption') : '';
+      if (captionBar && captionText) {
+        if (caption && caption.trim()) {
+          captionText.textContent = caption;
+          captionBar.classList.remove('opacity-0');
+          captionBar.classList.add('opacity-100');
+        } else {
+          captionBar.classList.remove('opacity-100');
+          captionBar.classList.add('opacity-0');
+        }
+      }
+
+      // If lightbox is open, keep in sync
+      if (lightbox && !lightbox.classList.contains('hidden') && currentSlide) {
+        var src = currentSlide.getAttribute('data-src');
+        if (lightboxImg) lightboxImg.src = src;
+        if (lightboxCaption) {
+          if (caption && caption.trim()) {
+            lightboxCaption.textContent = caption;
+            lightboxCaption.classList.remove('hidden');
+          } else {
+            lightboxCaption.classList.add('hidden');
+          }
+        }
+      }
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        showSlide(currentIndex - 1);
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        showSlide(currentIndex + 1);
+      });
+    }
+
+    thumbs.forEach(function (thumb) {
+      thumb.addEventListener('click', function (e) {
+        e.preventDefault();
+        var idx = parseInt(this.getAttribute('data-index'), 10);
+        showSlide(idx);
+      });
+    });
+
+    // Touch Swipe Support on Slider
+    var touchStartX = 0;
+    var touchEndX = 0;
+    wrapper.addEventListener('touchstart', function (e) {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    wrapper.addEventListener('touchend', function (e) {
+      touchEndX = e.changedTouches[0].screenX;
+      var diff = touchStartX - touchEndX;
+      if (Math.abs(diff) > 40) {
+        if (diff > 0) {
+          showSlide(currentIndex + 1);
+        } else {
+          showSlide(currentIndex - 1);
+        }
+      }
+    }, { passive: true });
+
+    // Lightbox open / close
+    function openLightbox() {
+      if (!lightbox) return;
+      var currentSlide = slides[currentIndex];
+      if (!currentSlide) return;
+      var src = currentSlide.getAttribute('data-src');
+      var caption = currentSlide.getAttribute('data-caption') || '';
+      if (lightboxImg) lightboxImg.src = src;
+      if (lightboxCaption) {
+        if (caption.trim()) {
+          lightboxCaption.textContent = caption;
+          lightboxCaption.classList.remove('hidden');
+        } else {
+          lightboxCaption.classList.add('hidden');
+        }
+      }
+      lightbox.classList.remove('hidden');
+      lightbox.classList.add('flex');
+    }
+
+    function closeLightbox() {
+      if (!lightbox) return;
+      lightbox.classList.add('hidden');
+      lightbox.classList.remove('flex');
+      if (lightboxImg) lightboxImg.src = '';
+    }
+
+    if (expandBtn) {
+      expandBtn.addEventListener('click', openLightbox);
+    }
+
+    if (lightboxClose) {
+      lightboxClose.addEventListener('click', closeLightbox);
+    }
+
+    if (lightbox) {
+      lightbox.addEventListener('click', function (e) {
+        if (e.target === lightbox) {
+          closeLightbox();
+        }
+      });
+    }
+
+    if (lightboxPrev) {
+      lightboxPrev.addEventListener('click', function (e) {
+        e.stopPropagation();
+        showSlide(currentIndex - 1);
+      });
+    }
+
+    if (lightboxNext) {
+      lightboxNext.addEventListener('click', function (e) {
+        e.stopPropagation();
+        showSlide(currentIndex + 1);
+      });
+    }
+
+    // Keyboard navigation
+    window.addEventListener('keydown', function (e) {
+      if (lightbox && !lightbox.classList.contains('hidden')) {
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') showSlide(currentIndex - 1);
+        if (e.key === 'ArrowRight') showSlide(currentIndex + 1);
+      }
+    });
   }
 </script>
 @endsection

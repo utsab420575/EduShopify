@@ -8,8 +8,8 @@
     scroll-snap-type: x mandatory;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    padding-top: 6px;
-    padding-bottom: 12px;
+    padding-top: 4px;
+    padding-bottom: 6px;
   }
   #featured-suppliers-grid::-webkit-scrollbar {
     display: none;
@@ -40,8 +40,8 @@
   }
 </style>
 
-<section class="max-w-7xl mx-auto px-4 py-10" id="featured-suppliers-section">
-  <div class="flex items-center justify-between mb-5">
+<section class="w-full flex-1 flex flex-col justify-center max-w-7xl mx-auto px-4 py-5" id="featured-suppliers-section">
+  <div class="flex items-center justify-between mb-3">
     <h2 class="font-bold text-lg text-gray-900">Featured Suppliers</h2>
     <div class="flex items-center gap-2.5">
       <a href="{{ route('v2.suppliers.index') }}" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium hover:underline cursor-pointer">See all</a>

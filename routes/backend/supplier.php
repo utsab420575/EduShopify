@@ -44,12 +44,17 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
 
             Route::put('/profile/company', [\App\Http\Controllers\Backend\Supplier\Company\CompanyController::class, 'update'])->name('profile.company.update');
             Route::put('/profile/contact', [\App\Http\Controllers\Backend\Supplier\Company\ContactController::class, 'update'])->name('profile.contact.update');
+            Route::post('/profile/social-links', [\App\Http\Controllers\Backend\Supplier\Company\SocialLinkController::class, 'store'])->name('profile.social-links.store');
+            Route::put('/profile/social-links/{socialLink}', [\App\Http\Controllers\Backend\Supplier\Company\SocialLinkController::class, 'update'])->name('profile.social-links.update');
+            Route::delete('/profile/social-links/{socialLink}', [\App\Http\Controllers\Backend\Supplier\Company\SocialLinkController::class, 'destroy'])->name('profile.social-links.destroy');
             Route::put('/profile/media', [\App\Http\Controllers\Backend\Supplier\Company\MediaController::class, 'update'])->name('profile.media.update');
 
             Route::post('/profile/gallery', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'store'])->name('profile.gallery.store');
+            Route::put('/profile/gallery/{image}', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'update'])->name('profile.gallery.update');
             Route::delete('/profile/gallery/{image}', [\App\Http\Controllers\Backend\Supplier\Company\GalleryController::class, 'destroy'])->name('profile.gallery.destroy');
 
             Route::post('/profile/videos', [\App\Http\Controllers\Backend\Supplier\Company\VideoController::class, 'store'])->name('profile.videos.store');
+            Route::put('/profile/videos/{video}', [\App\Http\Controllers\Backend\Supplier\Company\VideoController::class, 'update'])->name('profile.videos.update');
             Route::delete('/profile/videos/{video}', [\App\Http\Controllers\Backend\Supplier\Company\VideoController::class, 'destroy'])->name('profile.videos.destroy');
 
             Route::post('/profile/service-areas', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'store'])->name('profile.service-areas.store');
@@ -179,6 +184,17 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::get('/', [\App\Http\Controllers\Backend\Supplier\Review\ReviewController::class, 'index'])->name('index');
             Route::post('/{review}/reply', [\App\Http\Controllers\Backend\Supplier\Review\ReviewController::class, 'reply'])->name('reply');
             Route::post('/{review}/report', [\App\Http\Controllers\Backend\Supplier\Review\ReviewReportController::class, 'store'])->name('report');
+        });
+
+        // ── Blog Posts ────────────────────────────────────────────────────
+        Route::prefix('blog')->name('blog.')->group(function () {
+            Route::get('/posts', [\App\Http\Controllers\Backend\Supplier\Blog\BlogPostController::class, 'index'])->name('posts.index');
+            Route::get('/posts/create', [\App\Http\Controllers\Backend\Supplier\Blog\BlogPostController::class, 'create'])->name('posts.create');
+            Route::post('/posts', [\App\Http\Controllers\Backend\Supplier\Blog\BlogPostController::class, 'store'])->name('posts.store');
+            Route::get('/posts/{post}/edit', [\App\Http\Controllers\Backend\Supplier\Blog\BlogPostController::class, 'edit'])->name('posts.edit');
+            Route::put('/posts/{post}', [\App\Http\Controllers\Backend\Supplier\Blog\BlogPostController::class, 'update'])->name('posts.update');
+            Route::delete('/posts/{post}', [\App\Http\Controllers\Backend\Supplier\Blog\BlogPostController::class, 'destroy'])->name('posts.destroy');
+            Route::post('/posts/upload-image', [\App\Http\Controllers\Backend\Supplier\Blog\BlogPostController::class, 'uploadContentImage'])->name('posts.upload-image');
         });
 
         // ── Communication ─────────────────────────────────────────────────

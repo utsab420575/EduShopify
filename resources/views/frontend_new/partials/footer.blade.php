@@ -28,7 +28,7 @@
       <p class="font-semibold text-[15px] text-gray-900 mb-5">Marketplace</p>
       <ul class="space-y-4">
         <li><a href="{{ route('v2.suppliers.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Browse Suppliers</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Products</a></li>
+        <li><a href="{{ route('v2.products.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Products</a></li>
         <li><a href="{{ route('v2.categories.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Categories</a></li>
         <li><a href="{{ route('v2.rfqs.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Request Quote</a></li>
       </ul>

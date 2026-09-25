@@ -107,6 +107,11 @@ class Account extends Model
         return $this->hasMany(AccountOwnershipTransfer::class, 'account_id');
     }
 
+    public function blogPosts(): HasMany
+    {
+        return $this->hasMany(BlogPost::class, 'account_id');
+    }
+
     /* ── Capabilities, conversion, preferences ──────────────────────────── */
 
     public function capabilities(): HasMany

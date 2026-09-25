@@ -42,4 +42,24 @@ class SocialLink extends Model
     {
         return $this->belongsTo(SocialPlatform::class, 'social_platform_id');
     }
+
+    public function getPlatformIconAttribute(): string
+    {
+        return $this->platform?->fa_icon ?? 'fa-solid fa-globe';
+    }
+
+    public function getPlatformNameAttribute(): string
+    {
+        return $this->platform?->name ?? ($this->label ?? 'Social Platform');
+    }
+
+    public function getPlatformBrandColorAttribute(): string
+    {
+        return $this->platform?->brand_color_class ?? 'hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/60';
+    }
+
+    public function getPlatformBadgeColorAttribute(): string
+    {
+        return $this->platform?->badge_color_class ?? 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    }
 }

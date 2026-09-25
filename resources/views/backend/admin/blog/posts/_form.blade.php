@@ -31,7 +31,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
                 <select name="status" class="focus-accent w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white">
                     <option value="draft" @selected(old('status', $post->status ?: 'draft') === 'draft')>Draft</option>
+                    <option value="pending" @selected(old('status', $post->status) === 'pending')>Pending Approval</option>
                     <option value="approved" @selected(old('status', $post->status) === 'approved')>Published</option>
+                    <option value="rejected" @selected(old('status', $post->status) === 'rejected')>Rejected</option>
                 </select>
             </div>
 

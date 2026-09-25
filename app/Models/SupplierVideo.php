@@ -98,6 +98,59 @@ class SupplierVideo extends Model
     }
 
     /**
+     * Checks if the URL points directly to a video stream/file (.mp4, .webm, .ogg, etc.).
+     */
+    public function isDirectVideo(): bool
+    {
+        if (in_array($this->resolvedProvider(), ['youtube', 'vimeo'])) {
+            return false;
+        }
+
+        if (! $this->video_url) {
+            return false;
+        }
+
+        return (bool) preg_match('/\.(mp4|webm|ogg|ogv|mov|m4v)(\?.*)?$/i', $this->video_url)
+            || str_starts_with($this->video_url, 'data:video/');
+    }
+
+    /**
+     * Display badge details for supplier and public cards.
+     */
+    public function providerBadge(): array
+    {
+        if ($this->resolvedProvider() === 'youtube') {
+            return [
+                'label' => 'YouTube',
+                'icon' => 'fa-brands fa-youtube',
+                'bg_class' => 'bg-red-50 text-red-600 border-red-200',
+            ];
+        }
+
+        if ($this->resolvedProvider() === 'vimeo') {
+            return [
+                'label' => 'Vimeo',
+                'icon' => 'fa-brands fa-vimeo-v',
+                'bg_class' => 'bg-sky-50 text-sky-600 border-sky-200',
+            ];
+        }
+
+        if ($this->isDirectVideo()) {
+            return [
+                'label' => 'Direct Video',
+                'icon' => 'fa-solid fa-file-video',
+                'bg_class' => 'bg-emerald-50 text-emerald-600 border-emerald-200',
+            ];
+        }
+
+        return [
+            'label' => 'Video',
+            'icon' => 'fa-solid fa-play',
+            'bg_class' => 'bg-indigo-50 text-indigo-600 border-indigo-200',
+        ];
+    }
+
+    /**
      * YouTube exposes a public, no-auth thumbnail image per video id.
      * Vimeo has no equivalent without an API call, so those (and "other")
      * fall back to no thumbnail — the UI shows a plain play-icon tile.
@@ -113,7 +166,16 @@ class SupplierVideo extends Model
 
     public static function extractYoutubeId(?string $url): ?string
     {
-        if ($url && preg_match('~(?:youtu\.be/|youtube\.com/(?:watch\?v=|embed/|shorts/))([A-Za-z0-9_-]{6,})~', $url, $m)) {
+        if (! $url) {
+            return null;
+        }
+
+        if (preg_match('~(?:youtu\.be/|youtube(?:-nocookie)?\.com/(?:.*[?&]v=|embed/|v/|shorts/))([A-Za-z0-9_-]{11})~i', $url, $m)) {
+            return $m[1];
+        }
+
+        // Fallback for non-standard 6-12 character IDs
+        if (preg_match('~(?:youtu\.be/|youtube\.com/(?:watch\?v=|embed/|shorts/))([A-Za-z0-9_-]{6,})~', $url, $m)) {
             return $m[1];
         }
 
@@ -122,7 +184,11 @@ class SupplierVideo extends Model
 
     public static function extractVimeoId(?string $url): ?string
     {
-        if ($url && preg_match('~vimeo\.com/(?:video/)?(\d+)~', $url, $m)) {
+        if (! $url) {
+            return null;
+        }
+
+        if (preg_match('~vimeo\.com/(?:video/|channels/[^/]+/|groups/[^/]+/videos/|)(\d+)~i', $url, $m)) {
             return $m[1];
         }
 

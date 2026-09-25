@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend\Supplier\Company;
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backend\Supplier\Company\StoreGalleryRequest;
+use App\Http\Requests\Backend\Supplier\Company\UpdateGalleryRequest;
 use App\Models\SupplierGallery;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -30,6 +31,19 @@ class GalleryController extends Controller
 
         return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
             ->with('success', 'Gallery updated.');
+    }
+
+    public function update(UpdateGalleryRequest $request, SupplierGallery $image)
+    {
+        abort_unless($image->supplier_account_id === $this->currentAccount()->id, 404);
+
+        $image->update([
+            'caption' => $request->input('caption'),
+            'alt_text' => $request->input('alt_text'),
+        ]);
+
+        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+            ->with('success', 'Photo caption updated.');
     }
 
     public function destroy(SupplierGallery $image)

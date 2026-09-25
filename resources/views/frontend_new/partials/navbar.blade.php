@@ -1,4 +1,4 @@
-<header class="sticky top-0 z-50 bg-white border-b border-gray-200">
+<header id="site-header" class="sticky top-0 z-50 bg-white border-b border-gray-200">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 lg:gap-7 py-3 min-h-[64px]">
 
     <!-- Hamburger (mobile only) -->
@@ -21,7 +21,7 @@
 
     <!-- Nav links -->
     <nav class="hidden lg:flex items-center gap-5 ml-1">
-      <a href="{{ route('v2.categories.index') }}" class="{{ request()->routeIs('v2.categories.*') ? 'nav-link-active' : 'nav-link' }}">Categories</a>
+      <a href="{{ route('v2.products.index') }}" class="{{ request()->routeIs('v2.categories.*', 'v2.products.*') ? 'nav-link-active' : 'nav-link' }}">Products</a>
       <a href="{{ route('v2.rfqs.index') }}" class="{{ request()->routeIs('v2.rfqs.*') ? 'nav-link-active' : 'nav-link' }}">RFQ</a>
       <a href="{{ route('v2.suppliers.index') }}" class="{{ request()->routeIs('v2.suppliers.*') ? 'nav-link-active' : 'nav-link' }}">Suppliers</a>
       <a href="{{ route('v2.blogs.index') }}" class="{{ request()->routeIs('v2.blogs.*') ? 'nav-link-active' : 'nav-link' }}">Blog</a>
@@ -51,3 +51,14 @@
     </div>
   </div>
 </header>
+<script>
+  (function () {
+    var header = document.getElementById('site-header');
+    if (!header) return;
+    function setHeaderHeight() {
+      document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+    }
+    setHeaderHeight();
+    window.addEventListener('resize', setHeaderHeight);
+  })();
+</script>

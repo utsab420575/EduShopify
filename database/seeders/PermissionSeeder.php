@@ -140,6 +140,7 @@ class PermissionSeeder extends Seeder
             ['platform.communication.manage', 'Platform · Support', 'platform', 'Manage conversations and contact inquiries'],
             ['platform.access_control.manage', 'Platform · Access Control', 'platform', 'Manage platform roles, permissions and account role requests', ['sensitive']],
             ['platform.settings.manage', 'Platform · System', 'platform', 'Manage platform settings', ['sensitive']],
+            ['platform.homepage_content.manage', 'Platform · System', 'platform', 'Manage public homepage UI content (hero section, etc.)', ['sensitive']],
             ['platform.activity_logs.view', 'Platform · System', 'platform', 'View activity logs'],
             ['platform.system.deploy', 'Platform · System', 'platform', 'Pull code deployments from GitHub', ['sensitive', 'owner_only']],
         ];
@@ -234,6 +235,7 @@ class PermissionSeeder extends Seeder
             ['purchase_order.view_supplier', 'Supplier · Purchase Orders', 'supplier', 'View purchase orders'],
             ['purchase_order.update_supplier', 'Supplier · Purchase Orders', 'supplier', 'Update purchase orders'],
             ['review.reply', 'Supplier · Reviews', 'supplier', 'Reply to a review'],
+            ['supplier.blog.manage', 'Supplier · Blog', 'supplier', 'Manage supplier blog posts'],
         ];
     }
 }

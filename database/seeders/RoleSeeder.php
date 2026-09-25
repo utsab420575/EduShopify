@@ -146,6 +146,7 @@ class RoleSeeder extends Seeder
                 'description'  => 'Day-to-day platform operations, excluding billing and system settings.',
                 'permissions'  => array_values(array_diff($platform, [
                     'platform.settings.manage',
+                    'platform.homepage_content.manage',
                     'platform.subscriptions.manage',
                     'platform.users.suspend',
                     'platform.access_control.manage',

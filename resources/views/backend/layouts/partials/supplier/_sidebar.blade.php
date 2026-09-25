@@ -153,6 +153,12 @@
         </a>
         @endcanany
 
+        {{-- Blog Posts --}}
+        <a href="{{ route('supplier.blog.posts.index') }}" class="sidebar-menu-item {{ $groupActive(['supplier.blog.*']) ? 'active' : '' }} flex items-center px-3 py-2.5 rounded-lg mb-1 border-l-4 {{ $groupActive(['supplier.blog.*']) ? '' : 'border-transparent' }}">
+            <i class="fa-solid fa-newspaper sidebar-menu-icon w-5 text-center"></i>
+            <span class="ml-3 flex-1 text-sm font-medium">Blog Posts</span>
+        </a>
+
         {{-- Organization (only for organization accounts) --}}
         @if($account && $account->isOrganization())
             @canany(['members.view', 'members.invite', 'members.update', 'members.remove', 'roles.view', 'roles.create', 'roles.update', 'roles.delete', 'roles.assign', 'ownership.transfer', 'supplier.members.index'])

@@ -40,10 +40,15 @@ function switchImg(thumb, src) {
 function switchTab(btn, name) {
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
     document.querySelectorAll('.tab-panel').forEach(function (p) { p.style.display = 'none'; });
-    btn.classList.add('active');
+    if (btn) {
+        btn.classList.add('active');
+    } else {
+        const targetBtn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+    }
     const panel = document.getElementById('tab-' + name);
     if (panel) {
-        if (name === 'about' || name === 'certifications' || name === 'contact') {
+        if (name === 'about' || name === 'certifications' || name === 'contact' || name === 'gallery-videos' || name === 'videos') {
             panel.style.display = 'flex';
             panel.style.flexDirection = 'column';
             panel.style.gap = '16px';

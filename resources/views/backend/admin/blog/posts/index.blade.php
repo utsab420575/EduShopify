@@ -62,7 +62,14 @@
                         </div>
                     </td>
                     <td class="px-5 py-3.5 text-sm text-gray-600">{{ $post->category?->name ?? '—' }}</td>
-                    <td class="px-5 py-3.5 text-sm text-gray-600">{{ $post->authorUser?->name ?? '—' }}</td>
+                    <td class="px-5 py-3.5 text-sm text-gray-600">
+                        <div class="flex items-center gap-1.5">
+                            <span>{{ $post->account?->display_name ?? $post->authorUser?->name ?? '—' }}</span>
+                            @if($post->account?->supplierProfile)
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200" title="Supplier Post">Supplier</span>
+                            @endif
+                        </div>
+                    </td>
                     <td class="px-5 py-3.5"><x-backend.status-badge :status="$post->status" /></td>
                     <td class="px-5 py-3.5 text-xs text-gray-500">
                         <span title="Views"><i class="fa-regular fa-eye"></i> {{ $post->views_count }}</span>

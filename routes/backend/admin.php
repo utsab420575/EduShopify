@@ -62,6 +62,7 @@ use App\Http\Controllers\Backend\Admin\System\CurrencyController;
 use App\Http\Controllers\Backend\Admin\System\FailedJobController;
 use App\Http\Controllers\Backend\Admin\System\GeographyController;
 use App\Http\Controllers\Backend\Admin\System\GitDeploymentController;
+use App\Http\Controllers\Backend\Admin\System\HomepageHeroController;
 use App\Http\Controllers\Backend\Admin\System\LanguageController;
 use App\Http\Controllers\Backend\Admin\System\SettingController;
 use App\Http\Controllers\Backend\Admin\System\ThemeController;
@@ -414,6 +415,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         Route::prefix('system')->name('system.')->group(function () {
             Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
             Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
+
+            Route::get('/hero-section', [HomepageHeroController::class, 'edit'])->name('hero-section.edit');
+            Route::put('/hero-section', [HomepageHeroController::class, 'update'])->name('hero-section.update');
 
             Route::get('/theme', [ThemeController::class, 'edit'])->name('theme.edit');
             Route::put('/theme', [ThemeController::class, 'update'])->name('theme.update');

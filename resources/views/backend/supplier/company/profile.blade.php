@@ -77,6 +77,10 @@
                 <p class="text-xs text-gray-400">Rating</p>
             </div>
             <div class="text-center">
+                <p class="text-xl font-bold text-violet-600">{{ $socialLinks->count() }}</p>
+                <p class="text-xs text-gray-400">Socials</p>
+            </div>
+            <div class="text-center">
                 <p class="text-xl font-bold text-pink-600">{{ $existingGallery->count() }}</p>
                 <p class="text-xs text-gray-400">Gallery</p>
             </div>
@@ -96,6 +100,7 @@
 <div class="space-y-3">
     @include('backend.supplier.company.partials._company')
     @include('backend.supplier.company.partials._contact')
+    @include('backend.supplier.company.partials._social')
     @include('backend.supplier.company.partials._media')
     @include('backend.supplier.company.partials._gallery')
     @include('backend.supplier.company.partials._locations')

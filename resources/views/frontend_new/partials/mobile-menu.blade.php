@@ -23,7 +23,7 @@
   </div>
 
   <nav class="flex flex-col px-2 py-3 gap-1 flex-1 overflow-y-auto">
-    <a href="{{ route('v2.categories.index') }}" class="px-3 py-2.5 rounded-md text-sm font-medium {{ request()->routeIs('v2.categories.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50' }}">Categories</a>
+    <a href="{{ route('v2.products.index') }}" class="px-3 py-2.5 rounded-md text-sm font-medium {{ request()->routeIs('v2.categories.*', 'v2.products.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50' }}">Products</a>
     <a href="{{ route('v2.rfqs.index') }}" class="px-3 py-2.5 rounded-md text-sm font-medium {{ request()->routeIs('v2.rfqs.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50' }}">RFQ</a>
     <a href="{{ route('v2.suppliers.index') }}" class="px-3 py-2.5 rounded-md text-sm font-medium {{ request()->routeIs('v2.suppliers.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50' }}">Suppliers</a>
     <a href="{{ route('v2.blogs.index') }}" class="px-3 py-2.5 rounded-md text-sm font-medium {{ request()->routeIs('v2.blogs.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50' }}">Blog</a>
