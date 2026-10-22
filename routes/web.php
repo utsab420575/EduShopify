@@ -30,7 +30,7 @@ Route::get('/system-refresh', function () {
     Artisan::call('route:clear');
     Artisan::call('view:clear');
     Artisan::call('cache:clear');
-    Artisan::call('weather:fetch');
+   /* Artisan::call('weather:fetch');*/
 
 
     Artisan::call('storage:link');  // recreate storage link (safe if exists)
