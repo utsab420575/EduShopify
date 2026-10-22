@@ -10,14 +10,31 @@ use Illuminate\View\View;
 
 class GitDeploymentController extends Controller
 {
-    public function index(GitDeploymentService $git): View
+    public function index(Request $request, GitDeploymentService $git): View
     {
         $this->authorize('platform.system.deploy');
 
+        // Refresh origin/* first so the history below reflects GitHub as of now.
+        $fetch = $git->fetch();
+
+        $status = $git->status();
+        $remoteBranches = $git->remoteBranchNames();
+        $defaultBranch = config('services.git_deploy.default_branch', 'utsab');
+
+        // ?branch= → configured default (utsab) → whatever is checked out.
+        $selectedBranch = collect([$request->query('branch'), $defaultBranch, $status['branch']])
+            ->first(fn ($name) => is_string($name) && in_array($name, $remoteBranches, true))
+            ?? ($remoteBranches[0] ?? null);
+
         return view('backend.admin.system.deploy.index', [
-            'status' => $git->status(),
-            'commits' => $git->recentCommits(10),
-            'branches' => $git->branches(),
+            'status' => $status,
+            'fetch' => $fetch,
+            'remoteBranches' => $remoteBranches,
+            'defaultBranch' => $defaultBranch,
+            'selectedBranch' => $selectedBranch,
+            'commits' => $selectedBranch ? $git->remoteCommits($selectedBranch, 100) : [],
+            'incomingHashes' => $selectedBranch ? $git->incomingHashes($selectedBranch) : [],
+            'deployedHash' => $status['last_commit']['hash'] ?? null,
             'githubRepoUrl' => $git->githubRepoUrl(),
         ]);
     }

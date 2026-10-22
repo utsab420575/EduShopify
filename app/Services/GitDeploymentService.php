@@ -15,6 +15,9 @@ use Symfony\Component\Process\Process;
  */
 class GitDeploymentService
 {
+    /** hash | author | relative date | ISO date | subject — subject last so a "|" inside it survives parsing. */
+    private const LOG_FORMAT = '--pretty=format:%H|%an|%ar|%aI|%s';
+
     private readonly string $repoPath;
 
     public function __construct(string $repoPath = '')
@@ -41,7 +44,7 @@ class GitDeploymentService
             $behind = (int) $m[2];
         }
 
-        $lastCommit = $this->run(['git', 'log', '-1', '--pretty=format:%H|%an|%ar|%s'], 10, allowFailure: true);
+        $lastCommit = $this->run(['git', 'log', '-1', self::LOG_FORMAT], 10, allowFailure: true);
 
         return [
             'branch' => $branch ?: null,
@@ -54,16 +57,77 @@ class GitDeploymentService
     }
 
     /**
-     * @return list<array{hash: string, short_hash: string, author: string, date: string, message: string}>
+     * @return list<array{hash: string, short_hash: string, author: string, date: string, date_iso: string, message: string}>
      */
     public function recentCommits(int $limit = 10): array
     {
-        $output = $this->run(['git', 'log', '-'.$limit, '--pretty=format:%H|%an|%ar|%s'], 10, allowFailure: true) ?? '';
+        $output = $this->run(['git', 'log', '-'.$limit, self::LOG_FORMAT], 10, allowFailure: true) ?? '';
 
-        return array_values(array_filter(array_map(
-            fn ($line) => $this->parseCommitLine($line),
-            explode("\n", $output)
-        )));
+        return $this->parseCommitLog($output);
+    }
+
+    /**
+     * Updates the origin/* remote-tracking refs from GitHub so the history
+     * shown is what's actually on GitHub, not a stale local copy. Only
+     * touches .git — the working tree and the deployed code are unchanged.
+     *
+     * @return array{ok: bool, error: string}
+     */
+    public function fetch(): array
+    {
+        $process = new Process(['git', 'fetch', 'origin', '--prune'], $this->repoPath);
+        $process->setTimeout(30);
+
+        try {
+            $process->run();
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => $e->getMessage()];
+        }
+
+        return ['ok' => $process->isSuccessful(), 'error' => trim($process->getErrorOutput())];
+    }
+
+    /**
+     * @return list<string> branches that exist on the GitHub remote.
+     */
+    public function remoteBranchNames(): array
+    {
+        return array_values(array_column(array_filter($this->branches(), fn ($b) => $b['is_remote']), 'name'));
+    }
+
+    /**
+     * Commit history of a branch as it stands on GitHub (origin/<branch>,
+     * as of the last fetch()). $branch is checked against the remote branch
+     * list first so git can never read it as an option or a range.
+     *
+     * @return list<array{hash: string, short_hash: string, author: string, date: string, date_iso: string, message: string}>
+     */
+    public function remoteCommits(string $branch, int $limit = 30): array
+    {
+        if (! in_array($branch, $this->remoteBranchNames(), true)) {
+            return [];
+        }
+
+        $output = $this->run(['git', 'log', '-'.$limit, self::LOG_FORMAT, 'origin/'.$branch], 10, allowFailure: true) ?? '';
+
+        return $this->parseCommitLog($output);
+    }
+
+    /**
+     * Hashes on origin/<branch> that the deployed HEAD doesn't contain yet,
+     * i.e. what a pull of that branch would bring in.
+     *
+     * @return list<string>
+     */
+    public function incomingHashes(string $branch): array
+    {
+        if (! in_array($branch, $this->remoteBranchNames(), true)) {
+            return [];
+        }
+
+        $output = $this->run(['git', 'rev-list', '--max-count=500', 'HEAD..origin/'.$branch], 10, allowFailure: true) ?? '';
+
+        return array_values(array_filter(array_map('trim', explode("\n", $output))));
     }
 
     /**
@@ -169,20 +233,29 @@ class GitDeploymentService
         ];
     }
 
+    private function parseCommitLog(string $output): array
+    {
+        return array_values(array_filter(array_map(
+            fn ($line) => $this->parseCommitLine($line),
+            explode("\n", $output)
+        )));
+    }
+
     private function parseCommitLine(string $line): ?array
     {
-        $parts = explode('|', $line, 4);
-        if (count($parts) < 4) {
+        $parts = explode('|', trim($line), 5);
+        if (count($parts) < 5) {
             return null;
         }
 
-        [$hash, $author, $date, $message] = $parts;
+        [$hash, $author, $date, $dateIso, $message] = $parts;
 
         return [
             'hash' => $hash,
             'short_hash' => substr($hash, 0, 7),
             'author' => $author,
             'date' => $date,
+            'date_iso' => $dateIso,
             'message' => $message,
         ];
     }

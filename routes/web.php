@@ -12,6 +12,7 @@ use App\Services\SupplierOnboardingStateService;
 use App\Support\FrontendIntent;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\PermissionRegistrar;
@@ -23,10 +24,39 @@ Route::get('/', [HomeController::class, 'index'])
     ->name('home');
 
 Route::get('/system-refresh', function () {
-    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-    return 'System refreshed successfully!';
+
+    Artisan::call('optimize:clear');      // clears config, route, view, cache
+    Artisan::call('config:clear');
+    Artisan::call('route:clear');
+    Artisan::call('view:clear');
+    Artisan::call('cache:clear');
+    Artisan::call('weather:fetch');
+
+
+    Artisan::call('storage:link');  // recreate storage link (safe if exists)
+
+    /*Artisan::call('migrate', [
+        '--force' => true,                 // required for production
+    ]);*/
+    /*
+        Artisan::call('db:seed', [
+            '--class' => 'Database\\Seeders\\DeleteSpecificUserSeeder',
+            '--force' => true,
+        ]);*/
+
+
+    // Run only these migration files
+
+    /*Artisan::call('migrate', [
+        '--path' => 'database/migrations/2026_08_18_000001_alter_booking_drafts_expires_at_to_datetime.php',
+        '--force' => true,
+    ]);*/
+    return response()->json([
+        'status' => 'success',
+        'message' => 'All caches cleared, migrated & storage linked ✅'
+    ]);
 });
+
 
 /* ── Public Auth: Registration & Login ── */
 Route::middleware('guest')->group(function () {

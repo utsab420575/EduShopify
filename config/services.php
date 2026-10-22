@@ -43,4 +43,10 @@ return [
         ],
     ],
 
+    // Admin › System › GitHub Deploy — the branch preselected for pulls and
+    // commit history when the page opens.
+    'git_deploy' => [
+        'default_branch' => env('GIT_DEPLOY_BRANCH', 'utsab'),
+    ],
+
 ];
