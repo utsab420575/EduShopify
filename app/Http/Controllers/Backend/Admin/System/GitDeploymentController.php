@@ -52,17 +52,23 @@ class GitDeploymentController extends Controller
 
         $result = $git->pull($validated['branch']);
 
-        activity('rbac')
-            ->causedBy($request->user())
-            ->withProperties([
-                'action' => 'git_pull',
-                'branch' => $validated['branch'],
-                'success' => $result['ok'],
-                'ip_address' => $request->ip(),
-            ])
-            ->log($result['ok']
-                ? "Pulled branch '{$validated['branch']}' from GitHub"
-                : "Failed to pull branch '{$validated['branch']}' from GitHub");
+        // The pull has already happened by now — a broken audit table must
+        // not turn its result into a 500 and hide the git output.
+        try {
+            activity('rbac')
+                ->causedBy($request->user())
+                ->withProperties([
+                    'action' => 'git_pull',
+                    'branch' => $validated['branch'],
+                    'success' => $result['ok'],
+                    'ip_address' => $request->ip(),
+                ])
+                ->log($result['ok']
+                    ? "Pulled branch '{$validated['branch']}' from GitHub"
+                    : "Failed to pull branch '{$validated['branch']}' from GitHub");
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return back()->with($result['ok'] ? 'success' : 'error', $result['ok']
             ? 'Pulled the latest changes from GitHub.'
