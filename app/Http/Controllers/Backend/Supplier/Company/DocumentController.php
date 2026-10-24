@@ -27,11 +27,13 @@ class DocumentController extends Controller
                 $request->file('file'),
                 Auth::user(),
                 $expiry,
-                $documentTypeId ? null : $data['custom_name']
+                $documentTypeId ? null : $data['custom_name'],
+                // Auto-approved (status 'verified' = approved); an admin can reject it later.
+                'verified'
             );
 
             return redirect()->route('supplier.company.profile', ['section' => 'documents'])
-                ->with('success', 'Document uploaded and submitted for review.');
+                ->with('success', 'Document uploaded and approved.');
         } catch (\Throwable $e) {
             return redirect()->route('supplier.company.profile', ['section' => 'documents'])
                 ->withErrors(['file' => $e->getMessage()]);

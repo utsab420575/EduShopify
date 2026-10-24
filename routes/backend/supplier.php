@@ -57,6 +57,11 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::put('/profile/videos/{video}', [\App\Http\Controllers\Backend\Supplier\Company\VideoController::class, 'update'])->name('profile.videos.update');
             Route::delete('/profile/videos/{video}', [\App\Http\Controllers\Backend\Supplier\Company\VideoController::class, 'destroy'])->name('profile.videos.destroy');
 
+            Route::post('/profile/locations', [\App\Http\Controllers\Backend\Supplier\Company\LocationController::class, 'store'])->name('profile.locations.store');
+            Route::put('/profile/locations/{location}', [\App\Http\Controllers\Backend\Supplier\Company\LocationController::class, 'update'])->name('profile.locations.update');
+            Route::delete('/profile/locations/{location}', [\App\Http\Controllers\Backend\Supplier\Company\LocationController::class, 'destroy'])->name('profile.locations.destroy');
+            Route::post('/profile/locations/{location}/primary', [\App\Http\Controllers\Backend\Supplier\Company\LocationController::class, 'makePrimary'])->name('profile.locations.primary');
+
             Route::post('/profile/service-areas', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'store'])->name('profile.service-areas.store');
             Route::put('/profile/service-areas/{serviceArea}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'update'])->name('profile.service-areas.update');
             Route::delete('/profile/service-areas/{serviceArea}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceAreaController::class, 'destroy'])->name('profile.service-areas.destroy');
@@ -71,6 +76,7 @@ Route::middleware(['auth', 'verified'])->prefix('supplier')->name('supplier.')->
             Route::delete('/profile/documents/{document}', [\App\Http\Controllers\Backend\Supplier\Company\DocumentController::class, 'destroy'])->name('profile.documents.destroy');
 
             Route::post('/profile/services', [\App\Http\Controllers\Backend\Supplier\Company\ServiceController::class, 'store'])->name('profile.services.store');
+            Route::post('/profile/services/reorder', [\App\Http\Controllers\Backend\Supplier\Company\ServiceController::class, 'reorder'])->name('profile.services.reorder');
             Route::put('/profile/services/{service}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceController::class, 'update'])->name('profile.services.update');
             Route::delete('/profile/services/{service}', [\App\Http\Controllers\Backend\Supplier\Company\ServiceController::class, 'destroy'])->name('profile.services.destroy');
 

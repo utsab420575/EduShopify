@@ -1,5 +1,5 @@
 {{-- ── 9. Services ── --}}
-<div id="sp-section-services" class="bg-white rounded-2xl border border-gray-200 shadow-sm"
+<div id="sp-section-services" data-profile-section="Services" data-filled="{{ ($services->isNotEmpty()) ? 1 : 0 }}" class="bg-white rounded-2xl border border-gray-200 shadow-sm"
      :class="open ? 'overflow-visible' : 'overflow-hidden'"
      x-data="{
          open: {{ $spAccOpen('services', false) }},
@@ -30,10 +30,25 @@
 
         @include('backend.supplier.company.partials._section-errors', ['section' => 'services'])
 
+        @if($services->count() > 1)
+            <p class="text-xs text-gray-500 mb-3">
+                <i class="fa-solid fa-grip-vertical mr-1 text-gray-400"></i>
+                Drag services by the handle to change the order they appear on your public profile.
+            </p>
+        @endif
+
+        {{-- Drag-and-drop list (SortableJS); the new order is saved instantly via AJAX. --}}
+        <div x-data="serviceSorter(@js(route('supplier.company.profile.services.reorder')))">
         @foreach($services as $service)
-            <div class="mb-4 border border-gray-200 rounded-xl" :class="editing ? 'overflow-visible' : 'overflow-hidden'" x-data="{ editing: false }">
+            <div data-service-id="{{ $service->id }}" class="mb-4 border border-gray-200 rounded-xl bg-white" :class="editing ? 'overflow-visible' : 'overflow-hidden'" x-data="{ editing: false }">
                 <div class="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-t-xl">
                     <div class="flex items-center gap-3 min-w-0">
+                        @if($services->count() > 1)
+                            <button type="button" class="sp-service-handle -ml-1 w-6 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing shrink-0 touch-none"
+                                    title="Drag to reorder" aria-label="Drag to reorder {{ $service->title }}">
+                                <i class="fa-solid fa-grip-vertical"></i>
+                            </button>
+                        @endif
                         @if($service->icon)
                             <div class="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0 text-sm shadow-xs">
                                 @if($service->icon->icon_type === 'fontawesome')
@@ -53,9 +68,7 @@
                             <div class="flex items-center gap-2 flex-wrap">
                                 <p class="text-sm font-semibold text-gray-900 truncate">{{ $service->title }}</p>
                                 <x-backend.status-badge :status="$service->status" />
-                                @if($service->sort_order > 0)
-                                    <span class="text-[10px] bg-gray-200/80 text-gray-600 px-1.5 py-0.5 rounded font-mono font-medium">Order: {{ $service->sort_order }}</span>
-                                @endif
+                                <span data-order-badge class="text-[10px] bg-gray-200/80 text-gray-600 px-1.5 py-0.5 rounded font-mono font-medium {{ $service->sort_order > 0 ? '' : 'hidden' }}">Order: {{ $service->sort_order }}</span>
                             </div>
                         </div>
                     </div>
@@ -91,7 +104,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Order</label>
-                                <input name="sort_order" value="{{ $service->sort_order }}" type="number" min="0" max="9999" placeholder="0" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-violet-300 outline-none">
+                                <input name="sort_order" value="{{ $service->sort_order }}" data-order-input type="number" min="0" max="9999" placeholder="0" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-violet-300 outline-none">
                             </div>
                         </div>
 
@@ -111,6 +124,7 @@
                 </div>
             </div>
         @endforeach
+        </div>{{-- /drag-and-drop list --}}
 
         <div class="mt-2" x-data="{ open: false }">
             <button type="button" @click="open = !open" class="flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-800 transition mb-4 cursor-pointer">
@@ -159,3 +173,91 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script>
+        // Services drag-and-drop. On drop, sends every service id top to
+        // bottom to ServiceController@reorder, which rewrites sort_order as
+        // 1..n; the "Order: N" badges / edit fields are then updated in place.
+        // A failed save puts the list back the way it was.
+        function serviceSorter(url) {
+            return {
+                saving: false,
+
+                init() {
+                    if (typeof Sortable === 'undefined') return;
+                    const list = this.$el;
+                    if (list.querySelectorAll('[data-service-id]').length < 2) return;
+
+                    let before = null;
+                    Sortable.create(list, {
+                        handle: '.sp-service-handle',
+                        draggable: '[data-service-id]',
+                        animation: 160,
+                        ghostClass: 'opacity-40',
+                        chosenClass: 'ring-2',
+                        onStart: () => { before = this.ids(); },
+                        onEnd: (evt) => {
+                            if (evt.oldIndex === evt.newIndex) return;
+                            this.save(before);
+                        },
+                    });
+                },
+
+                ids() {
+                    return [...this.$el.querySelectorAll(':scope > [data-service-id]')]
+                        .map((el) => Number(el.dataset.serviceId));
+                },
+
+                async save(previousIds) {
+                    this.saving = true;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ ids: this.ids() }),
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.message || 'Could not save the new order.');
+
+                        this.applyOrder(data.order || {});
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: data.message || 'Service order saved.', showConfirmButton: false, timer: 1800 });
+                    } catch (error) {
+                        this.restore(previousIds);
+                        Swal.fire({ icon: 'error', title: 'Order not saved', text: error.message, confirmButtonColor: '#4f46e5' });
+                    } finally {
+                        this.saving = false;
+                    }
+                },
+
+                applyOrder(order) {
+                    this.$el.querySelectorAll(':scope > [data-service-id]').forEach((el) => {
+                        const position = order[el.dataset.serviceId];
+                        if (!position) return;
+                        const badge = el.querySelector('[data-order-badge]');
+                        if (badge) {
+                            badge.textContent = 'Order: ' + position;
+                            badge.classList.remove('hidden');
+                        }
+                        const input = el.querySelector('[data-order-input]');
+                        if (input) input.value = position;
+                    });
+                },
+
+                restore(previousIds) {
+                    if (!previousIds) return;
+                    const list = this.$el;
+                    previousIds.forEach((id) => {
+                        const el = list.querySelector(`:scope > [data-service-id="${id}"]`);
+                        if (el) list.appendChild(el);
+                    });
+                },
+            };
+        }
+    </script>
+@endpush

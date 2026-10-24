@@ -33,15 +33,23 @@ class ProfileController extends Controller
     public function edit(Request $request)
     {
         $account = $this->currentAccount();
-        $account->load(['supplierProfile.country', 'supplierProfile.state', 'supplierProfile.city']);
+        $account->load(['supplierProfile', 'locations.country', 'locations.state', 'locations.city']);
         $profile = $account->supplierProfile;
 
-        $states = $profile?->country_id
-            ? State::where('country_id', $profile->country_id)->orderBy('name')->get(['id', 'name'])
-            : collect();
-        $cities = $profile?->state_id
-            ? City::where('state_id', $profile->state_id)->orderBy('name')->get(['id', 'name'])
-            : collect();
+        $states = collect();
+        $cities = collect();
+
+        $locations = $account->locations()->with(['country', 'state', 'city'])->orderByDesc('is_primary')->orderBy('id')->get()
+            ->map(function ($loc) {
+                $loc->loc_states = $loc->country_id
+                    ? State::where('country_id', $loc->country_id)->orderBy('name')->get(['id', 'name'])
+                    : collect();
+                $loc->loc_cities = $loc->state_id
+                    ? City::where('state_id', $loc->state_id)->orderBy('name')->get(['id', 'name'])
+                    : collect();
+
+                return $loc;
+            });
 
         $serviceAreas = $account->serviceAreas()->with(['country', 'state', 'city'])->latest()->get()
             ->map(function ($area) {
@@ -91,8 +99,12 @@ class ProfileController extends Controller
             'selectedCategoryIds' => $account->supplierCategories()->active()->pluck('category_id'),
             'existingGallery' => $account->galleryImages()->orderBy('sort_order')->get(),
             'videos' => $account->videos()->orderBy('sort_order')->get(),
+            'locations' => $locations,
             'serviceAreas' => $serviceAreas,
             'businessHours' => $businessHours,
+            // $businessHours falls back to a default Mon–Fri schedule, so it
+            // can't tell the progress bar whether hours were ever saved.
+            'hasSavedHours' => $account->businessHours()->whereNull('account_location_id')->exists(),
             'requiredDocumentTypes' => $requiredDocumentTypes,
             'documents' => $documents,
             'participating' => $participating,

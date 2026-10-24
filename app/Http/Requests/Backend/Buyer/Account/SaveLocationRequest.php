@@ -14,7 +14,7 @@ class SaveLocationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'location_type' => ['required', 'in:primary,registered_office,branch,warehouse,showroom,billing,delivery'],
+            'location_type' => ['required', 'in:head_office,registered_office,branch,warehouse,showroom,billing,delivery'],
             'label' => ['nullable', 'string', 'max:150'],
             'contact_name' => ['nullable', 'string', 'max:150'],
             'phone' => ['nullable', 'string', 'max:30'],

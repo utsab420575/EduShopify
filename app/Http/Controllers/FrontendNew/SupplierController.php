@@ -116,6 +116,7 @@ class SupplierController extends Controller
             'city',
             'account.supplierTypes',
             'account.socialLinks.platform',
+            'account.locations' => fn ($q) => $q->active()->with(['country', 'state', 'city'])->orderByDesc('is_primary')->orderBy('id'),
             'businessHours',
             'gallery' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
             'videos' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
@@ -172,7 +173,9 @@ class SupplierController extends Controller
             ->where('status', 'awarded')
             ->count();
 
+        $isWorldwide = $supplier->isWorldwideSupplier();
         $countriesServed = $supplier->serviceAreas()->whereNotNull('country_id')->distinct('country_id')->count('country_id');
+        $countriesServedDisplay = $isWorldwide ? 'Worldwide' : ($countriesServed > 0 ? $countriesServed.'+' : 'Local');
 
         $avgResponseHours = $supplier->average_response_minutes
             ? round($supplier->average_response_minutes / 60, 1)
@@ -208,6 +211,8 @@ class SupplierController extends Controller
             'reviews' => $reviews,
             'rfqsCompleted' => $rfqsCompleted,
             'countriesServed' => $countriesServed,
+            'countriesServedDisplay' => $countriesServedDisplay,
+            'isWorldwide' => $isWorldwide,
             'avgResponseHours' => $avgResponseHours,
             'yearsInBusiness' => $yearsInBusiness,
             'similarSuppliers' => $similarSuppliers,

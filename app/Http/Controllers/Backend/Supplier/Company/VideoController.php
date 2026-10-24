@@ -65,6 +65,7 @@ class VideoController extends Controller
             'title' => $data['title'],
             'video_url' => $data['video_url'],
             'caption' => $data['caption'] ?? null,
+            'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $video->is_active,
         ]);
 
         return redirect()->route('supplier.company.profile', ['section' => 'gallery'])

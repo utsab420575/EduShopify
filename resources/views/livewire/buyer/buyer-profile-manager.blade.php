@@ -10,20 +10,13 @@
 @endif
 
 {{-- Page Header --}}
-<div class="flex items-center justify-between mb-8">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
         <p class="text-sm text-gray-500 mt-0.5">Manage your buyer profile, media, and locations.</p>
     </div>
-    @if($profile?->isComplete())
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200">
-            <i class="fa-solid fa-circle-check"></i> Profile Complete
-        </span>
-    @else
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <i class="fa-solid fa-clock"></i> Draft
-        </span>
-    @endif
+    {{-- One bar per section carrying data-profile-section — see the component. --}}
+    <x-backend.section-progress />
 </div>
 
 {{-- Profile Summary Card --}}
@@ -69,7 +62,8 @@
 <div class="space-y-3">
 
     {{-- ── 1. Company Information ── --}}
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+    <div id="bp-section-company" data-profile-section="Company Information" data-filled="{{ (filled($profile?->display_name) && $hasBuyerTypes) ? 1 : 0 }}"
+         class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
         <button @click="open = !open" type="button"
                 class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
             <div class="flex items-center gap-3">
@@ -136,7 +130,8 @@
     </div>
 
     {{-- ── 2. Contact Information ── --}}
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
+    <div id="bp-section-contact" data-profile-section="Contact Information" data-filled="{{ (filled($profile?->contact_person) && filled($profile?->email)) ? 1 : 0 }}"
+         class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
         <button @click="open = !open" type="button"
                 class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
             <div class="flex items-center gap-3">
@@ -194,7 +189,8 @@
     </div>
 
     {{-- ── 3. Media & Branding ── --}}
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
+    <div id="bp-section-media" data-profile-section="Media &amp; Branding" data-filled="{{ (filled($profile?->logo)) ? 1 : 0 }}"
+         class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
         <button @click="open = !open" type="button"
                 class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
             <div class="flex items-center gap-3">
@@ -312,7 +308,8 @@
     </div>
 
     {{-- ── 4. Social Links ── --}}
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
+    <div id="bp-section-social" data-profile-section="Social Links" data-filled="{{ ($hasSocialLinks) ? 1 : 0 }}"
+         class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
         <button @click="open = !open" type="button"
                 class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
             <div class="flex items-center gap-3">
@@ -375,7 +372,8 @@
     </div>
 
     {{-- ── 5. Locations ── --}}
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
+    <div id="bp-section-locations" data-profile-section="Locations" data-filled="{{ ($hasLocations) ? 1 : 0 }}"
+         class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: false }">
         <button @click="open = !open" type="button"
                 class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
             <div class="flex items-center gap-3">
@@ -433,7 +431,7 @@
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
                                 <select wire:model="locations.{{ $i }}.location_type"
                                         class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-300 outline-none bg-white">
-                                    <option value="primary">Head Office</option>
+                                    <option value="head_office">Head Office</option>
                                     <option value="registered_office">Registered Office</option>
                                     <option value="branch">Branch</option>
                                     <option value="warehouse">Warehouse</option>
@@ -527,7 +525,7 @@
                             <label class="block text-xs font-medium text-gray-600 mb-1">Location Type <span class="text-red-500">*</span></label>
                             <select wire:model="new_location.location_type"
                                     class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-2 focus:ring-emerald-300 outline-none">
-                                <option value="primary">Head Office</option>
+                                <option value="head_office">Head Office</option>
                                 <option value="registered_office">Registered Office</option>
                                 <option value="branch">Branch</option>
                                 <option value="warehouse">Warehouse</option>

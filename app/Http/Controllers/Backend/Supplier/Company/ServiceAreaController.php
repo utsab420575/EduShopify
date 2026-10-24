@@ -18,10 +18,35 @@ class ServiceAreaController extends Controller
         $account = $this->currentAccount();
         $data = $request->validated();
         $isPrimary = (bool) ($data['is_primary'] ?? false);
+        $isGlobal = ($data['country_id'] === 'global');
 
-        DB::transaction(function () use ($account, $data, $isPrimary) {
+        DB::transaction(function () use ($account, $data, $isPrimary, $isGlobal) {
             if ($isPrimary) {
                 $account->serviceAreas()->update(['is_primary' => false]);
+            }
+
+            if ($isGlobal) {
+                $existing = $account->serviceAreas()->where('area_level', 'global')->first();
+                if ($existing) {
+                    $existing->update([
+                        'is_primary' => $isPrimary,
+                        'is_active' => true,
+                    ]);
+                    return;
+                }
+
+                SupplierServiceArea::create([
+                    'supplier_account_id' => $account->id,
+                    'area_level' => 'global',
+                    'country_id' => null,
+                    'state_id' => null,
+                    'city_id' => null,
+                    'radius_km' => null,
+                    'is_primary' => $isPrimary,
+                    'is_active' => true,
+                    'created_by_user_id' => Auth::id(),
+                ]);
+                return;
             }
 
             SupplierServiceArea::create([
@@ -48,10 +73,23 @@ class ServiceAreaController extends Controller
         $account = $this->currentAccount();
         $data = $request->validated();
         $isPrimary = (bool) ($data['is_primary'] ?? false);
+        $isGlobal = ($data['country_id'] === 'global');
 
-        DB::transaction(function () use ($account, $data, $isPrimary, $serviceArea) {
+        DB::transaction(function () use ($account, $data, $isPrimary, $serviceArea, $isGlobal) {
             if ($isPrimary) {
                 $account->serviceAreas()->where('id', '!=', $serviceArea->id)->update(['is_primary' => false]);
+            }
+
+            if ($isGlobal) {
+                $serviceArea->update([
+                    'area_level' => 'global',
+                    'country_id' => null,
+                    'state_id' => null,
+                    'city_id' => null,
+                    'radius_km' => null,
+                    'is_primary' => $isPrimary,
+                ]);
+                return;
             }
 
             $serviceArea->update([

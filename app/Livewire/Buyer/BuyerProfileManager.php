@@ -127,6 +127,11 @@ class BuyerProfileManager extends Component
             'buyerTypes'      => BuyerType::active()->orderBy('name')->get(['id', 'name']),
             'socialPlatforms' => SocialPlatform::active()->get(),
             'existingGallery' => $account->buyerGalleryImages()->active()->get(),
+            // Section-progress bars read saved rows, not the component's
+            // properties, which can hold typed-but-unsaved values.
+            'hasBuyerTypes'   => $account->buyerTypes()->exists(),
+            'hasSocialLinks'  => $account->socialLinks()->exists(),
+            'hasLocations'    => $account->locations()->exists(),
         ]);
     }
 
@@ -372,7 +377,7 @@ class BuyerProfileManager extends Component
             [
                 'new_location.country_id'     => 'required|exists:countries,id',
                 'new_location.address_line_1' => 'required|string|max:255',
-                'new_location.location_type'  => 'required|in:primary,registered_office,branch,warehouse,showroom,billing,delivery',
+                'new_location.location_type'  => 'required|in:head_office,registered_office,branch,warehouse,showroom,billing,delivery',
             ],
             [
                 'new_location.country_id.required'     => 'Please select a country.',

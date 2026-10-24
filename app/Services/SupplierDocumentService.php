@@ -29,7 +29,10 @@ class SupplierDocumentService
         UploadedFile $file,
         User $user,
         ?\DateTimeInterface $expiresAt = null,
-        ?string $customName = null
+        ?string $customName = null,
+        // 'verified' (= approved) on upload from Company Profile › Documents;
+        // an admin can still reject it later. Onboarding keeps 'pending'.
+        string $status = 'pending'
     ): SupplierDocument {
         if ($documentTypeId) {
             $docType = DocumentType::findOrFail($documentTypeId);
@@ -54,7 +57,7 @@ class SupplierDocumentService
             }
         }
 
-        return DB::transaction(function () use ($account, $documentTypeId, $file, $user, $expiresAt, $customName) {
+        return DB::transaction(function () use ($account, $documentTypeId, $file, $user, $expiresAt, $customName, $status) {
             if ($documentTypeId) {
                 // Lock existing documents for update to avoid race conditions
                 SupplierDocument::where('supplier_account_id', $account->id)
@@ -76,9 +79,11 @@ class SupplierDocumentService
                 'original_name'       => $file->getClientOriginalName(),
                 'mime_type'           => $file->getClientMimeType(),
                 'file_size_kb'        => (int) round($file->getSize() / 1024),
-                'status'              => 'pending',
+                'status'              => $status,
                 'rejection_reason'    => null,
                 'uploaded_by_user_id' => $user->id,
+                // Auto-approval: timestamped, but no admin as verifier.
+                'verified_at'         => $status === 'verified' ? now() : null,
                 'expires_at'          => $expiresAt,
                 'is_current'          => true,
             ]);

@@ -701,7 +701,7 @@ class BuyerProfileOnboarding extends Component
 
             $attributes = [
                 'account_id' => $account->id,
-                'location_type' => $index === 0 ? 'primary' : 'branch',
+                'location_type' => $index === 0 ? 'head_office' : 'branch',
                 'country_id' => $loc['country_id'],
                 'state_id' => $loc['state_id'] ?: null,
                 'city_id' => $loc['city_id'] ?: null,

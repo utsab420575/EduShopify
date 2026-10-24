@@ -40,10 +40,11 @@ class GalleryController extends Controller
         $image->update([
             'caption' => $request->input('caption'),
             'alt_text' => $request->input('alt_text'),
+            'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $image->is_active,
         ]);
 
         return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
-            ->with('success', 'Photo caption updated.');
+            ->with('success', 'Photo details updated.');
     }
 
     public function destroy(SupplierGallery $image)

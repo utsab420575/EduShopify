@@ -20,6 +20,7 @@ class UpdateVideoRequest extends ProfileSectionFormRequest
             'title' => 'required|string|max:255',
             'video_url' => 'required|url|max:500',
             'caption' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
         ];
     }
 

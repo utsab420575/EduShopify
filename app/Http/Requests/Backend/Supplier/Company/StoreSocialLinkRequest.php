@@ -26,13 +26,13 @@ class StoreSocialLinkRequest extends ProfileSectionFormRequest
                 'required',
                 'exists:social_platforms,id',
                 Rule::unique('social_links', 'social_platform_id')
-                    ->where('socialable_type', Account::class)
+                    ->where(fn ($q) => $q->whereIn('socialable_type', ['account', Account::class]))
                     ->where('socialable_id', $account?->id ?? 0),
             ],
             'url' => 'required|url|max:500',
             'handle' => 'nullable|string|max:150',
             'label' => 'nullable|string|max:150',
-            'is_public' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
         ];
     }
 

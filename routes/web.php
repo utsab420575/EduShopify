@@ -47,10 +47,15 @@ Route::get('/system-refresh', function () {
 
     // Run only these migration files
 
-    /*Artisan::call('migrate', [
-        '--path' => 'database/migrations/2026_08_18_000001_alter_booking_drafts_expires_at_to_datetime.php',
+    Artisan::call('migrate', [
+        '--path' => 'database/migrations/2026_10_24_200500_update_location_type_enum_in_account_locations_table.php',
         '--force' => true,
-    ]);*/
+    ]);
+
+    Artisan::call('migrate', [
+        '--path' => 'database/migrations/2026_10_24_203500_add_global_to_supplier_service_areas_enum.php',
+        '--force' => true,
+    ]);
     return response()->json([
         'status' => 'success',
         'message' => 'All caches cleared, migrated & storage linked ✅'

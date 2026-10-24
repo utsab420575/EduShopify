@@ -1,14 +1,6 @@
 {{-- ── 2. Contact Information ── --}}
-<div id="sp-section-contact" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-     x-data="{
-         open: {{ $spAccOpen('contact', false) }},
-         country: {{ (int) old('country_id', $profile?->country_id ?? 0) }},
-         state: {{ (int) old('state_id', $profile?->state_id ?? 0) }},
-         states: {{ Js::from($states->map(fn($s) => ['id' => $s->id, 'name' => $s->name])) }},
-         cities: {{ Js::from($cities->map(fn($c) => ['id' => $c->id, 'name' => $c->name])) }},
-         loadStates() { fetch('{{ url('/lookup/countries') }}/' + this.country + '/states').then(r=>r.json()).then(d=>this.states=d); },
-         loadCities() { fetch('{{ url('/lookup/states') }}/' + this.state + '/cities').then(r=>r.json()).then(d=>this.cities=d); },
-     }"
+<div id="sp-section-contact" data-profile-section="Contact Information" data-filled="{{ (filled($profile?->contact_person) && (filled($profile?->contact_email) || filled($profile?->contact_phone))) ? 1 : 0 }}" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+     x-data="{ open: {{ $spAccOpen('contact', false) }} }"
      x-init="$watch('open', v => localStorage.setItem('sp-acc-contact', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
@@ -18,7 +10,7 @@
             </div>
             <div class="text-left">
                 <p class="text-sm font-semibold text-gray-900">Contact Information</p>
-                <p class="text-xs text-gray-400">{{ $profile?->contact_person ?: 'Person, email, phone, registered address' }}</p>
+                <p class="text-xs text-gray-400">{{ $profile?->contact_person ?: 'Person, email, phone, support channels' }}</p>
             </div>
         </div>
         <i class="fa-solid fa-chevron-down text-gray-400 text-xs transition-transform duration-200" :class="open && 'rotate-180'"></i>
@@ -34,12 +26,12 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Contact Person <span class="text-red-500">*</span></label>
-                    <input name="contact_person" value="{{ old('contact_person', $profile?->contact_person) }}" type="text" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-sky-300 outline-none transition">
+                    <input name="contact_person" value="{{ old('contact_person', $profile?->contact_person) }}" type="text" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-sky-300 outline-none transition" required>
                     @error('contact_person') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Contact Email <span class="text-red-500">*</span></label>
-                    <input name="contact_email" value="{{ old('contact_email', $profile?->contact_email) }}" type="email" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-sky-300 outline-none transition">
+                    <input name="contact_email" value="{{ old('contact_email', $profile?->contact_email) }}" type="email" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-sky-300 outline-none transition" required>
                     @error('contact_email') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
@@ -61,37 +53,12 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Country <span class="text-red-500">*</span></label>
-                    <select name="country_id" x-model.number="country" @change="state=0;loadStates()" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-2 focus:ring-sky-300 outline-none">
-                        <option value="0">Select country</option>
-                        @foreach($countries as $c)
-                            <option value="{{ $c->id }}">{{ $c->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('country_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">State / Province</label>
-                    <select name="state_id" x-model.number="state" @change="loadCities()" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-2 focus:ring-sky-300 outline-none">
-                        <option value="0">Select state</option>
-                        <template x-for="s in states" :key="s.id"><option :value="s.id" x-text="s.name" :selected="s.id === state"></option></template>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">City</label>
-                    <select name="city_id" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:ring-2 focus:ring-sky-300 outline-none">
-                        <option value="0">Select city</option>
-                        <template x-for="c in cities" :key="c.id"><option :value="c.id" x-text="c.name" :selected="c.id === {{ (int) old('city_id', $profile?->city_id ?? 0) }}"></option></template>
-                    </select>
-                </div>
-            </div>
-
-            <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Street Address <span class="text-red-500">*</span></label>
-                <textarea name="address" rows="2" class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-sky-300 outline-none transition resize-none">{{ old('address', $profile?->address) }}</textarea>
-                @error('address') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+            <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500 flex items-center justify-between gap-2">
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-location-dot text-emerald-600"></i>
+                    Physical facilities, head office, and delivery service areas are managed in <strong>Locations & Service Areas</strong>.
+                </span>
+                <a href="{{ route('supplier.company.profile', ['section' => 'locations']) }}" class="text-emerald-700 font-semibold hover:underline flex-shrink-0">Go to Locations &rarr;</a>
             </div>
 
             <div class="flex justify-end mt-5 pt-4 border-t border-gray-100">

@@ -137,9 +137,9 @@
                     @if($supplier->businessHours->isNotEmpty())
                         <h3 class="text-sm font-semibold mt-5 mb-2" style="color:var(--fe-text);">Business Hours</h3>
                         <ul class="space-y-1 text-xs" style="color:var(--fe-text-muted);">
-                            @foreach($supplier->businessHours->sortBy('day_of_week') as $hour)
+                            @foreach($supplier->businessHours->sortBy(fn ($h) => $h->day_of_week === 0 ? 7 : $h->day_of_week) as $hour)
                                 <li class="flex justify-between">
-                                    <span>{{ $days[$hour->day_of_week] ?? '' }}</span>
+                                    <span>{{ $hour->day_name }}</span>
                                     <span>{{ $hour->is_open ? ($hour->open_time.' – '.$hour->close_time) : 'Closed' }}</span>
                                 </li>
                             @endforeach
@@ -226,16 +226,18 @@
                 </div>
 
                 <div x-show="section === 'gallery'" x-cloak>
-                    @if($supplier->gallery->isEmpty() && $supplier->videos->isEmpty())
+                    @php($activeGallery = $supplier->gallery->where('is_active', true))
+                    @php($activeVideos = $supplier->videos->where('is_active', true))
+                    @if($activeGallery->isEmpty() && $activeVideos->isEmpty())
                         <x-frontend::common.empty-state icon="fa-images" title="No gallery media yet" />
                     @else
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            @foreach($supplier->gallery as $image)
+                            @foreach($activeGallery as $image)
                                 <div class="aspect-square rounded-xl border flex items-center justify-center" style="border-color:var(--fe-border);background:var(--fe-surface-soft);">
                                     <i class="fa-solid fa-image text-2xl" style="color:var(--fe-text-subtle);"></i>
                                 </div>
                             @endforeach
-                            @foreach($supplier->videos as $video)
+                            @foreach($activeVideos as $video)
                                 <a href="{{ $video->video_url }}" target="_blank" rel="noopener" class="aspect-square rounded-xl border flex items-center justify-center relative" style="border-color:var(--fe-border);background:var(--fe-surface-soft);">
                                     <i class="fa-solid fa-circle-play text-3xl" style="color:var(--fe-text-subtle);"></i>
                                 </a>

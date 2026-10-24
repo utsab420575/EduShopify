@@ -1,5 +1,5 @@
 {{-- ── 6. Business Hours ── --}}
-<div id="sp-section-hours" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('hours', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-hours', v ? '1' : '0'))">
+<div id="sp-section-hours" data-profile-section="Business Hours" data-filled="{{ ($hasSavedHours) ? 1 : 0 }}" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('hours', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-hours', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
         <div class="flex items-center gap-3">

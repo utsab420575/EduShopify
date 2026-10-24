@@ -107,6 +107,10 @@ class SupplierApplicationWizardTest extends TestCase
             ->assertSet('step', 2);
 
         $this->assertSame(2, $account->locations()->count());
+        // Both locations are mirrored; the first (primary) one's area is primary.
+        $this->assertSame(2, $account->serviceAreas()->count());
+        $this->assertTrue((bool) $account->serviceAreas()->where('city_id', $city->id)->value('is_primary'));
+        $this->assertFalse((bool) $account->serviceAreas()->where('city_id', $city2->id)->value('is_primary'));
 
         // Step 2 — Branding & Media
         $logo = UploadedFile::fake()->image('logo.png');
@@ -249,6 +253,49 @@ class SupplierApplicationWizardTest extends TestCase
         // Clearing a field removes the saved row rather than leaving a stale one.
         $resumed->set("social_links.$youtubeId.url", '')->call('saveDraft');
         $this->assertDatabaseMissing('social_links', ['socialable_id' => $account->id, 'social_platform_id' => $youtubeId]);
+    }
+
+    public function test_step_4_shows_only_added_social_platforms_and_remove_deletes_the_link(): void
+    {
+        $this->seedBase();
+        [$user, $account] = $this->makeDraftSupplier('wizard-social-add@example.com');
+
+        $linkedinId = SocialPlatform::where('slug', 'linkedin')->value('id');
+
+        $facebookId = SocialPlatform::where('slug', 'facebook')->value('id');
+        $facebookBase = SocialPlatform::whereKey($facebookId)->value('base_url');
+        $linkedinBase = SocialPlatform::whereKey($linkedinId)->value('base_url');
+
+        // Nothing is shown until the applicant adds a platform; picking one
+        // prefills the address with that platform's base URL.
+        Livewire::actingAs($user)->test(SupplierApplication::class)
+            ->assertSet('shown_social_ids', [])
+            ->call('startAddingSocial')
+            ->assertSet('adding_social', true)
+            ->call('pickNewSocialPlatform', (string) $facebookId)
+            ->assertSet('adding_social', false)
+            ->assertSet('shown_social_ids', [$facebookId])
+            ->assertSet("social_links.$facebookId.url", $facebookBase)
+            // Switching platform while the address is still the bare base URL swaps the base.
+            ->call('changeSocialPlatform', $facebookId, (string) $linkedinId)
+            ->assertSet('shown_social_ids', [$linkedinId])
+            ->assertSet("social_links.$facebookId.url", '')
+            ->assertSet("social_links.$linkedinId.url", $linkedinBase)
+            ->set("social_links.$linkedinId.url", 'https://linkedin.com/company/added')
+            ->call('saveDraft');
+
+        $this->assertDatabaseHas('social_links', ['socialable_id' => $account->id, 'social_platform_id' => $linkedinId]);
+        $this->assertDatabaseMissing('social_links', ['socialable_id' => $account->id, 'social_platform_id' => $facebookId]);
+
+        // A saved link is shown again on resume; removing it deletes it on the next save.
+        Livewire::actingAs($user->fresh())->test(SupplierApplication::class)
+            ->assertSet('shown_social_ids', [$linkedinId])
+            ->call('removeSocialPlatform', $linkedinId)
+            ->assertSet('shown_social_ids', [])
+            ->assertSet("social_links.$linkedinId.url", '')
+            ->call('saveDraft');
+
+        $this->assertDatabaseMissing('social_links', ['socialable_id' => $account->id, 'social_platform_id' => $linkedinId]);
     }
 
     /**
@@ -425,5 +472,102 @@ class SupplierApplicationWizardTest extends TestCase
 
         $response->assertRedirect(route('supplier.pricing'));
         $this->assertSame('This plan is not yet available for purchase.', session('error'));
+    }
+
+    public function test_applicant_can_select_any_location_as_primary(): void
+    {
+        $this->seedBase();
+        [$user, $account] = $this->makeDraftSupplier('wizard-primary-loc@example.com');
+
+        $country = Country::create(['name' => 'UAE', 'iso2' => 'AE', 'iso3' => 'ARE', 'phone_code' => '971', 'currency_code' => 'AED', 'is_active' => true]);
+        $state1 = State::create(['country_id' => $country->id, 'name' => 'Dubai', 'is_active' => true]);
+        $city1 = City::create(['country_id' => $country->id, 'state_id' => $state1->id, 'name' => 'Dubai City', 'is_active' => true]);
+        $state2 = State::create(['country_id' => $country->id, 'name' => 'Abu Dhabi', 'is_active' => true]);
+        $city2 = City::create(['country_id' => $country->id, 'state_id' => $state2->id, 'name' => 'Abu Dhabi City', 'is_active' => true]);
+
+        $component = Livewire::actingAs($user)->test(SupplierApplication::class);
+
+        $component
+            ->set('display_name', 'Primary Location Test Co')
+            ->set('legal_name', 'Primary Location Test Co LLC')
+            ->set('locations.0.country_id', $country->id)
+            ->set('locations.0.state_id', $state1->id)
+            ->set('locations.0.city_id', $city1->id)
+            ->set('locations.0.address', 'Warehouse 1, Al Quoz, Dubai')
+            ->call('addLocation')
+            ->set('locations.1.country_id', $country->id)
+            ->set('locations.1.state_id', $state2->id)
+            ->set('locations.1.city_id', $city2->id)
+            ->set('locations.1.address', 'Main Headquarters, Corniche, Abu Dhabi')
+            // Explicitly set the second location as primary
+            ->call('setPrimaryLocation', 1)
+            ->call('nextStep')
+            ->assertHasNoErrors();
+
+        $account->refresh();
+        $this->assertSame(2, $account->locations()->count());
+
+        $dubaiLocation = $account->locations()->where('address_line_1', 'Warehouse 1, Al Quoz, Dubai')->first();
+        $abuDhabiLocation = $account->locations()->where('address_line_1', 'Main Headquarters, Corniche, Abu Dhabi')->first();
+
+        // Abu Dhabi must be primary and have location_type = head_office
+        $this->assertTrue((bool) $abuDhabiLocation->is_primary);
+        $this->assertSame('head_office', $abuDhabiLocation->location_type);
+
+        // Dubai must be non-primary branch
+        $this->assertFalse((bool) $dubaiLocation->is_primary);
+        $this->assertSame('branch', $dubaiLocation->location_type);
+
+        // Every location is mirrored into a service area; the primary
+        // location's area (Abu Dhabi) is the primary one.
+        $this->assertSame(2, $account->serviceAreas()->count());
+        $this->assertTrue((bool) $account->serviceAreas()->where('city_id', $city2->id)->value('is_primary'));
+        $this->assertFalse((bool) $account->serviceAreas()->where('city_id', $city1->id)->value('is_primary'));
+    }
+
+    public function test_removing_a_location_removes_only_its_mirrored_service_area(): void
+    {
+        $this->seedBase();
+        [$user, $account] = $this->makeDraftSupplier('wizard-loc-sync@example.com');
+
+        $country = Country::create(['name' => 'UAE', 'iso2' => 'AE', 'iso3' => 'ARE', 'phone_code' => '971', 'currency_code' => 'AED', 'is_active' => true]);
+        $state = State::create(['country_id' => $country->id, 'name' => 'Dubai', 'is_active' => true]);
+        $cities = collect(['Dubai City', 'Jebel Ali', 'Hatta', 'Manual City'])
+            ->map(fn ($name) => City::create(['country_id' => $country->id, 'state_id' => $state->id, 'name' => $name, 'is_active' => true]));
+
+        $component = Livewire::actingAs($user)->test(SupplierApplication::class)
+            ->set('display_name', 'Sync Test Co')
+            ->set('legal_name', 'Sync Test Co LLC');
+
+        foreach ($cities->take(3)->values() as $i => $city) {
+            if ($i > 0) {
+                $component->call('addLocation');
+            }
+            $component->set("locations.$i.country_id", $country->id)
+                ->set("locations.$i.state_id", $state->id)
+                ->set("locations.$i.city_id", $city->id)
+                ->set("locations.$i.address", "{$city->name} street $i");
+        }
+
+        $component->call('nextStep')->assertHasNoErrors();
+        $this->assertSame(3, $account->serviceAreas()->count());
+
+        // An area added by hand (not from a location) must survive the re-sync.
+        $account->serviceAreas()->create([
+            'area_level' => 'city', 'country_id' => $country->id, 'state_id' => $state->id,
+            'city_id' => $cities[3]->id, 'is_active' => true, 'created_by_user_id' => $user->id,
+        ]);
+
+        $component->call('goToStep', 1)
+            ->call('removeLocation', 2)
+            ->call('nextStep')
+            ->assertHasNoErrors();
+
+        $this->assertSame(2, $account->locations()->count());
+        $this->assertEqualsCanonicalizing(
+            [$cities[0]->id, $cities[1]->id, $cities[3]->id],
+            $account->serviceAreas()->pluck('city_id')->all()
+        );
+        $this->assertSame(1, $account->serviceAreas()->where('is_primary', true)->count());
     }
 }

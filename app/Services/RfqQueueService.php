@@ -156,6 +156,9 @@ class RfqQueueService
                 $q->where('is_active', true);
 
                 $q->where(function (Builder $q2) use ($level, $filter, $rfq) {
+                    // A global/worldwide coverage row satisfies all targets
+                    $q2->orWhere('area_level', 'global');
+
                     // A country-level coverage row satisfies any target level (country, state, city)
                     if ($filter->country_id) {
                         $q2->orWhere(fn (Builder $q3) => $q3->where('area_level', 'country')->where('country_id', $filter->country_id));

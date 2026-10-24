@@ -1,8 +1,8 @@
 {{-- ── 3. Social Media & Web Links ── --}}
-<div id="sp-section-social-links" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+<div id="sp-section-social-links" data-profile-section="Social Media &amp; Web Links" data-filled="{{ ($socialLinks->isNotEmpty()) ? 1 : 0 }}" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
      x-data="{
          open: {{ $spAccOpen('social-links', false) }},
-         editModal: { open: false, action: '', platform_id: '', url: '', handle: '', label: '', is_public: true, platform_name: '' }
+         editModal: { open: false, action: '', platform_id: '', url: '', handle: '', label: '', is_active: true, platform_name: '' }
      }"
      x-init="$watch('open', v => localStorage.setItem('sp-acc-social-links', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
@@ -48,13 +48,13 @@
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2">
                                     <p class="text-sm font-bold text-gray-900 truncate">{{ $link->platform_name }}</p>
-                                    @if($link->is_public)
+                                    @if($link->is_active)
                                         <span class="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            <i class="fa-solid fa-circle-check text-[8px]"></i> Public
+                                            <i class="fa-solid fa-circle-check text-[8px]"></i> Active
                                         </span>
                                     @else
                                         <span class="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                                            <i class="fa-solid fa-eye-slash text-[8px]"></i> Hidden
+                                            <i class="fa-solid fa-eye-slash text-[8px]"></i> Inactive
                                         </span>
                                     @endif
                                 </div>
@@ -81,7 +81,7 @@
                                         url: '{{ addslashes($link->url) }}',
                                         handle: '{{ addslashes($link->handle ?? '') }}',
                                         label: '{{ addslashes($link->label ?? '') }}',
-                                        is_public: {{ $link->is_public ? 'true' : 'false' }}
+                                        is_active: {{ $link->is_active ? 'true' : 'false' }}
                                     }"
                                     class="w-7 h-7 rounded-lg bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 flex items-center justify-center transition cursor-pointer"
                                     title="Edit social link">
@@ -155,9 +155,9 @@
 
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                     <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" name="is_public" value="1" checked
+                        <input type="checkbox" name="is_active" value="1" checked
                                class="rounded border-gray-300 text-violet-600 focus:ring-violet-500">
-                        <span class="text-xs text-gray-700 font-medium">Show publicly on company profile</span>
+                        <span class="text-xs text-gray-700 font-medium">Active — show on company profile</span>
                     </label>
 
                     <button type="submit" class="inline-flex items-center justify-center gap-2 text-sm font-semibold px-5 py-2 rounded-lg text-white transition cursor-pointer shrink-0" style="background:var(--theme-primary)">
@@ -215,11 +215,27 @@
                     </div>
                 </div>
 
-                <label class="flex items-center gap-2 cursor-pointer select-none pt-1">
-                    <input type="checkbox" name="is_public" value="1" x-model="editModal.is_public"
-                           class="rounded border-gray-300 text-violet-600 focus:ring-violet-500">
-                    <span class="text-xs text-gray-700 font-medium">Show publicly on company profile</span>
-                </label>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Status</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition select-none"
+                               :class="editModal.is_active ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-xs' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                            <input type="radio" name="is_active" value="1" :checked="editModal.is_active" @change="editModal.is_active = true" class="text-emerald-600 focus:ring-emerald-500">
+                            <div class="text-xs">
+                                <span class="font-bold flex items-center gap-1.5 text-gray-900"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Active</span>
+                                <p class="text-[10px] text-gray-500">Visible on public profile</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition select-none"
+                               :class="!editModal.is_active ? 'border-amber-500 bg-amber-50/50 text-amber-900 shadow-xs' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                            <input type="radio" name="is_active" value="0" :checked="!editModal.is_active" @change="editModal.is_active = false" class="text-amber-600 focus:ring-amber-500">
+                            <div class="text-xs">
+                                <span class="font-bold flex items-center gap-1.5 text-gray-900"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Inactive</span>
+                                <p class="text-[10px] text-gray-500">Hidden from buyers</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" @click="editModal.open = false" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>

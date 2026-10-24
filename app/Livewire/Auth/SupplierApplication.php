@@ -15,6 +15,7 @@ use App\Models\SocialPlatform;
 use App\Models\SubscriptionPlan;
 use App\Models\SupplierDocument;
 use App\Models\SupplierGallery;
+use App\Models\SupplierServiceArea;
 use App\Models\SupplierType;
 use App\Models\SupplierVideo;
 use App\Services\CapabilityApplicationService;
@@ -73,6 +74,12 @@ class SupplierApplication extends Component
     /** Keyed by social_platform_id => ['url' => string]. */
     public array $social_links = [];
 
+    /** Platform ids shown as rows in step 4 — only the ones the applicant added. */
+    public array $shown_social_ids = [];
+
+    /** Step 4's blank "pick a platform" row, open after "Add social media" until a platform is chosen. */
+    public bool $adding_social = false;
+
     /* ── Step 5: Verification Documents ── */
     public string $new_document_type_id = '';
     public $new_file;
@@ -109,17 +116,30 @@ class SupplierApplication extends Component
         $this->supplier_type_ids = $account->supplierTypes()->pluck('supplier_types.id')->toArray();
         $this->exhibition_ids = $account->exhibitions()->pluck('exhibitions.id')->toArray();
 
-        $this->locations = $account->locations->map(fn (AccountLocation $loc) => [
-            'id' => $loc->id,
-            'country_id' => $loc->country_id,
-            'state_id' => $loc->state_id,
-            'city_id' => $loc->city_id,
-            'address' => trim(($loc->address_line_1 ?? '').($loc->address_line_2 ? ', '.$loc->address_line_2 : '')),
-            'states' => $loc->country_id ? State::where('country_id', $loc->country_id)->orderBy('name')->get(['id', 'name'])->toArray() : [],
-            'cities' => $loc->state_id ? City::where('state_id', $loc->state_id)->orderBy('name')->get(['id', 'name'])->toArray() : [],
-        ])->toArray();
+        $hasPrimary = false;
+        $this->locations = $account->locations->map(function (AccountLocation $loc) use (&$hasPrimary) {
+            $isPrimary = (bool) $loc->is_primary;
+            if ($isPrimary) {
+                $hasPrimary = true;
+            }
+
+            return [
+                'id' => $loc->id,
+                'country_id' => $loc->country_id,
+                'state_id' => $loc->state_id,
+                'city_id' => $loc->city_id,
+                'address' => trim(($loc->address_line_1 ?? '').($loc->address_line_2 ? ', '.$loc->address_line_2 : '')),
+                'states' => $loc->country_id ? State::where('country_id', $loc->country_id)->orderBy('name')->get(['id', 'name'])->toArray() : [],
+                'cities' => $loc->state_id ? City::where('state_id', $loc->state_id)->orderBy('name')->get(['id', 'name'])->toArray() : [],
+                'is_primary' => $isPrimary,
+            ];
+        })->toArray();
         if (empty($this->locations)) {
-            $this->locations = [$this->emptyLocationRow()];
+            $row = $this->emptyLocationRow();
+            $row['is_primary'] = true;
+            $this->locations = [$row];
+        } elseif (! $hasPrimary && isset($this->locations[0])) {
+            $this->locations[0]['is_primary'] = true;
         }
 
         $this->business_hours = collect(range(0, 6))->map(function ($d) use ($account) {
@@ -156,7 +176,9 @@ class SupplierApplication extends Component
         }
         foreach ($account->socialLinks as $link) {
             $this->social_links[$link->social_platform_id] = ['url' => $link->url];
+            $this->shown_social_ids[] = $link->social_platform_id;
         }
+        $this->shown_social_ids = array_values(array_unique($this->shown_social_ids));
 
         // Resume exactly where they left off, including across a full
         // logout — both the furthest step unlocked and the exact step they
@@ -206,7 +228,16 @@ class SupplierApplication extends Component
 
     protected function emptyLocationRow(): array
     {
-        return ['id' => null, 'country_id' => null, 'state_id' => null, 'city_id' => null, 'address' => '', 'states' => [], 'cities' => []];
+        return [
+            'id' => null,
+            'country_id' => null,
+            'state_id' => null,
+            'city_id' => null,
+            'address' => '',
+            'states' => [],
+            'cities' => [],
+            'is_primary' => false,
+        ];
     }
 
     protected function account(): Account
@@ -216,9 +247,97 @@ class SupplierApplication extends Component
 
     /* ─────────────────── Locations (repeatable) ─────────────────── */
 
+    public function startAddingSocial(): void
+    {
+        $this->adding_social = true;
+    }
+
+    public function cancelAddingSocial(): void
+    {
+        $this->adding_social = false;
+    }
+
+    /**
+     * Turns the blank row into a real one for the chosen platform, with the
+     * address prefilled to that platform's base URL (e.g. https://facebook.com/)
+     * so the applicant only has to type their page name.
+     */
+    public function pickNewSocialPlatform($platformId): void
+    {
+        $platformId = (int) $platformId;
+        if (! $this->canShowSocialPlatform($platformId)) {
+            return;
+        }
+
+        $this->shown_social_ids[] = $platformId;
+        if (trim($this->social_links[$platformId]['url'] ?? '') === '') {
+            $this->social_links[$platformId]['url'] = $this->socialBaseUrl($platformId) ?? '';
+        }
+        $this->adding_social = false;
+        $this->dispatch('social-row-added', id: $platformId);
+    }
+
+    /**
+     * Switches an existing row to another platform in place. A real address
+     * is carried over; one that's still just the old platform's base URL is
+     * swapped for the new platform's.
+     */
+    public function changeSocialPlatform(int $fromId, $toId): void
+    {
+        $toId = (int) $toId;
+        $position = array_search($fromId, array_map('intval', $this->shown_social_ids), true);
+        if ($position === false || ! $this->canShowSocialPlatform($toId)) {
+            return;
+        }
+
+        $url = trim($this->social_links[$fromId]['url'] ?? '');
+        $this->social_links[$fromId]['url'] = '';
+        $this->resetValidation("social_links.$fromId.url");
+
+        $this->shown_social_ids[$position] = $toId;
+        $this->social_links[$toId]['url'] = ($url === '' || $url === $this->socialBaseUrl($fromId))
+            ? ($this->socialBaseUrl($toId) ?? '')
+            : $url;
+    }
+
+    /**
+     * Hides the row and blanks its URL — saveSocialLinks() then deletes any
+     * previously saved link for that platform on the next save.
+     */
+    public function removeSocialPlatform(int $platformId): void
+    {
+        $this->shown_social_ids = array_values(array_filter($this->shown_social_ids, fn ($id) => (int) $id !== $platformId));
+        if (array_key_exists($platformId, $this->social_links)) {
+            $this->social_links[$platformId]['url'] = '';
+        }
+        $this->resetValidation("social_links.$platformId.url");
+    }
+
+    protected function canShowSocialPlatform(int $platformId): bool
+    {
+        return array_key_exists($platformId, $this->social_links)
+            && ! in_array($platformId, array_map('intval', $this->shown_social_ids), true);
+    }
+
+    protected function socialBaseUrl(int $platformId): ?string
+    {
+        return SocialPlatform::whereKey($platformId)->value('base_url');
+    }
+
+    public function setPrimaryLocation(int $index): void
+    {
+        foreach ($this->locations as $i => $loc) {
+            $this->locations[$i]['is_primary'] = ($i === $index);
+        }
+    }
+
     public function addLocation(): void
     {
-        $this->locations[] = $this->emptyLocationRow();
+        $row = $this->emptyLocationRow();
+        if (empty($this->locations)) {
+            $row['is_primary'] = true;
+        }
+        $this->locations[] = $row;
     }
 
     public function removeLocation(int $index): void
@@ -226,8 +345,13 @@ class SupplierApplication extends Component
         if (count($this->locations) <= 1) {
             return;
         }
+        $wasPrimary = ! empty($this->locations[$index]['is_primary']);
         array_splice($this->locations, $index, 1);
         $this->locations = array_values($this->locations);
+
+        if ($wasPrimary && count($this->locations) > 0) {
+            $this->locations[0]['is_primary'] = true;
+        }
     }
 
     /**
@@ -612,10 +736,6 @@ class SupplierApplication extends Component
             'website' => $this->website,
             'founded_year' => $this->founded_year,
             'employees' => $this->employees,
-            'country_id' => $primaryLocation['country_id'] ?? null,
-            'state_id' => $primaryLocation['state_id'] ?? null,
-            'city_id' => $primaryLocation['city_id'] ?? null,
-            'address' => $primaryLocation['address'] ?? null,
         ];
 
         $account = $this->account();
@@ -639,10 +759,14 @@ class SupplierApplication extends Component
         // it resolves correctly under the app's registered morph map — see
         // AppServiceProvider::registerMorphMap(), which stores Account rows
         // under the 'account' alias rather than the literal class name.
+        $baseUrls = SocialPlatform::pluck('base_url', 'id');
+
         foreach ($this->social_links as $platformId => $row) {
             $url = trim($row['url'] ?? '');
 
-            if ($url === '') {
+            // A row left as just the prefilled base URL (https://facebook.com/)
+            // isn't a real link — treat it as empty.
+            if ($url === '' || $url === ($baseUrls[$platformId] ?? null)) {
                 $account->socialLinks()->where('social_platform_id', $platformId)->delete();
 
                 continue;
@@ -658,19 +782,36 @@ class SupplierApplication extends Component
     protected function saveLocations(Account $account): void
     {
         $submittedIds = [];
+        $savedLocations = [];
+        $primaryLocation = null;
+
+        // Resolve primary location index (defaulting to first valid row if none marked)
+        $primaryIndex = null;
+        foreach ($this->locations as $i => $l) {
+            if (! empty($l['is_primary'])) {
+                $primaryIndex = $i;
+                break;
+            }
+        }
+        if ($primaryIndex === null && count($this->locations) > 0) {
+            $primaryIndex = 0;
+        }
+
         foreach ($this->locations as $index => $loc) {
             if (empty($loc['country_id']) || empty($loc['address'])) {
                 continue;
             }
 
+            $isPrimary = ($index === $primaryIndex);
+
             $attributes = [
                 'account_id' => $account->id,
-                'location_type' => $index === 0 ? 'primary' : 'branch',
+                'location_type' => $isPrimary ? 'head_office' : 'branch',
                 'country_id' => $loc['country_id'],
                 'state_id' => $loc['state_id'] ?: null,
                 'city_id' => $loc['city_id'] ?: null,
                 'address_line_1' => $loc['address'],
-                'is_primary' => $index === 0,
+                'is_primary' => $isPrimary,
                 'is_active' => true,
                 'created_by_user_id' => Auth::id(),
             ];
@@ -687,8 +828,66 @@ class SupplierApplication extends Component
             }
 
             $submittedIds[] = $location->id;
+            $savedLocations[] = $location;
+            if ($isPrimary || ! $primaryLocation) {
+                $primaryLocation = $location;
+            }
         }
+
+        $removedLocations = $account->locations()->whereNotIn('id', $submittedIds)->get();
         $account->locations()->whereNotIn('id', $submittedIds)->delete();
+
+        $this->syncServiceAreasFromLocations($account, $savedLocations, $removedLocations, $primaryLocation);
+    }
+
+    /**
+     * Mirrors every business location into supplier_service_areas, matched
+     * by geography (there's no FK between the two tables): one area per
+     * distinct country/state/city, created only if missing so a manually
+     * added area is never duplicated. An area is removed only when its
+     * location was removed here and no remaining location still covers that
+     * same place, and the primary location's area becomes the primary one.
+     *
+     * @param  list<AccountLocation>  $savedLocations
+     */
+    protected function syncServiceAreasFromLocations(Account $account, array $savedLocations, $removedLocations, ?AccountLocation $primaryLocation): void
+    {
+        $geoKey = fn ($row) => implode(':', [$row->country_id, $row->state_id ?: 0, $row->city_id ?: 0]);
+        $matching = fn ($row) => $account->serviceAreas()
+            ->where('country_id', $row->country_id)
+            ->where(fn ($q) => $row->state_id ? $q->where('state_id', $row->state_id) : $q->whereNull('state_id'))
+            ->where(fn ($q) => $row->city_id ? $q->where('city_id', $row->city_id) : $q->whereNull('city_id'))
+            ->where('area_level', '!=', 'radius');
+
+        $keptKeys = collect($savedLocations)->map($geoKey)->unique();
+        foreach ($removedLocations->unique($geoKey) as $removed) {
+            if (! $keptKeys->contains($geoKey($removed))) {
+                $matching($removed)->delete();
+            }
+        }
+
+        $primaryAreaId = null;
+        foreach (collect($savedLocations)->unique($geoKey) as $location) {
+            $area = $matching($location)->first() ?? SupplierServiceArea::create([
+                'supplier_account_id' => $account->id,
+                'area_level' => $location->city_id ? 'city' : ($location->state_id ? 'state' : 'country'),
+                'country_id' => $location->country_id,
+                'state_id' => $location->state_id,
+                'city_id' => $location->city_id,
+                'is_primary' => false,
+                'is_active' => true,
+                'created_by_user_id' => Auth::id(),
+            ]);
+
+            if ($primaryLocation && $geoKey($location) === $geoKey($primaryLocation)) {
+                $primaryAreaId = $area->id;
+            }
+        }
+
+        if ($primaryAreaId) {
+            $account->serviceAreas()->where('id', '!=', $primaryAreaId)->update(['is_primary' => false]);
+            $account->serviceAreas()->where('id', $primaryAreaId)->update(['is_primary' => true]);
+        }
     }
 
     protected function saveGalleryAndVideos(Account $account): void

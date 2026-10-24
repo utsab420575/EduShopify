@@ -27,15 +27,18 @@ class CertificationController extends Controller
             'certification_date' => $data['certification_date'] ?? null,
             'expiry_date' => $data['expiry_date'] ?? null,
             'file' => $path,
-            'status' => 'pending',
+            // Approved on upload; an admin can still reject it later. No
+            // approver is recorded, which marks it as auto-approved.
+            'status' => 'approved',
+            'approved_at' => now(),
         ]);
 
         return redirect()->route('supplier.company.profile', ['section' => 'achievements'])
-            ->with('success', 'Certification submitted for review.');
+            ->with('success', 'Certification added and approved.');
     }
 
     /**
-     * Only a still-pending request can be edited — once admin has acted
+     * Editable while pending or auto-approved — once an admin has acted
      * (approved/rejected) the submitted facts are locked; withdraw and
      * resubmit via destroy() + store() instead.
      */
@@ -43,7 +46,7 @@ class CertificationController extends Controller
     {
         abort_unless($certification->account_id === $this->currentAccount()->id, 404);
 
-        if ($certification->status !== 'pending') {
+        if (! $certification->isEditableBySupplier()) {
             return redirect()->route('supplier.company.profile', ['section' => 'achievements']);
         }
 
@@ -62,13 +65,13 @@ class CertificationController extends Controller
     }
 
     /**
-     * Withdraw a request that hasn't been approved — a pending submission
-     * no longer wanted, or a rejected one being cleared out.
+     * Remove a certification an admin hasn't approved — pending, rejected,
+     * or auto-approved on upload.
      */
     public function destroy(Certification $certification)
     {
         abort_unless($certification->account_id === $this->currentAccount()->id, 404);
-        abort_unless(in_array($certification->status, ['pending', 'rejected'], true), 422);
+        abort_unless($certification->isRemovableBySupplier(), 422);
 
         if ($certification->file && Storage::disk('public')->exists($certification->file)) {
             Storage::disk('public')->delete($certification->file);

@@ -25,7 +25,7 @@
                     @csrf
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <x-backend.select name="location_type" label="Location Type" required :options="[
-                            'primary' => 'Head Office', 'registered_office' => 'Registered Office', 'branch' => 'Branch',
+                            'head_office' => 'Head Office', 'registered_office' => 'Registered Office', 'branch' => 'Branch',
                             'warehouse' => 'Warehouse', 'showroom' => 'Showroom', 'billing' => 'Billing Address', 'delivery' => 'Delivery Address',
                         ]" />
                         <x-backend.input name="label" label="Label (optional)" />

@@ -1,11 +1,11 @@
 {{-- ── 4. Gallery & Videos ── --}}
-<div id="sp-section-gallery" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+<div id="sp-section-gallery" data-profile-section="Gallery &amp; Videos" data-filled="{{ ($existingGallery->isNotEmpty() || $videos->isNotEmpty()) ? 1 : 0 }}" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
      x-data="{
          open: {{ $spAccOpen('gallery', false) }},
          lightbox: { open: false, src: '', caption: '' },
-         editPhoto: { open: false, action: '', caption: '', alt: '', src: '' },
+         editPhoto: { open: false, action: '', caption: '', alt: '', src: '', is_active: true },
          previewVideo: { open: false, title: '', url: '', isDirect: false, embedUrl: '' },
-         editVideo: { open: false, action: '', title: '', url: '', caption: '' },
+         editVideo: { open: false, action: '', title: '', url: '', caption: '', is_active: true },
          newVideoUrl: '{{ old('video_url', '') }}',
          detectProvider(url) {
              if (!url) return null;
@@ -23,7 +23,7 @@
                 <i class="fa-solid fa-images text-sm"></i>
             </div>
             <div class="text-left">
-                <p class="text-sm font-semibold text-gray-900">Gallery &amp; Videos</p>
+                <p class="text-sm font-semibold text-gray-900">Gallery & Videos</p>
                 <p class="text-xs text-gray-400">{{ $existingGallery->count() }} photo{{ $existingGallery->count() === 1 ? '' : 's' }}, {{ $videos->count() }} video{{ $videos->count() === 1 ? '' : 's' }}</p>
             </div>
         </div>
@@ -49,8 +49,16 @@
             @if($existingGallery->isNotEmpty())
                 <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3 mb-5">
                     @foreach($existingGallery as $img)
-                        <div class="relative group aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm">
-                            <img src="{{ $img->image_url }}" class="w-full h-full object-cover transition duration-200 group-hover:scale-105" alt="{{ $img->alt_text ?? 'Gallery image' }}">
+                        <div class="relative group aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm {{ !$img->is_active ? 'ring-2 ring-amber-400/60' : '' }}">
+                            <img src="{{ $img->image_url }}" class="w-full h-full object-cover transition duration-200 group-hover:scale-105 {{ !$img->is_active ? 'opacity-70' : '' }}" alt="{{ $img->alt_text ?? 'Gallery image' }}">
+
+                            @if(!$img->is_active)
+                                <div class="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+                                    <span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow-xs">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white"></span> Inactive
+                                    </span>
+                                </div>
+                            @endif
 
                             @if($img->caption)
                                 <div class="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-xs text-[10px] text-white px-1.5 py-0.5 truncate text-center">
@@ -59,7 +67,7 @@
                             @endif
 
                             {{-- Hover Actions Overlay --}}
-                            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                            <div class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1 z-20">
                                 {{-- View button --}}
                                 <button type="button"
                                         @click="lightbox = { open: true, src: '{{ $img->image_url }}', caption: '{{ addslashes($img->caption ?? '') }}' }"
@@ -69,9 +77,9 @@
                                 </button>
                                 {{-- Edit caption button --}}
                                 <button type="button"
-                                        @click="editPhoto = { open: true, action: '{{ route('supplier.company.profile.gallery.update', $img) }}', caption: '{{ addslashes($img->caption ?? '') }}', alt: '{{ addslashes($img->alt_text ?? '') }}', src: '{{ $img->image_url }}' }"
+                                        @click="editPhoto = { open: true, action: '{{ route('supplier.company.profile.gallery.update', $img) }}', caption: '{{ addslashes($img->caption ?? '') }}', alt: '{{ addslashes($img->alt_text ?? '') }}', src: '{{ $img->image_url }}', is_active: {{ $img->is_active ? 'true' : 'false' }} }"
                                         class="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-indigo-600 text-xs flex items-center justify-center shadow transition cursor-pointer"
-                                        title="Edit caption">
+                                        title="Edit photo details">
                                     <i class="fa-solid fa-pen"></i>
                                 </button>
                                 {{-- Delete button --}}
@@ -147,10 +155,19 @@
                                     <i class="{{ $badge['icon'] }} text-lg"></i>
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2 mb-0.5">
+                                    <div class="flex items-center gap-2 mb-0.5 flex-wrap">
                                         <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border {{ $badge['bg_class'] }}">
                                             <i class="{{ $badge['icon'] }}"></i> {{ $badge['label'] }}
                                         </span>
+                                        @if($video->is_active)
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Inactive (Hidden)
+                                            </span>
+                                        @endif
                                     </div>
                                     <p class="text-sm font-bold text-gray-900 truncate">{{ $video->title }}</p>
                                     @if($video->caption)
@@ -185,7 +202,8 @@
                                                 action: '{{ route('supplier.company.profile.videos.update', $video) }}',
                                                 title: '{{ addslashes($video->title) }}',
                                                 url: '{{ addslashes($video->video_url) }}',
-                                                caption: '{{ addslashes($video->caption ?? '') }}'
+                                                caption: '{{ addslashes($video->caption ?? '') }}',
+                                                is_active: {{ $video->is_active ? 'true' : 'false' }}
                                             }"
                                             class="w-7 h-7 rounded-lg bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 flex items-center justify-center transition cursor-pointer"
                                             title="Edit video">
@@ -305,6 +323,27 @@
                     <input type="text" name="alt_text" x-model="editPhoto.alt" placeholder="e.g. Photo of engineers at cleanroom workstation"
                            class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-pink-300 outline-none">
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Status</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition select-none"
+                               :class="editPhoto.is_active ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-xs' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                            <input type="radio" name="is_active" value="1" :checked="editPhoto.is_active" @change="editPhoto.is_active = true" class="text-emerald-600 focus:ring-emerald-500">
+                            <div class="text-xs">
+                                <span class="font-bold flex items-center gap-1.5 text-gray-900"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Active</span>
+                                <p class="text-[10px] text-gray-500">Visible on public profile</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition select-none"
+                               :class="!editPhoto.is_active ? 'border-amber-500 bg-amber-50/50 text-amber-900 shadow-xs' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                            <input type="radio" name="is_active" value="0" :checked="!editPhoto.is_active" @change="editPhoto.is_active = false" class="text-amber-600 focus:ring-amber-500">
+                            <div class="text-xs">
+                                <span class="font-bold flex items-center gap-1.5 text-gray-900"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Inactive</span>
+                                <p class="text-[10px] text-gray-500">Hidden from public profile</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
                 <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
                     <button type="button" @click="editPhoto.open = false" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
                     <button type="submit" class="px-4 py-2 text-sm font-semibold text-white rounded-lg cursor-pointer" style="background:var(--theme-primary)">Save Changes</button>
@@ -373,6 +412,27 @@
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Caption / Description</label>
                     <input type="text" name="caption" x-model="editVideo.caption"
                            class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-pink-300 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Status</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition select-none"
+                               :class="editVideo.is_active ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-xs' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                            <input type="radio" name="is_active" value="1" :checked="editVideo.is_active" @change="editVideo.is_active = true" class="text-emerald-600 focus:ring-emerald-500">
+                            <div class="text-xs">
+                                <span class="font-bold flex items-center gap-1.5 text-gray-900"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Active</span>
+                                <p class="text-[10px] text-gray-500">Visible on public profile</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition select-none"
+                               :class="!editVideo.is_active ? 'border-amber-500 bg-amber-50/50 text-amber-900 shadow-xs' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                            <input type="radio" name="is_active" value="0" :checked="!editVideo.is_active" @change="editVideo.is_active = false" class="text-amber-600 focus:ring-amber-500">
+                            <div class="text-xs">
+                                <span class="font-bold flex items-center gap-1.5 text-gray-900"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Inactive</span>
+                                <p class="text-[10px] text-gray-500">Hidden from public profile</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
                     <button type="button" @click="editVideo.open = false" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>

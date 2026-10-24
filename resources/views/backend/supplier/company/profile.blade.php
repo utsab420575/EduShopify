@@ -32,20 +32,14 @@
 @endif
 
 {{-- Page Header --}}
-<div class="flex items-center justify-between mb-8">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Business Profile</h1>
         <p class="text-sm text-gray-500 mt-0.5">Manage your company profile, branding, locations, and documents.</p>
     </div>
-    @if($profile?->isComplete())
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200">
-            <i class="fa-solid fa-circle-check"></i> Profile Complete
-        </span>
-    @else
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <i class="fa-solid fa-clock"></i> Draft
-        </span>
-    @endif
+
+    {{-- One bar per section carrying data-profile-section — see the component. --}}
+    <x-backend.section-progress />
 </div>
 
 {{-- Profile Summary Card --}}
@@ -85,7 +79,7 @@
                 <p class="text-xs text-gray-400">Gallery</p>
             </div>
             <div class="text-center">
-                <p class="text-xl font-bold text-emerald-600">{{ $serviceAreas->count() }}</p>
+                <p class="text-xl font-bold text-emerald-600">{{ $locations->count() + $serviceAreas->count() }}</p>
                 <p class="text-xs text-gray-400">Locations</p>
             </div>
             <div class="text-center">

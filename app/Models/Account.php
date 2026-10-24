@@ -166,11 +166,21 @@ class Account extends Model
         return $this->hasMany(AccountLocation::class, 'account_id');
     }
 
+    public function primaryLocation(): HasOne
+    {
+        return $this->hasOne(AccountLocation::class, 'account_id')->where('is_primary', true);
+    }
+
     /* ── Supplier-side records (supplier_account_id) ────────────────────── */
 
     public function serviceAreas(): HasMany
     {
         return $this->hasMany(SupplierServiceArea::class, 'supplier_account_id');
+    }
+
+    public function isWorldwideSupplier(): bool
+    {
+        return $this->serviceAreas()->where('area_level', 'global')->where('is_active', true)->exists();
     }
 
     public function supplierCategories(): HasMany

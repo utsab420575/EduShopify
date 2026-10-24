@@ -139,7 +139,7 @@ class AdminUserSeeder extends Seeder
             AccountLocation::firstOrCreate(
                 [
                     'account_id'    => $systemAccount->id,
-                    'location_type' => 'primary',
+                    'location_type' => 'head_office',
                 ],
                 [
                     'label'              => 'Edushopify Headquarters',

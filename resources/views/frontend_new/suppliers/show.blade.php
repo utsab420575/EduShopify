@@ -13,7 +13,15 @@
   <div class="hero-wrap">
     <div class="hero-banner">
       @if($supplier->banner)
-        <img src="{{ \Illuminate\Support\Facades\Storage::url($supplier->banner) }}" alt="{{ $supplier->display_name }}" />
+        {{-- banner_fit (supplier's choice): cover crops overflow, contain shows the
+             whole image over a blurred copy of itself, fill stretches to the box. --}}
+        @php($bannerFit = in_array($supplier->banner_fit, \App\Models\SupplierProfile::BANNER_FITS, true) ? $supplier->banner_fit : 'cover')
+        @php($bannerUrl = \Illuminate\Support\Facades\Storage::url($supplier->banner))
+        @if($bannerFit === 'contain')
+          <img src="{{ $bannerUrl }}" alt="" aria-hidden="true"
+               style="position:absolute;inset:0;object-fit:cover;filter:blur(24px) brightness(.75);transform:scale(1.15);" />
+        @endif
+        <img src="{{ $bannerUrl }}" alt="{{ $supplier->display_name }}" style="position:relative;object-fit:{{ $bannerFit }};" />
       @else
         <div class="w-full h-full bg-gradient-to-r from-emerald-800 via-teal-700 to-slate-900 relative">
           <div class="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] opacity-15"></div>
@@ -64,7 +72,7 @@
         <div class="stat-col"><p class="val">{{ $supplier->quotation_response_rate !== null ? round($supplier->quotation_response_rate).'%' : '—' }}</p><p class="lbl">Response Rate</p></div>
         <div class="stat-col"><p class="val">{{ $avgResponseHours !== null ? $avgResponseHours.' hrs' : '—' }}</p><p class="lbl">Avg Response Time</p></div>
         <div class="stat-col"><p class="val">{{ $rfqsCompleted }}+</p><p class="lbl">RFQs Completed</p></div>
-        <div class="stat-col"><p class="val">{{ $countriesServed }}+</p><p class="lbl">Countries Served</p></div>
+        <div class="stat-col"><p class="val">{{ $countriesServedDisplay ?? ($countriesServed.'+') }}</p><p class="lbl">{{ ($isWorldwide ?? false) ? 'Global Coverage' : 'Countries Served' }}</p></div>
         <div class="stat-col"><p class="val">{{ $yearsInBusiness ?? '—' }}{{ $yearsInBusiness ? '+' : '' }}</p><p class="lbl">Years in Business</p></div>
       </div>
     </div>
@@ -101,8 +109,9 @@
                 <button type="button" class="about-readmore-btn" onclick="toggleAboutReadMore(this)">Read more</button>
               @endif
             </div>
-            @if($supplier->videos->isNotEmpty())
-              @php($firstVideo = $supplier->videos->first())
+            @php($activeVideos = $supplier->videos->where('is_active', true))
+            @if($activeVideos->isNotEmpty())
+              @php($firstVideo = $activeVideos->first())
               <div class="shrink-0 w-36 h-24 relative rounded-lg overflow-hidden cursor-pointer group" onclick="switchTab(document.getElementById('tab-btn-gallery-videos') || document.querySelector('[data-tab=gallery-videos]'),'gallery-videos')">
                 @if($firstVideo->thumbnailUrl())
                   <img src="{{ $firstVideo->thumbnailUrl() }}" alt="{{ $firstVideo->title }}" class="absolute inset-0 w-full h-full object-cover" />
@@ -264,28 +273,52 @@
               <h2 class="text-[15px] font-bold text-gray-900 mb-0.5">Gallery Images</h2>
               <p class="text-xs text-gray-500">Explore facilities, showroom, production process, and operations.</p>
             </div>
-            @if($supplier->gallery->isNotEmpty())
+            @php($activeGallery = $supplier->gallery->where('is_active', true))
+            @if($activeGallery->isNotEmpty())
               <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <span id="gallery-counter">1</span> / {{ $supplier->gallery->count() }} photos
+                <span id="gallery-counter">1</span> / {{ $activeGallery->count() }} photos
               </span>
             @endif
           </div>
 
-          @if($supplier->gallery->isNotEmpty())
+          @if($activeGallery->isNotEmpty())
             {{-- Professional Image Carousel / Slider --}}
             <div class="gallery-slider-wrapper relative select-none" id="supplier-gallery-carousel">
               {{-- Main Slide Stage --}}
               <div class="relative w-full rounded-2xl overflow-hidden bg-gray-950 border border-gray-200 shadow-sm aspect-16/10 sm:aspect-16/9 max-h-[480px] flex items-center justify-center group">
 
+                {{-- Floating Alt Text / Tooltip Badge (Top-Left) --}}
+                @php($firstImg = $activeGallery->first())
+                <div id="gallery-alt-badge" class="absolute top-3 left-3 z-20 transition-all duration-300 {{ empty($firstImg->alt_text) ? 'opacity-0 pointer-events-none' : 'opacity-100' }}">
+                  <div class="relative group/alt flex items-center">
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/85 text-white backdrop-blur-md border border-white/15 text-xs shadow-md transition cursor-help">
+                      <i class="fa-solid fa-circle-info text-emerald-400 text-xs shrink-0"></i>
+                      <span id="gallery-alt-badge-text" class="font-normal text-gray-200 truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
+                        {{ $firstImg->alt_text ?? '' }}
+                      </span>
+                    </div>
+                    {{-- Expanded Hover Tooltip for longer descriptions --}}
+                    <div class="absolute left-0 top-full mt-1.5 w-64 sm:w-80 p-2.5 bg-gray-950/95 text-white text-xs rounded-xl shadow-2xl backdrop-blur-md border border-white/15 opacity-0 invisible group-hover/alt:opacity-100 group-hover/alt:visible transition-all duration-200 z-30 pointer-events-none">
+                      <p class="font-semibold text-[10px] text-emerald-400 uppercase tracking-wider mb-0.5">Image Description</p>
+                      <p id="gallery-alt-tooltip-text" class="text-gray-200 text-xs leading-relaxed">
+                        {{ $firstImg->alt_text ?? '' }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {{-- Slide Items --}}
                 <div class="gallery-track relative w-full h-full overflow-hidden">
-                  @foreach($supplier->gallery as $index => $img)
+                  @foreach($activeGallery as $index => $img)
                     <div class="gallery-slide absolute inset-0 w-full h-full transition-all duration-300 ease-out flex items-center justify-center {{ $index === 0 ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 pointer-events-none scale-98' }}"
                          data-index="{{ $index }}"
                          data-caption="{{ $img->caption ?? '' }}"
-                         data-src="{{ $img->image_url }}">
+                         data-alt="{{ $img->alt_text ?? '' }}"
+                         data-src="{{ $img->image_url }}"
+                         title="{{ $img->alt_text ?: ($img->caption ?: '') }}">
                       <img src="{{ $img->image_url }}"
                            alt="{{ $img->alt_text ?? ($img->caption ?? 'Gallery photo '.($index+1)) }}"
+                           title="{{ $img->alt_text ?: ($img->caption ?: '') }}"
                            class="w-full h-full object-contain select-none"
                            loading="{{ $index === 0 ? 'eager' : 'lazy' }}">
                     </div>
@@ -293,7 +326,7 @@
                 </div>
 
                 {{-- Floating Left & Right Navigation Arrows --}}
-                @if($supplier->gallery->count() > 1)
+                @if($activeGallery->count() > 1)
                   <button type="button"
                           id="gallery-prev-btn"
                           aria-label="Previous slide"
@@ -318,22 +351,26 @@
                 </button>
 
                 {{-- Bottom Caption Overlay --}}
-                <div id="gallery-caption-bar" class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-10 text-white z-10 pointer-events-none transition-opacity duration-300 {{ empty($supplier->gallery->first()->caption) ? 'opacity-0' : 'opacity-100' }}">
-                  <p id="gallery-caption-text" class="text-xs sm:text-sm font-medium tracking-wide drop-shadow-sm text-center line-clamp-2">
-                    {{ $supplier->gallery->first()->caption ?? '' }}
+                <div id="gallery-caption-bar" class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-10 text-white z-10 pointer-events-none transition-opacity duration-300 {{ empty($firstImg->caption) && empty($firstImg->alt_text) ? 'opacity-0' : 'opacity-100' }}">
+                  <p id="gallery-caption-text" class="text-xs sm:text-sm font-semibold tracking-wide drop-shadow-sm text-center line-clamp-2 {{ empty($firstImg->caption) ? 'hidden' : '' }}">
+                    {{ $firstImg->caption ?? '' }}
+                  </p>
+                  <p id="gallery-caption-alt" class="text-center line-clamp-2 drop-shadow-sm {{ empty($firstImg->caption) ? 'text-xs sm:text-sm text-white font-medium' : 'text-[11px] text-gray-300 font-normal mt-0.5' }} {{ empty($firstImg->alt_text) ? 'hidden' : '' }}">
+                    <i class="fa-solid fa-tag text-[10px] mr-1 text-emerald-400"></i><span id="gallery-caption-alt-text">{{ $firstImg->alt_text ?? '' }}</span>
                   </p>
                 </div>
               </div>
 
               {{-- Thumbnail Navigation Strip --}}
-              @if($supplier->gallery->count() > 1)
+              @if($activeGallery->count() > 1)
                 <div class="gallery-thumbs-strip mt-3 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                  @foreach($supplier->gallery as $index => $img)
+                  @foreach($activeGallery as $index => $img)
                     <button type="button"
                             class="gallery-thumb-btn shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all cursor-pointer {{ $index === 0 ? 'border-emerald-600 ring-2 ring-emerald-500/20 scale-102' : 'border-gray-200 opacity-60 hover:opacity-100' }}"
                             data-index="{{ $index }}"
+                            title="{{ $img->alt_text ?: ($img->caption ?: 'Photo '.($index + 1)) }}"
                             aria-label="Go to slide {{ $index + 1 }}">
-                      <img src="{{ $img->image_url }}" alt="" class="w-full h-full object-cover pointer-events-none">
+                      <img src="{{ $img->image_url }}" alt="{{ $img->alt_text ?? '' }}" class="w-full h-full object-cover pointer-events-none">
                     </button>
                   @endforeach
                 </div>
@@ -355,16 +392,17 @@
               <h2 class="text-[15px] font-bold text-gray-900 mb-0.5">Company &amp; Product Videos</h2>
               <p class="text-xs text-gray-500">Watch product demonstrations, factory overviews, and classroom showcase videos.</p>
             </div>
-            @if($supplier->videos->isNotEmpty())
+            @php($activeVideos = $supplier->videos->where('is_active', true))
+            @if($activeVideos->isNotEmpty())
               <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
-                {{ $supplier->videos->count() }} video{{ $supplier->videos->count() === 1 ? '' : 's' }}
+                {{ $activeVideos->count() }} video{{ $activeVideos->count() === 1 ? '' : 's' }}
               </span>
             @endif
           </div>
 
-          @if($supplier->videos->isNotEmpty())
+          @if($activeVideos->isNotEmpty())
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              @foreach($supplier->videos as $video)
+              @foreach($activeVideos as $video)
                 @php($badge = $video->providerBadge())
                 <div class="vid-card bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:border-gray-300 transition-all">
                   <div class="relative bg-black" style="padding-bottom:56.25%; height:0; overflow:hidden;">
@@ -545,7 +583,7 @@
               <div class="contact-tile"><div class="contact-icon"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div><p class="text-[10px] text-gray-400 mb-0.5">Head Office</p><p class="text-sm text-gray-800 font-medium">{{ collect([$supplier->city?->name, $supplier->country?->name])->filter()->implode(', ') }}</p></div></div>
             @endif
           </div>
-          @php($contactSocials = $supplier->account?->socialLinks ? $supplier->account->socialLinks->where('is_public', true) : collect())
+          @php($contactSocials = $supplier->account?->socialLinks ? $supplier->account->socialLinks->where('is_active', true) : collect())
           @if($contactSocials->isNotEmpty())
             <div class="mt-4 pt-4 border-t border-gray-100">
               <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2.5">Official Social Channels</p>
@@ -588,15 +626,47 @@
         @endauth
       </div>
 
-      @php($sidebarSocials = $supplier->account?->socialLinks ? $supplier->account->socialLinks->where('is_public', true) : collect())
-      @if($supplier->contact_email || $supplier->website || $supplier->contact_phone || $sidebarSocials->isNotEmpty())
+      @php($sidebarSocials = $supplier->account?->socialLinks ? $supplier->account->socialLinks->where('is_active', true) : collect())
+      @php($sidebarLocations = $supplier->account?->locations ?? collect())
+      @php($whatsappDigits = preg_replace('/\D+/', '', (string) $supplier->whatsapp))
+      @if($supplier->contact_email || $supplier->website || $supplier->contact_phone || $supplier->whatsapp || $sidebarLocations->isNotEmpty() || $sidebarSocials->isNotEmpty())
         <div class="side-card">
           <p class="text-sm font-semibold text-gray-900 mb-3">Contact Information</p>
           <div class="flex flex-col gap-2.5">
+            @foreach($sidebarLocations as $location)
+              @php($place = collect([$location->city?->name, $location->state?->name, $location->country?->name])->filter()->implode(', '))
+              @php($street = collect([$location->address_line_1, $location->address_line_2])->filter()->implode(', '))
+              <div class="flex items-start gap-2 text-sm text-gray-600">
+                <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+                <div class="min-w-0">
+                  @if($location->label || $sidebarLocations->count() > 1)
+                    <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      {{ $location->label ?: \Illuminate\Support\Str::headline($location->location_type ?? 'location') }}
+                    </p>
+                  @endif
+                  @if($place)
+                    <p class="break-words text-gray-700">{{ $place }}</p>
+                  @endif
+                  @if($street)
+                    <p class="break-words text-gray-500">{{ $street }}</p>
+                  @endif
+                </div>
+              </div>
+            @endforeach
             @if($supplier->contact_phone)
               <div class="flex items-center gap-2 text-sm text-gray-600">
                 <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.27 2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 <span>{{ $supplier->contact_phone }}</span>
+              </div>
+            @endif
+            @if($supplier->whatsapp)
+              <div class="flex items-center gap-2 text-sm text-gray-600">
+                <i class="fa-brands fa-whatsapp w-4 text-center text-[#25D366] shrink-0" aria-hidden="true"></i>
+                @if($whatsappDigits)
+                  <a href="https://wa.me/{{ $whatsappDigits }}" target="_blank" rel="noopener noreferrer" class="hover:underline" title="Chat on WhatsApp">{{ $supplier->whatsapp }}</a>
+                @else
+                  <span>{{ $supplier->whatsapp }}</span>
+                @endif
               </div>
             @endif
             @if($supplier->contact_email)
@@ -633,9 +703,9 @@
       @if($supplier->businessHours->isNotEmpty())
         <div class="side-card">
           <p class="text-sm font-semibold text-gray-900 mb-3">Business Hours</p>
-          @foreach($supplier->businessHours->sortBy('day_of_week') as $hour)
+          @foreach($supplier->businessHours->sortBy(fn ($h) => $h->day_of_week === 0 ? 7 : $h->day_of_week) as $hour)
             <div class="h-row">
-              <span class="text-gray-700">{{ \Carbon\Carbon::create()->startOfWeek()->addDays($hour->day_of_week)->format('D') }}</span>
+              <span class="text-gray-700">{{ substr($hour->day_name, 0, 3) }}</span>
               @if($hour->is_open)
                 <span class="text-gray-500">{{ \Carbon\Carbon::parse($hour->open_time)->format('g:i A') }} – {{ \Carbon\Carbon::parse($hour->close_time)->format('g:i A') }}</span>
               @else
@@ -706,7 +776,12 @@
 
   <div class="relative max-w-5xl max-h-[85vh] flex flex-col items-center justify-center">
     <img id="lightbox-img" src="" class="max-h-[80vh] w-auto max-w-full rounded-xl object-contain shadow-2xl" alt="">
-    <p id="lightbox-caption" class="text-white/90 text-sm mt-3 text-center bg-black/60 backdrop-blur-xs px-4 py-1.5 rounded-full font-medium hidden"></p>
+    <div id="lightbox-caption-box" class="mt-3 text-center bg-black/75 backdrop-blur-md px-5 py-2.5 rounded-2xl max-w-2xl border border-white/10 hidden shadow-xl">
+      <p id="lightbox-caption" class="text-white text-sm font-semibold hidden"></p>
+      <p id="lightbox-alt" class="text-xs text-gray-300 mt-0.5 font-normal hidden">
+        <i class="fa-solid fa-circle-info text-[10px] mr-1 text-emerald-400"></i><span id="lightbox-alt-text"></span>
+      </p>
+    </div>
   </div>
 </div>
 
@@ -743,10 +818,18 @@
     var counterEl = document.getElementById('gallery-counter');
     var captionBar = document.getElementById('gallery-caption-bar');
     var captionText = document.getElementById('gallery-caption-text');
+    var captionAlt = document.getElementById('gallery-caption-alt');
+    var captionAltText = document.getElementById('gallery-caption-alt-text');
+    var altBadge = document.getElementById('gallery-alt-badge');
+    var altBadgeText = document.getElementById('gallery-alt-badge-text');
+    var altTooltipText = document.getElementById('gallery-alt-tooltip-text');
 
     var lightbox = document.getElementById('public-gallery-lightbox');
     var lightboxImg = document.getElementById('lightbox-img');
+    var lightboxCaptionBox = document.getElementById('lightbox-caption-box');
     var lightboxCaption = document.getElementById('lightbox-caption');
+    var lightboxAlt = document.getElementById('lightbox-alt');
+    var lightboxAltText = document.getElementById('lightbox-alt-text');
     var lightboxClose = document.getElementById('lightbox-close-btn');
     var lightboxPrev = document.getElementById('lightbox-prev-btn');
     var lightboxNext = document.getElementById('lightbox-next-btn');
@@ -787,10 +870,52 @@
       }
 
       var currentSlide = slides[currentIndex];
-      var caption = currentSlide ? currentSlide.getAttribute('data-caption') : '';
-      if (captionBar && captionText) {
-        if (caption && caption.trim()) {
-          captionText.textContent = caption;
+      var caption = currentSlide ? (currentSlide.getAttribute('data-caption') || '') : '';
+      var alt = currentSlide ? (currentSlide.getAttribute('data-alt') || '') : '';
+      var hasCaption = Boolean(caption.trim());
+      var hasAlt = Boolean(alt.trim());
+
+      // Update Top-Left Floating Alt Badge & Tooltip
+      if (altBadge && altBadgeText) {
+        if (hasAlt) {
+          altBadgeText.textContent = alt;
+          if (altTooltipText) altTooltipText.textContent = alt;
+          altBadge.classList.remove('opacity-0', 'pointer-events-none');
+          altBadge.classList.add('opacity-100');
+        } else {
+          altBadge.classList.remove('opacity-100');
+          altBadge.classList.add('opacity-0', 'pointer-events-none');
+        }
+      }
+
+      // Update Bottom Caption Overlay
+      if (captionBar) {
+        if (captionText) {
+          if (hasCaption) {
+            captionText.textContent = caption;
+            captionText.classList.remove('hidden');
+          } else {
+            captionText.textContent = '';
+            captionText.classList.add('hidden');
+          }
+        }
+
+        if (captionAlt && captionAltText) {
+          if (hasAlt) {
+            captionAltText.textContent = alt;
+            captionAlt.classList.remove('hidden');
+            if (!hasCaption) {
+              captionAlt.className = 'text-xs sm:text-sm text-white font-medium text-center line-clamp-2 drop-shadow-sm';
+            } else {
+              captionAlt.className = 'text-[11px] text-gray-300 font-normal text-center line-clamp-2 drop-shadow-sm mt-0.5';
+            }
+          } else {
+            captionAltText.textContent = '';
+            captionAlt.classList.add('hidden');
+          }
+        }
+
+        if (hasCaption || hasAlt) {
           captionBar.classList.remove('opacity-0');
           captionBar.classList.add('opacity-100');
         } else {
@@ -803,14 +928,26 @@
       if (lightbox && !lightbox.classList.contains('hidden') && currentSlide) {
         var src = currentSlide.getAttribute('data-src');
         if (lightboxImg) lightboxImg.src = src;
+        syncLightboxCaption(caption, alt);
+      }
+    }
+
+    function syncLightboxCaption(caption, alt) {
+      if (!lightboxCaptionBox) return;
+      var hasC = Boolean(caption && caption.trim());
+      var hasA = Boolean(alt && alt.trim());
+      if (hasC || hasA) {
+        lightboxCaptionBox.classList.remove('hidden');
         if (lightboxCaption) {
-          if (caption && caption.trim()) {
-            lightboxCaption.textContent = caption;
-            lightboxCaption.classList.remove('hidden');
-          } else {
-            lightboxCaption.classList.add('hidden');
-          }
+          lightboxCaption.textContent = caption;
+          lightboxCaption.classList.toggle('hidden', !hasC);
         }
+        if (lightboxAlt && lightboxAltText) {
+          lightboxAltText.textContent = alt;
+          lightboxAlt.classList.toggle('hidden', !hasA);
+        }
+      } else {
+        lightboxCaptionBox.classList.add('hidden');
       }
     }
 
@@ -862,15 +999,9 @@
       if (!currentSlide) return;
       var src = currentSlide.getAttribute('data-src');
       var caption = currentSlide.getAttribute('data-caption') || '';
+      var alt = currentSlide.getAttribute('data-alt') || '';
       if (lightboxImg) lightboxImg.src = src;
-      if (lightboxCaption) {
-        if (caption.trim()) {
-          lightboxCaption.textContent = caption;
-          lightboxCaption.classList.remove('hidden');
-        } else {
-          lightboxCaption.classList.add('hidden');
-        }
-      }
+      syncLightboxCaption(caption, alt);
       lightbox.classList.remove('hidden');
       lightbox.classList.add('flex');
     }

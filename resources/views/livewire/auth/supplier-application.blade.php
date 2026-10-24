@@ -115,11 +115,18 @@
 
             <div class="space-y-3">
                 @foreach($locations as $i => $loc)
-                    <div class="p-3 border border-gray-200 rounded-xl relative">
+                    <div class="p-3 border rounded-xl relative transition-all {{ !empty($loc['is_primary']) ? 'border-indigo-300 bg-indigo-50/20' : 'border-gray-200 bg-white' }}">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{{ $i === 0 ? 'Primary Location' : 'Additional Location' }}</span>
+                            <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold {{ !empty($loc['is_primary']) ? 'text-indigo-700' : 'text-gray-500 hover:text-gray-700' }}">
+                                <input type="radio" name="primary_location_radio" wire:click="setPrimaryLocation({{ $i }})" {{ !empty($loc['is_primary']) ? 'checked' : '' }}
+                                       class="w-3.5 h-3.5 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                                <span>{{ !empty($loc['is_primary']) ? 'Primary Location (Head Office)' : 'Set as Primary Location' }}</span>
+                                @if(!empty($loc['is_primary']))
+                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Default</span>
+                                @endif
+                            </label>
                             @if(count($locations) > 1)
-                                <button type="button" wire:click="removeLocation({{ $i }})" class="text-gray-400 hover:text-red-500">
+                                <button type="button" wire:click="removeLocation({{ $i }})" class="text-gray-400 hover:text-red-500 cursor-pointer p-0.5" title="Remove location">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             @endif
@@ -451,21 +458,94 @@
         </div>
 
         <div class="pt-5 border-t border-gray-100">
-            <h2 class="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <h2 class="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
                 Social Media <span class="text-xs font-normal text-gray-400 ml-1">(optional)</span>
             </h2>
+            <p class="text-xs text-gray-500 mb-4">Add only the platforms your business uses.</p>
 
-            <div class="space-y-3">
-                @foreach($socialPlatforms as $platform)
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ $platform->name }}</label>
-                        <input type="url" wire:model.blur="social_links.{{ $platform->id }}.url"
-                            class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent @error('social_links.'.$platform->id.'.url') border-red-400 @enderror"
-                            placeholder="{{ $platform->base_url ?? 'https://…' }}">
-                        @error('social_links.'.$platform->id.'.url') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                @endforeach
-            </div>
+            {{-- After a platform is picked, put the cursor at the end of the prefilled base URL. --}}
+            <div x-data x-on:social-row-added.window="$nextTick(() => {
+                    const input = document.getElementById('social-' + $event.detail.id);
+                    if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+                })"></div>
+
+            @php
+                // Rows keep the order they were added in; the picker lists the rest.
+                $shownPlatforms = collect($shown_social_ids)->map(fn ($id) => $socialPlatforms->firstWhere('id', (int) $id))->filter();
+                $addablePlatforms = $socialPlatforms->reject(fn ($p) => in_array($p->id, array_map('intval', $shown_social_ids), true));
+            @endphp
+
+            @php
+                $selectClass = 'w-36 sm:w-44 shrink-0 px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent';
+            @endphp
+
+            @if($shownPlatforms->isNotEmpty() || $adding_social)
+                {{-- Column labels, shown once above the rows --}}
+                <div class="flex items-center gap-2 mb-1.5 text-xs font-medium text-gray-700">
+                    <span class="w-36 sm:w-44 shrink-0">Platform</span>
+                    <span class="flex-1">Address</span>
+                    <span class="w-10 shrink-0"></span>
+                </div>
+
+                <div class="space-y-3 mb-3">
+                    @foreach($shownPlatforms as $platform)
+                        <div wire:key="social-row-{{ $platform->id }}">
+                            <div class="flex items-center gap-2">
+                                <select wire:change="changeSocialPlatform({{ $platform->id }}, $event.target.value)"
+                                    class="{{ $selectClass }}" aria-label="Platform">
+                                    <option value="{{ $platform->id }}" selected>{{ $platform->name }}</option>
+                                    @foreach($addablePlatforms as $other)
+                                        <option value="{{ $other->id }}">{{ $other->name }}</option>
+                                    @endforeach
+                                </select>
+
+                                <div class="relative flex-1 min-w-0">
+                                    <i class="{{ $platform->fa_icon }} absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                                    <input id="social-{{ $platform->id }}" type="text" inputmode="url" autocomplete="url" wire:model.blur="social_links.{{ $platform->id }}.url"
+                                        aria-label="{{ $platform->name }} address"
+                                        class="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent @error('social_links.'.$platform->id.'.url') border-red-400 @enderror"
+                                        placeholder="{{ $platform->base_url ? $platform->base_url.'your-page' : 'https://…' }}">
+                                </div>
+
+                                <button type="button" wire:click="removeSocialPlatform({{ $platform->id }})"
+                                    class="w-10 h-10 shrink-0 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition"
+                                    title="Remove {{ $platform->name }}" aria-label="Remove {{ $platform->name }}">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            @error('social_links.'.$platform->id.'.url')
+                                <p class="mt-1 text-xs text-red-600 sm:ml-[11.5rem] ml-[9.5rem]">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    @endforeach
+
+                    {{-- Blank row: picking a platform turns it into a real row with the address prefilled --}}
+                    @if($adding_social)
+                        <div wire:key="social-row-new" class="flex items-center gap-2">
+                            <select wire:change="pickNewSocialPlatform($event.target.value)" class="{{ $selectClass }}" aria-label="Platform">
+                                <option value="" selected disabled>Select platform</option>
+                                @foreach($addablePlatforms as $other)
+                                    <option value="{{ $other->id }}">{{ $other->name }}</option>
+                                @endforeach
+                            </select>
+                            <input type="url" disabled placeholder="Choose a platform first"
+                                class="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-400 cursor-not-allowed">
+                            <button type="button" wire:click="cancelAddingSocial"
+                                class="w-10 h-10 shrink-0 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition"
+                                title="Cancel" aria-label="Cancel">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            @if($addablePlatforms->isNotEmpty() && ! $adding_social)
+                <button type="button" wire:click="startAddingSocial"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition">
+                    <i class="fa-solid fa-plus"></i> Add social media
+                </button>
+            @endif
         </div>
     </div>
     @endif

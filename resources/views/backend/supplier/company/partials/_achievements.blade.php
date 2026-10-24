@@ -1,5 +1,5 @@
 {{-- ── 10. Achievements & Certifications ── --}}
-<div id="sp-section-achievements" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('achievements', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-achievements', v ? '1' : '0'))">
+<div id="sp-section-achievements" data-profile-section="Achievements &amp; Certifications" data-filled="{{ ($myAchievementClaims->isNotEmpty() || $myCertifications->isNotEmpty()) ? 1 : 0 }}" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: {{ $spAccOpen('achievements', false) }} }" x-init="$watch('open', v => localStorage.setItem('sp-acc-achievements', v ? '1' : '0'))">
     <button @click="open = !open" type="button"
             class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50/80 transition-colors focus:outline-none cursor-pointer">
         <div class="flex items-center gap-3">
@@ -95,16 +95,16 @@
                                                 class="w-7 h-7 rounded-lg bg-gray-50 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition cursor-pointer">
                                             <i class="fa-regular fa-eye text-xs"></i>
                                         </button>
-                                        @if($cert->status === 'pending')
+                                        @if($cert->isEditableBySupplier())
                                             <button type="button" title="Edit" @click="editing = !editing"
                                                     class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition cursor-pointer">
                                                 <i class="fa-solid fa-pen text-xs"></i>
                                             </button>
                                         @endif
-                                        @if(in_array($cert->status, ['pending', 'rejected'], true))
-                                            <form method="POST" action="{{ route('supplier.company.profile.certifications.destroy', $cert) }}" onsubmit="return confirmSwal(this, 'Cancel this request?', '{{ addslashes($cert->certification_name) }} will be permanently removed.', 'warning', 'Yes, Cancel')">
+                                        @if($cert->isRemovableBySupplier())
+                                            <form method="POST" action="{{ route('supplier.company.profile.certifications.destroy', $cert) }}" onsubmit="return confirmSwal(this, 'Remove this certification?', '{{ addslashes($cert->certification_name) }} will be permanently removed.', 'warning', 'Yes, remove')">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" title="Cancel Request" class="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition cursor-pointer">
+                                                <button type="submit" title="Remove" class="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition cursor-pointer">
                                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                                 </button>
                                             </form>
@@ -127,7 +127,7 @@
                                 @endif
                             </div>
 
-                            @if($cert->status === 'pending')
+                            @if($cert->isEditableBySupplier())
                                 <div x-show="editing" x-transition x-cloak class="p-4 border-t border-gray-100 bg-gray-50/50">
                                     <form method="POST" action="{{ route('supplier.company.profile.certifications.update', $cert) }}">
                                         @csrf

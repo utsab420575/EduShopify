@@ -23,10 +23,6 @@ class UpdateContactRequest extends ProfileSectionFormRequest
             'whatsapp' => 'nullable|string|max:50',
             'support_email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
-            'country_id' => 'required|exists:countries,id',
-            'state_id' => 'nullable|exists:states,id',
-            'city_id' => 'nullable|exists:cities,id',
-            'address' => 'required|string|max:500',
         ];
     }
 
@@ -35,8 +31,6 @@ class UpdateContactRequest extends ProfileSectionFormRequest
         return [
             'contact_person.required' => 'Please enter a contact person.',
             'contact_email.required' => 'Please enter a contact email.',
-            'country_id.required' => 'Please select a country.',
-            'address.required' => 'Please enter an address.',
         ];
     }
 }

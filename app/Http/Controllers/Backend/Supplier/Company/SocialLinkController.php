@@ -22,7 +22,7 @@ class SocialLinkController extends Controller
             'url' => $data['url'],
             'handle' => $data['handle'] ?? null,
             'label' => $data['label'] ?? null,
-            'is_public' => $request->boolean('is_public', true),
+            'is_active' => $request->boolean('is_active', true),
             'sort_order' => (int) ($account->socialLinks()->max('sort_order') ?? 0) + 1,
         ]);
 
@@ -33,7 +33,11 @@ class SocialLinkController extends Controller
     public function update(UpdateSocialLinkRequest $request, SocialLink $socialLink)
     {
         $account = $this->currentAccount();
-        abort_unless($socialLink->socialable_type === get_class($account) && $socialLink->socialable_id === $account->id, 404);
+        abort_unless(
+            $socialLink->socialable_id === $account->id &&
+            in_array($socialLink->socialable_type, ['account', $account->getMorphClass(), get_class($account)], true),
+            404
+        );
 
         $data = $request->validated();
 
@@ -42,7 +46,7 @@ class SocialLinkController extends Controller
             'url' => $data['url'],
             'handle' => $data['handle'] ?? null,
             'label' => $data['label'] ?? null,
-            'is_public' => $request->boolean('is_public', true),
+            'is_active' => $request->boolean('is_active'),
         ]);
 
         return redirect()->route('supplier.company.profile', ['section' => 'social-links'])
@@ -52,7 +56,11 @@ class SocialLinkController extends Controller
     public function destroy(SocialLink $socialLink)
     {
         $account = $this->currentAccount();
-        abort_unless($socialLink->socialable_type === get_class($account) && $socialLink->socialable_id === $account->id, 404);
+        abort_unless(
+            $socialLink->socialable_id === $account->id &&
+            in_array($socialLink->socialable_type, ['account', $account->getMorphClass(), get_class($account)], true),
+            404
+        );
 
         $socialLink->delete();
 

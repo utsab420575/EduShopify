@@ -68,4 +68,9 @@ class SupplierServiceArea extends Model
     {
         return $query->where('is_active', true);
     }
+
+    public function isGlobal(): bool
+    {
+        return $this->area_level === 'global';
+    }
 }

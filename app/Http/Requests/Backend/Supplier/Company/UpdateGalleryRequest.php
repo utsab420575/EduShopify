@@ -19,6 +19,7 @@ class UpdateGalleryRequest extends ProfileSectionFormRequest
         return [
             'caption' => 'nullable|string|max:255',
             'alt_text' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
         ];
     }
 }

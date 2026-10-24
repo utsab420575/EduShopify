@@ -22,16 +22,21 @@ class SocialLink extends Model
         'url',
         'handle',
         'label',
-        'is_public',
+        'is_active',
         'is_verified',
         'sort_order',
     ];
 
     protected $casts = [
-        'is_public' => 'boolean',
+        'is_active' => 'boolean',
         'is_verified' => 'boolean',
         'sort_order' => 'integer',
     ];
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
 
     public function socialable(): MorphTo
     {

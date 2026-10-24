@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Str;
 
 /**
@@ -30,15 +31,14 @@ class SupplierProfile extends Model
         'contact_phone',
         'whatsapp',
         'support_email',
-        'country_id',
-        'state_id',
-        'city_id',
-        'address',
         'website',
         'founded_year',
         'employees',
         'logo',
         'banner',
+        'banner_original',
+        'banner_crop',
+        'banner_fit',
         'profile_photo',
         'description',
         'rating',
@@ -50,6 +50,9 @@ class SupplierProfile extends Model
         'max_step_reached',
     ];
 
+    /** Allowed banner_fit values → the CSS object-fit used for the public hero. */
+    public const BANNER_FITS = ['cover', 'contain', 'fill'];
+
     protected function casts(): array
     {
         return [
@@ -60,6 +63,7 @@ class SupplierProfile extends Model
             'quotation_response_rate'  => 'decimal:2',
             'average_response_minutes' => 'integer',
             'profile_completed_at'     => 'datetime',
+            'banner_crop'              => 'array',
             'current_step'             => 'integer',
             'max_step_reached'         => 'integer',
         ];
@@ -95,19 +99,79 @@ class SupplierProfile extends Model
         return $this->belongsTo(Account::class, 'account_id');
     }
 
-    public function country(): BelongsTo
+    /**
+     * Location delegates: account_locations is the single source of truth
+     * for physical locations (Head Office / Primary Location).
+     */
+    public function getPrimaryLocationAttribute(): ?AccountLocation
     {
-        return $this->belongsTo(Country::class, 'country_id');
+        if (! $this->account) {
+            return null;
+        }
+
+        if ($this->account->relationLoaded('locations')) {
+            return $this->account->locations->firstWhere('is_primary', true)
+                ?? $this->account->locations->first();
+        }
+
+        return $this->account->locations()->where('is_primary', true)->first()
+            ?? $this->account->locations()->first();
     }
 
-    public function state(): BelongsTo
+    public function country(): HasOneThrough
     {
-        return $this->belongsTo(State::class, 'state_id');
+        return $this->hasOneThrough(
+            Country::class,
+            AccountLocation::class,
+            'account_id',
+            'id',
+            'account_id',
+            'country_id'
+        )->where('account_locations.is_primary', true);
     }
 
-    public function city(): BelongsTo
+    public function state(): HasOneThrough
     {
-        return $this->belongsTo(City::class, 'city_id');
+        return $this->hasOneThrough(
+            State::class,
+            AccountLocation::class,
+            'account_id',
+            'id',
+            'account_id',
+            'state_id'
+        )->where('account_locations.is_primary', true);
+    }
+
+    public function city(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            City::class,
+            AccountLocation::class,
+            'account_id',
+            'id',
+            'account_id',
+            'city_id'
+        )->where('account_locations.is_primary', true);
+    }
+
+    public function getAddressAttribute(): ?string
+    {
+        return $this->primaryLocation?->address_line_1;
+    }
+
+    public function getCountryIdAttribute(): ?int
+    {
+        return $this->primaryLocation?->country_id;
+    }
+
+    public function getStateIdAttribute(): ?int
+    {
+        return $this->primaryLocation?->state_id;
+    }
+
+    public function getCityIdAttribute(): ?int
+    {
+        return $this->primaryLocation?->city_id;
     }
 
     /* ── Supplier-owned records, keyed by supplier_account_id ───────────── */
@@ -120,6 +184,11 @@ class SupplierProfile extends Model
     public function serviceAreas(): HasMany
     {
         return $this->hasMany(SupplierServiceArea::class, 'supplier_account_id', 'account_id');
+    }
+
+    public function isWorldwideSupplier(): bool
+    {
+        return $this->serviceAreas()->where('area_level', 'global')->where('is_active', true)->exists();
     }
 
     public function gallery(): HasMany

@@ -45,6 +45,25 @@ class Certification extends Model
         return $this->belongsTo(User::class, 'approved_by_user_id');
     }
 
+    /**
+     * Approved automatically on upload (no admin as approver) — the supplier
+     * still owns it and may edit/remove it; admin-approved ones are locked.
+     */
+    public function isAutoApproved(): bool
+    {
+        return $this->status === 'approved' && $this->approved_by_user_id === null;
+    }
+
+    public function isEditableBySupplier(): bool
+    {
+        return $this->status === 'pending' || $this->isAutoApproved();
+    }
+
+    public function isRemovableBySupplier(): bool
+    {
+        return in_array($this->status, ['pending', 'rejected'], true) || $this->isAutoApproved();
+    }
+
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', 'pending');
