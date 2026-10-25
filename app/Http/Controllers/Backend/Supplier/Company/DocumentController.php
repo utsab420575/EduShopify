@@ -32,10 +32,10 @@ class DocumentController extends Controller
                 'verified'
             );
 
-            return redirect()->route('supplier.company.profile', ['section' => 'documents'])
+            return redirect()->supplierRoute('company.profile', ['section' => 'documents'])
                 ->with('success', 'Document uploaded and approved.');
         } catch (\Throwable $e) {
-            return redirect()->route('supplier.company.profile', ['section' => 'documents'])
+            return redirect()->supplierRoute('company.profile', ['section' => 'documents'])
                 ->withErrors(['file' => $e->getMessage()]);
         }
     }
@@ -49,7 +49,7 @@ class DocumentController extends Controller
         }
         $document->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'documents'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'documents'])
             ->with('success', 'Document deleted.');
     }
 }

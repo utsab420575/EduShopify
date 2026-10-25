@@ -33,7 +33,7 @@ class CertificationController extends Controller
             'approved_at' => now(),
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'achievements'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'achievements'])
             ->with('success', 'Certification added and approved.');
     }
 
@@ -47,7 +47,7 @@ class CertificationController extends Controller
         abort_unless($certification->account_id === $this->currentAccount()->id, 404);
 
         if (! $certification->isEditableBySupplier()) {
-            return redirect()->route('supplier.company.profile', ['section' => 'achievements']);
+            return redirect()->supplierRoute('company.profile', ['section' => 'achievements']);
         }
 
         $data = $request->validated();
@@ -60,7 +60,7 @@ class CertificationController extends Controller
             'expiry_date' => $data['expiry_date'] ?? null,
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'achievements'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'achievements'])
             ->with('success', 'Certification updated.');
     }
 
@@ -78,7 +78,7 @@ class CertificationController extends Controller
         }
         $certification->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'achievements'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'achievements'])
             ->with('success', 'Certification request cancelled.');
     }
 }

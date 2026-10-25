@@ -62,7 +62,7 @@ class ServiceAreaController extends Controller
             ]);
         });
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Service area added.');
     }
 
@@ -102,7 +102,7 @@ class ServiceAreaController extends Controller
             ]);
         });
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Service area updated.');
     }
 
@@ -112,7 +112,7 @@ class ServiceAreaController extends Controller
 
         $serviceArea->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Service area removed.');
     }
 
@@ -125,7 +125,7 @@ class ServiceAreaController extends Controller
             $serviceArea->update(['is_primary' => true]);
         });
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Primary service area updated.');
     }
 

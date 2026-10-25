@@ -23,7 +23,7 @@ class ExhibitionParticipationController extends Controller
             ]);
         }
 
-        return redirect()->route('supplier.company.profile', ['section' => 'exhibitions'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'exhibitions'])
             ->with('success', 'You have joined "'.$exhibition->getTranslation('name', app()->getLocale()).'".');
     }
 
@@ -31,7 +31,7 @@ class ExhibitionParticipationController extends Controller
     {
         $exhibition->supplierAccounts()->detach($this->currentAccount()->id);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'exhibitions'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'exhibitions'])
             ->with('success', 'You have withdrawn from the exhibition.');
     }
 }

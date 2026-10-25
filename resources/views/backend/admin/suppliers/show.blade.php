@@ -14,6 +14,14 @@
                 @if($capability)
                     <x-backend.status-badge :status="$capability->status" />
                 @endif
+                @can('platform.suppliers.manage')
+                    <a href="{{ route('admin.supplier-manage.company.profile', ['supplierAccount' => $account->id]) }}" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100">
+                        <i class="fa-solid fa-store"></i> Edit Profile
+                    </a>
+                    <a href="{{ route('admin.supplier-manage.catalog.listings.index', ['supplierAccount' => $account->id]) }}" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                        <i class="fa-solid fa-boxes-stacked"></i> Manage Products
+                    </a>
+                @endcan
                 <a href="{{ route('admin.accounts.show', $account) }}" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">View Account</a>
                 @if($capability)
                     <a href="{{ route('admin.capabilities.show', $capability) }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">Review Application</a>

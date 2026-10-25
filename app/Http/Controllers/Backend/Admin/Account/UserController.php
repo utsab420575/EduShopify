@@ -21,13 +21,15 @@ class UserController extends Controller
                 $q->where(fn ($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"));
             })
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->with(['accountMember.account', 'roles', 'socialAccounts'])
+            ->with(['accountMember.account.capabilities.capabilityType', 'roles', 'socialAccounts'])
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
         return view('backend.admin.users.index', [
             'users' => $users,
+            // Supplier users get "Edit Supplier Profile" / "Manage Products" actions.
+            'canManageSuppliers' => $request->user()->can('platform.suppliers.manage'),
             'search' => $request->string('search')->toString(),
             'status' => $request->string('status')->toString(),
         ]);

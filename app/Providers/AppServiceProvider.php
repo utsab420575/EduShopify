@@ -9,6 +9,8 @@ use App\Models\PurchaseOrder;
 use App\Models\Quotation;
 use App\Models\Rfq;
 use App\Models\Setting;
+use App\Support\SupplierWorkspace;
+use Illuminate\Routing\Redirector;
 use App\View\Composers\AdminLayoutComposer;
 use App\View\Composers\BuyerLayoutComposer;
 use App\View\Composers\FrontendLayoutComposer;
@@ -27,7 +29,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // One per request: which supplier account the Supplier workspace
+        // pages act on (the supplier's own, or one an admin is managing).
+        $this->app->scoped(SupplierWorkspace::class);
+
+        require_once app_path('Support/helpers.php');
     }
 
     /**
@@ -50,6 +56,14 @@ class AppServiceProvider extends ServiceProvider
         ini_set('pcre.recursion_limit', '10000000');
 
         $this->registerMorphMap();
+
+        // redirect()->supplierRoute('company.profile', [...]) — supplier_route()
+        // for redirects, so workspace controllers return to the entry point
+        // (supplier dashboard or admin panel) the request came from.
+        Redirector::macro('supplierRoute', function (string $name, mixed $parameters = [], int $status = 302, array $headers = []) {
+            /** @var Redirector $this */
+            return $this->to(supplier_route($name, $parameters), $status, $headers);
+        });
 
         // backend.layouts.master puts x-data on <body> itself (mobile sidebar,
         // notification/profile dropdowns), so Alpine must be present on every

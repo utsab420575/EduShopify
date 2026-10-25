@@ -36,7 +36,7 @@
                         @if($pivot?->participation_year)
                             <p class="text-xs text-gray-600">Year: {{ $pivot->participation_year }}</p>
                         @endif
-                        <form method="POST" action="{{ route('supplier.company.profile.exhibitions.leave', $exhibition) }}" onsubmit="return confirmSwal(this, 'Withdraw from this exhibition?', '', 'warning', 'Yes, withdraw')">
+                        <form method="POST" action="{{ supplier_route('company.profile.exhibitions.leave', $exhibition) }}" onsubmit="return confirmSwal(this, 'Withdraw from this exhibition?', '', 'warning', 'Yes, withdraw')">
                             @csrf @method('DELETE')
                             <button type="submit" class="text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer">
                                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Withdraw
@@ -63,7 +63,7 @@
                         </button>
 
                         <div x-show="joining" x-transition x-cloak class="pt-2 border-t border-gray-100 space-y-2">
-                            <form method="POST" action="{{ route('supplier.company.profile.exhibitions.join', $exhibition) }}" class="space-y-2">
+                            <form method="POST" action="{{ supplier_route('company.profile.exhibitions.join', $exhibition) }}" class="space-y-2">
                                 @csrf
                                 <input name="booth_number" type="text" placeholder="Booth number (optional)"
                                        class="w-full text-xs rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-300 outline-none">

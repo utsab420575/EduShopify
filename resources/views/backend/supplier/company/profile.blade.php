@@ -1,4 +1,4 @@
-@extends('backend.layouts.supplier')
+@extends(supplier_layout())
 
 @section('title', 'Business Profile')
 @section('breadcrumb', 'Business Profile')
@@ -132,6 +132,8 @@
     been defined first.
 --}}
 @section('content')
+    {{-- Admin managing this supplier: whose profile is being edited (renders nothing for the supplier). --}}
+    @include('backend.admin.suppliers.partials._managing-banner')
     @if(session('success'))
         <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-6" role="alert">
             <i class="fa-solid fa-circle-check mt-0.5"></i>

@@ -1,4 +1,4 @@
-@extends('backend.layouts.supplier')
+@extends(supplier_layout())
 
 @section('title', $listing->name)
 @section('breadcrumb', 'My Products / Product Details')
@@ -14,7 +14,7 @@
     <x-backend.page-header title="{{ $listing->name }}" subtitle="Product ID: {{ $listing->listing_number }}">
         <x-slot:actions>
             <div class="flex items-center gap-2">
-                <a href="{{ route('supplier.catalog.listings.index') }}"
+                <a href="{{ supplier_route('catalog.listings.index') }}"
                    class="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition">
                     <i class="fa-solid fa-arrow-left text-[10px]"></i> All Products
                 </a>
@@ -32,7 +32,7 @@
                 @endif
 
                 @if($approvalStatus === 'draft' || $approvalStatus === 'rejected')
-                    <form method="POST" action="{{ route('supplier.catalog.listings.submit', $listing) }}">
+                    <form method="POST" action="{{ supplier_route('catalog.listings.submit', $listing) }}">
                         @csrf
                         <button type="submit"
                                 class="btn-primary text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5">
@@ -41,7 +41,7 @@
                     </form>
                 @endif
 
-                <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
+                <a href="{{ supplier_route('catalog.listings.edit', $listing) }}"
                    class="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition">
                     <i class="fa-solid fa-pen-to-square"></i> Edit Product
                 </a>
@@ -59,7 +59,7 @@
                 <p class="text-sm font-semibold text-indigo-900">This product is a draft</p>
                 <p class="text-xs text-indigo-700 mt-0.5">Complete your product setup and click <strong>Submit for Approval</strong> when you're ready. It will then be reviewed by the platform team.</p>
             </div>
-            <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
+            <a href="{{ supplier_route('catalog.listings.edit', $listing) }}"
                class="flex-shrink-0 text-xs font-semibold text-indigo-700 hover:text-indigo-900 px-3 py-1.5 rounded-lg border border-indigo-300 hover:bg-indigo-100 transition">
                 Continue Editing
             </a>
@@ -86,7 +86,7 @@
                 @endif
                 <p class="text-xs text-red-600 mt-1">Please address the feedback above, then re-submit for approval.</p>
             </div>
-            <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
+            <a href="{{ supplier_route('catalog.listings.edit', $listing) }}"
                class="flex-shrink-0 text-xs font-semibold text-red-700 hover:text-red-900 px-3 py-1.5 rounded-lg border border-red-300 hover:bg-red-100 transition">
                 Fix & Resubmit
             </a>

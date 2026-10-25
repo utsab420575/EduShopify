@@ -17,7 +17,7 @@
     </button>
 
     <div x-show="open" x-cloak x-transition class="border-t border-gray-100 px-6 py-6">
-        <form method="POST" action="{{ route('supplier.company.profile.contact.update') }}">
+        <form method="POST" action="{{ supplier_route('company.profile.contact.update') }}">
             @csrf
             @method('PUT')
 
@@ -58,7 +58,7 @@
                     <i class="fa-solid fa-location-dot text-emerald-600"></i>
                     Physical facilities, head office, and delivery service areas are managed in <strong>Locations & Service Areas</strong>.
                 </span>
-                <a href="{{ route('supplier.company.profile', ['section' => 'locations']) }}" class="text-emerald-700 font-semibold hover:underline flex-shrink-0">Go to Locations &rarr;</a>
+                <a href="{{ supplier_route('company.profile', ['section' => 'locations']) }}" class="text-emerald-700 font-semibold hover:underline flex-shrink-0">Go to Locations &rarr;</a>
             </div>
 
             <div class="flex justify-end mt-5 pt-4 border-t border-gray-100">

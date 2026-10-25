@@ -23,7 +23,7 @@ abstract class ProfileSectionFormRequest extends FormRequest
     protected function failedValidation(Validator $validator): void
     {
         throw new HttpResponseException(
-            redirect()->route('supplier.company.profile', ['section' => $this->section()])
+            redirect()->supplierRoute('company.profile', ['section' => $this->section()])
                 ->withErrors($validator)
                 ->withInput()
         );

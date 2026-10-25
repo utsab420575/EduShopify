@@ -80,6 +80,21 @@
                                 <i class="fa-regular fa-pen-to-square"></i>
                             </button>
 
+                            {{-- Supplier user: edit their business profile / products with the supplier's own pages --}}
+                            @php($supplierAccount = $u->accountMember?->account)
+                            @if($canManageSuppliers && $supplierAccount?->hasCapability('supplier'))
+                                <a href="{{ route('admin.supplier-manage.company.profile', ['supplierAccount' => $supplierAccount->id]) }}"
+                                   title="Edit Supplier Profile"
+                                   class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-violet-600 hover:bg-violet-50 transition-colors">
+                                    <i class="fa-solid fa-store"></i>
+                                </a>
+                                <a href="{{ route('admin.supplier-manage.catalog.listings.index', ['supplierAccount' => $supplierAccount->id]) }}"
+                                   title="Manage Products"
+                                   class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors">
+                                    <i class="fa-solid fa-boxes-stacked"></i>
+                                </a>
+                            @endif
+
                             {{-- Suspend / Reactivate Action --}}
                             @if($u->id !== auth()->id())
                                 @if($u->status !== 'suspended')

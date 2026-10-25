@@ -20,7 +20,7 @@
     </button>
 
     <div x-show="open" x-transition class="border-t border-gray-100 px-6 py-6">
-        <form method="POST" action="{{ route('supplier.company.profile.company.update') }}">
+        <form method="POST" action="{{ supplier_route('company.profile.company.update') }}">
             @csrf
             @method('PUT')
 

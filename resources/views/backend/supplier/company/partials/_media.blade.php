@@ -35,7 +35,7 @@
     </button>
 
     <div x-show="open" x-cloak x-transition class="border-t border-gray-100 px-6 py-6">
-        <form method="POST" action="{{ route('supplier.company.profile.media.update') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ supplier_route('company.profile.media.update') }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 

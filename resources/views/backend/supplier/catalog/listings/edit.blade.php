@@ -1,4 +1,4 @@
-@extends('backend.layouts.supplier')
+@extends(supplier_layout())
 
 @section('title', 'Edit Product — ' . $listing->name)
 @section('breadcrumb', 'My Products / Edit Product')

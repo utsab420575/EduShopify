@@ -16,7 +16,7 @@
     <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{{ $listing->description }}</div>
 @else
     <p class="text-sm text-gray-400 italic">No description added yet.
-        <a href="{{ route('supplier.catalog.listings.edit', $listing) }}" class="text-indigo-600 font-semibold hover:underline not-italic">Add one in Edit Listing →</a>
+        <a href="{{ supplier_route('catalog.listings.edit', $listing) }}" class="text-indigo-600 font-semibold hover:underline not-italic">Add one in Edit Listing →</a>
     </p>
 @endif
 

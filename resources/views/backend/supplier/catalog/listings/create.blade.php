@@ -1,4 +1,4 @@
-@extends('backend.layouts.supplier')
+@extends(supplier_layout())
 
 @section('title', 'Add Product')
 @section('breadcrumb', 'My Products / Add Product')

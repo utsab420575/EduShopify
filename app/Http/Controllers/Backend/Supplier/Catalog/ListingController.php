@@ -301,7 +301,7 @@ class ListingController extends Controller
             ? 'Listing created and submitted for platform approval.' 
             : 'Listing saved as Draft.';
 
-        return redirect()->route('supplier.catalog.listings.show', $listing)->with('success', $message);
+        return redirect()->supplierRoute('catalog.listings.show', $listing)->with('success', $message);
     }
 
     public function show(Listing $listing)
@@ -492,7 +492,7 @@ class ListingController extends Controller
             'approval_status' => 'pending',
         ]);
 
-        return redirect()->route('supplier.catalog.listings.show', $listing)->with('success', 'Listing submitted for platform approval.');
+        return redirect()->supplierRoute('catalog.listings.show', $listing)->with('success', 'Listing submitted for platform approval.');
     }
 
     public function destroy(Listing $listing)
@@ -502,7 +502,7 @@ class ListingController extends Controller
 
         $listing->delete();
 
-        return redirect()->route('supplier.catalog.listings.index')->with('success', 'Listing deleted.');
+        return redirect()->supplierRoute('catalog.listings.index')->with('success', 'Listing deleted.');
     }
 
     /**
@@ -821,7 +821,7 @@ class ListingController extends Controller
             ]);
         }
 
-        return redirect()->route('supplier.catalog.listings.edit', ['listing' => $listing, 'step' => 2])
+        return redirect()->supplierRoute('catalog.listings.edit', ['listing' => $listing, 'step' => 2])
             ->with('success', 'Product basics saved.');
     }
 
@@ -882,7 +882,7 @@ class ListingController extends Controller
             ]);
         }
 
-        return redirect()->route('supplier.catalog.listings.edit', ['listing' => $listing, 'step' => 3])
+        return redirect()->supplierRoute('catalog.listings.edit', ['listing' => $listing, 'step' => 3])
             ->with('success', 'Specifications saved.');
     }
 
@@ -1026,7 +1026,7 @@ class ListingController extends Controller
             ]);
         }
 
-        return redirect()->route('supplier.catalog.listings.edit', ['listing' => $listing, 'step' => 4])
+        return redirect()->supplierRoute('catalog.listings.edit', ['listing' => $listing, 'step' => 4])
             ->with('success', 'Pricing saved.');
     }
 
@@ -1263,12 +1263,12 @@ class ListingController extends Controller
                 return response()->json([
                     'success'                   => true,
                     'message'                   => 'Listing submitted for platform approval!',
-                    'redirect_url'              => route('supplier.catalog.listings.show', $listing),
+                    'redirect_url'              => supplier_route('catalog.listings.show', $listing),
                     'duplicate_variants_skipped' => $duplicateVariantsSkipped,
                 ]);
             }
 
-            return redirect()->route('supplier.catalog.listings.show', $listing)
+            return redirect()->supplierRoute('catalog.listings.show', $listing)
                 ->with('success', 'Listing submitted for platform approval!');
         }
 
@@ -1308,12 +1308,12 @@ class ListingController extends Controller
                 'message'                    => 'Draft saved successfully.',
                 'last_autosaved_at'          => $listing->fresh()->last_autosaved_at?->toISOString() ?? now()->toISOString(),
                 'variants'                   => $freshVariants,
-                'redirect_url'               => route('supplier.catalog.listings.index'),
-                'preview_url'                => route('supplier.catalog.listings.show', $listing),
+                'redirect_url'               => supplier_route('catalog.listings.index'),
+                'preview_url'                => supplier_route('catalog.listings.show', $listing),
                 'duplicate_variants_skipped' => $duplicateVariantsSkipped,
             ]);
         }
 
-        return redirect()->route('supplier.catalog.listings.index')->with('success', 'Draft saved.');
+        return redirect()->supplierRoute('catalog.listings.index')->with('success', 'Draft saved.');
     }
 }

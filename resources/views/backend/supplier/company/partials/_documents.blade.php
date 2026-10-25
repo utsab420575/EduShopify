@@ -46,7 +46,7 @@
             @endforelse
         </ul>
 
-        <form method="POST" action="{{ route('supplier.company.profile.documents.store') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ supplier_route('company.profile.documents.store') }}" enctype="multipart/form-data">
             @csrf
 
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Upload a Document</p>
@@ -126,7 +126,7 @@
                                         <a href="{{ asset('storage/'.$doc->file_path) }}" target="_blank" class="p-1.5 text-gray-500 hover:text-indigo-600 rounded" title="View / Download">
                                             <i class="fa-solid fa-eye text-xs"></i>
                                         </a>
-                                        <form method="POST" action="{{ route('supplier.company.profile.documents.destroy', $doc) }}" onsubmit="return confirmSwal(this, 'Delete this document?', '', 'warning', 'Yes, delete')">
+                                        <form method="POST" action="{{ supplier_route('company.profile.documents.destroy', $doc) }}" onsubmit="return confirmSwal(this, 'Delete this document?', '', 'warning', 'Yes, delete')">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 rounded cursor-pointer" title="Delete">
                                                 <i class="fa-solid fa-trash-can text-xs"></i>

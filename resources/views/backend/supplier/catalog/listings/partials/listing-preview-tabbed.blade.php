@@ -43,7 +43,7 @@
                     <div class="flex flex-col items-center justify-center py-20 text-gray-300">
                         <i class="fa-regular fa-image text-5xl mb-3"></i>
                         <p class="text-sm font-medium">No photos uploaded yet</p>
-                        <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
+                        <a href="{{ supplier_route('catalog.listings.edit', $listing) }}"
                            class="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
                             Add photos in Edit Listing →
                         </a>
@@ -67,7 +67,7 @@
                             @endif
                         </button>
                     @endforeach
-                    <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
+                    <a href="{{ supplier_route('catalog.listings.edit', $listing) }}"
                        class="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition text-center">
                         <i class="fa-solid fa-plus text-sm"></i>
                         <span class="text-[10px] font-medium mt-0.5">Add</span>
@@ -81,7 +81,7 @@
                     <div class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
                         <img src="{{ $firstMedia->getUrl() }}" alt="" class="w-full h-full object-cover">
                     </div>
-                    <a href="{{ route('supplier.catalog.listings.edit', $listing) }}"
+                    <a href="{{ supplier_route('catalog.listings.edit', $listing) }}"
                        class="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition">
                         <i class="fa-solid fa-plus text-sm"></i>
                         <span class="text-[10px] font-medium mt-0.5">Add</span>

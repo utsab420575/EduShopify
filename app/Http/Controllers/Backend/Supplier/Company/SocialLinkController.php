@@ -26,7 +26,7 @@ class SocialLinkController extends Controller
             'sort_order' => (int) ($account->socialLinks()->max('sort_order') ?? 0) + 1,
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'social-links'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'social-links'])
             ->with('success', 'Social link added.');
     }
 
@@ -49,7 +49,7 @@ class SocialLinkController extends Controller
             'is_active' => $request->boolean('is_active'),
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'social-links'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'social-links'])
             ->with('success', 'Social link updated.');
     }
 
@@ -64,7 +64,7 @@ class SocialLinkController extends Controller
 
         $socialLink->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'social-links'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'social-links'])
             ->with('success', 'Social link removed.');
     }
 }

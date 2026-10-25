@@ -44,7 +44,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('supplier.company.profile.business-hours.update') }}" x-ref="hoursForm">
+        <form method="POST" action="{{ supplier_route('company.profile.business-hours.update') }}" x-ref="hoursForm">
             @csrf
             @method('PUT')
 

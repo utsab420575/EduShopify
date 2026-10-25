@@ -30,7 +30,7 @@ class LocationController extends Controller
             ]);
         });
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Physical location added.');
     }
 
@@ -52,7 +52,7 @@ class LocationController extends Controller
             ]);
         });
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Physical location updated.');
     }
 
@@ -72,7 +72,7 @@ class LocationController extends Controller
             }
         });
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Physical location removed.');
     }
 
@@ -85,7 +85,7 @@ class LocationController extends Controller
             $location->update(['is_primary' => true]);
         });
 
-        return redirect()->route('supplier.company.profile', ['section' => 'locations'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'locations'])
             ->with('success', 'Primary location updated.');
     }
 

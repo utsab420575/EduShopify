@@ -4,7 +4,7 @@
     $u = auth()->user();
 
     $groups = [
-        'users-accounts' => ['admin.users.*', 'admin.accounts.*', 'admin.buyers.*', 'admin.suppliers.*', 'admin.account-members.*', 'admin.capabilities.*', 'admin.conversions.*', 'admin.closures.*'],
+        'users-accounts' => ['admin.users.*', 'admin.accounts.*', 'admin.buyers.*', 'admin.suppliers.*', 'admin.supplier-manage.*', 'admin.account-members.*', 'admin.capabilities.*', 'admin.conversions.*', 'admin.closures.*'],
         'catalog' => ['admin.catalog.*'],
         'achievements' => ['admin.achievements.*', 'admin.achievement-requests.*', 'admin.certification-requests.*'],
         'blog' => ['admin.blog.*'],
@@ -52,7 +52,7 @@
                 @endcan
                 <a href="{{ route('admin.accounts.index') }}" class="sidebar-submenu-item {{ $isActive('admin.accounts.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Accounts</a>
                 <a href="{{ route('admin.buyers.index') }}" class="sidebar-submenu-item {{ $isActive('admin.buyers.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Buyers</a>
-                <a href="{{ route('admin.suppliers.index') }}" class="sidebar-submenu-item {{ $isActive('admin.suppliers.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Suppliers</a>
+                <a href="{{ route('admin.suppliers.index') }}" class="sidebar-submenu-item {{ $isActive('admin.suppliers.*') || $isActive('admin.supplier-manage.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Suppliers</a>
                 <a href="{{ route('admin.account-members.index') }}" class="sidebar-submenu-item {{ $isActive('admin.account-members.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Account Members</a>
                 @can('platform.capabilities.review')
                 <a href="{{ route('admin.capabilities.index') }}" class="sidebar-submenu-item {{ $isActive('admin.capabilities.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Capabilities</a>

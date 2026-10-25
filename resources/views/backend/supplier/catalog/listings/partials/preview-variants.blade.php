@@ -14,7 +14,7 @@
         @if($listing->variants->isEmpty())
             <p class="text-xs text-gray-400">
                 No variants configured. If this item has multiple options (sizes, colors, models), add them from
-                <a href="{{ route('supplier.catalog.listings.edit', $listing) }}" class="text-indigo-600 font-semibold hover:underline">Edit Listing</a>.
+                <a href="{{ supplier_route('catalog.listings.edit', $listing) }}" class="text-indigo-600 font-semibold hover:underline">Edit Listing</a>.
             </p>
         @else
             {{-- A CSS-only lightbox (no JS): works whether this partial is loaded

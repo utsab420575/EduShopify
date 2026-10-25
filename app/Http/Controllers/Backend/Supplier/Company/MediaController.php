@@ -24,7 +24,7 @@ class MediaController extends Controller
         // from the stored one when only a new crop box is sent).
         $service->updateBanner($account, $request->file('banner'), $request->validated('banner_crop'), $request->validated('banner_fit'));
 
-        return redirect()->route('supplier.company.profile', ['section' => 'media'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'media'])
             ->with('success', 'Media saved.');
     }
 }

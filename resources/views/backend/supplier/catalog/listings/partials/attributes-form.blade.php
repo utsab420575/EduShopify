@@ -2,7 +2,7 @@
 @props([
     'initialCategoryId' => null,
     'initialValues' => [],
-    'endpointUrl' => route('supplier.catalog.listings.category.attributes', ':id'),
+    'endpointUrl' => supplier_route('catalog.listings.category.attributes', ':id'),
 ])
 
 <div x-data="categoryAttributesManager({

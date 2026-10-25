@@ -43,7 +43,7 @@ class CompanyController extends Controller
             );
         }
 
-        return redirect()->route('supplier.company.profile', ['section' => 'company'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'company'])
             ->with('success', 'Company information saved.');
     }
 }

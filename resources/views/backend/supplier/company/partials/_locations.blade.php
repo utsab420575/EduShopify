@@ -90,7 +90,7 @@
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0 ml-2">
                             @unless($location->is_primary)
-                                <form method="POST" action="{{ route('supplier.company.profile.locations.primary', $location) }}">
+                                <form method="POST" action="{{ supplier_route('company.profile.locations.primary', $location) }}">
                                     @csrf
                                     <button type="submit" class="text-xs text-emerald-600 font-medium hover:underline cursor-pointer">Set Primary</button>
                                 </form>
@@ -98,7 +98,7 @@
                             <button type="button" @click="editing = !editing" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition cursor-pointer">
                                 <i class="fa-solid fa-pen text-xs"></i>
                             </button>
-                            <form method="POST" action="{{ route('supplier.company.profile.locations.destroy', $location) }}" onsubmit="return confirmSwal(this, 'Remove this physical location?', '', 'warning', 'Yes, remove')">
+                            <form method="POST" action="{{ supplier_route('company.profile.locations.destroy', $location) }}" onsubmit="return confirmSwal(this, 'Remove this physical location?', '', 'warning', 'Yes, remove')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition cursor-pointer">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
@@ -138,7 +138,7 @@
                              loadStates() { fetch('{{ url('/lookup/countries') }}/' + this.country + '/states').then(r=>r.json()).then(d=>this.states=d); },
                              loadCities() { fetch('{{ url('/lookup/states') }}/' + this.state + '/cities').then(r=>r.json()).then(d=>this.cities=d); },
                          }">
-                        <form method="POST" action="{{ route('supplier.company.profile.locations.update', $location) }}">
+                        <form method="POST" action="{{ supplier_route('company.profile.locations.update', $location) }}">
                             @csrf
                             @method('PUT')
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -247,7 +247,7 @@
                          loadStates() { fetch('{{ url('/lookup/countries') }}/' + this.country + '/states').then(r=>r.json()).then(d=>this.states=d); },
                          loadCities() { fetch('{{ url('/lookup/states') }}/' + this.state + '/cities').then(r=>r.json()).then(d=>this.cities=d); },
                      }">
-                    <form method="POST" action="{{ route('supplier.company.profile.locations.store') }}">
+                    <form method="POST" action="{{ supplier_route('company.profile.locations.store') }}">
                         @csrf
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             <div>
@@ -379,7 +379,7 @@
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0 ml-2">
                             @unless($area->is_primary)
-                                <form method="POST" action="{{ route('supplier.company.profile.service-areas.primary', $area) }}">
+                                <form method="POST" action="{{ supplier_route('company.profile.service-areas.primary', $area) }}">
                                     @csrf
                                     <button type="submit" class="text-xs text-emerald-600 font-medium hover:underline cursor-pointer">Set Primary</button>
                                 </form>
@@ -387,7 +387,7 @@
                             <button type="button" @click="editing = !editing" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition cursor-pointer">
                                 <i class="fa-solid fa-pen text-xs"></i>
                             </button>
-                            <form method="POST" action="{{ route('supplier.company.profile.service-areas.destroy', $area) }}" onsubmit="return confirmSwal(this, 'Remove this service area?', '', 'warning', 'Yes, remove')">
+                            <form method="POST" action="{{ supplier_route('company.profile.service-areas.destroy', $area) }}" onsubmit="return confirmSwal(this, 'Remove this service area?', '', 'warning', 'Yes, remove')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition cursor-pointer">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
@@ -411,7 +411,7 @@
                                  fetch('{{ url('/lookup/states') }}/' + this.state + '/cities').then(r=>r.json()).then(d=>this.cities=d);
                              },
                          }">
-                        <form method="POST" action="{{ route('supplier.company.profile.service-areas.update', $area) }}">
+                        <form method="POST" action="{{ supplier_route('company.profile.service-areas.update', $area) }}">
                             @csrf
                             @method('PUT')
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -491,7 +491,7 @@
                              fetch('{{ url('/lookup/states') }}/' + this.state + '/cities').then(r=>r.json()).then(d=>this.cities=d);
                          },
                      }">
-                    <form method="POST" action="{{ route('supplier.company.profile.service-areas.store') }}">
+                    <form method="POST" action="{{ supplier_route('company.profile.service-areas.store') }}">
                         @csrf
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>

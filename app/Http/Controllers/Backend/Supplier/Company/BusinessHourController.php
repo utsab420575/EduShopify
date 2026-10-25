@@ -30,7 +30,7 @@ class BusinessHourController extends Controller
             );
         }
 
-        return redirect()->route('supplier.company.profile', ['section' => 'hours'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'hours'])
             ->with('success', 'Business hours saved.');
     }
 }

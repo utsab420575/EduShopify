@@ -16,7 +16,7 @@ class AchievementController extends Controller
         $account = $this->currentAccount();
 
         if ($account->accountAchievements()->where('achievement_id', $achievement->id)->exists()) {
-            return redirect()->route('supplier.company.profile', ['section' => 'achievements']);
+            return redirect()->supplierRoute('company.profile', ['section' => 'achievements']);
         }
 
         abort_unless($achievement->is_active, 404);
@@ -27,7 +27,7 @@ class AchievementController extends Controller
             'requested_at' => now(),
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'achievements'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'achievements'])
             ->with('success', 'Achievement request submitted for review.');
     }
 
@@ -44,7 +44,7 @@ class AchievementController extends Controller
 
         $accountAchievement->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'achievements'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'achievements'])
             ->with('success', 'Achievement request withdrawn.');
     }
 }

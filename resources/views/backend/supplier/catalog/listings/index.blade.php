@@ -1,4 +1,4 @@
-@extends('backend.layouts.supplier')
+@extends(supplier_layout())
 
 @section('title', 'My Products')
 @section('breadcrumb', 'My Products / All Products')
@@ -7,7 +7,7 @@
 
     <x-backend.page-header title="My Products" subtitle="Manage your educational products and services, pricing, and availability.">
         <x-slot:actions>
-            <a href="{{ route('supplier.catalog.listings.create') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2">
+            <a href="{{ supplier_route('catalog.listings.create') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2">
                 <i class="fa-solid fa-plus"></i> Add Product
             </a>
         </x-slot:actions>
@@ -26,7 +26,7 @@
                 </div>
 
                 {{-- Right: Live Search & Contextual Filters --}}
-                <form method="GET" action="{{ route('supplier.catalog.listings.index') }}" class="flex flex-wrap items-center gap-2">
+                <form method="GET" action="{{ supplier_route('catalog.listings.index') }}" class="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="sort" value="{{ $sort }}">
                     <input type="hidden" name="direction" value="{{ $direction }}">
 
@@ -52,7 +52,7 @@
                     </select>
 
                     @if($search || $type || $status || request('sort'))
-                        <a href="{{ route('supplier.catalog.listings.index') }}" class="text-xs text-gray-500 hover:text-gray-700 px-2 font-medium">Reset</a>
+                        <a href="{{ supplier_route('catalog.listings.index') }}" class="text-xs text-gray-500 hover:text-gray-700 px-2 font-medium">Reset</a>
                     @endif
                 </form>
             </div>
@@ -62,7 +62,7 @@
             <x-slot:empty>
                 <x-backend.empty-state icon="fa-box-open" title="No products found" description="Add your first product or service to start selling to institutions.">
                     <x-slot:actions>
-                        <a href="{{ route('supplier.catalog.listings.create') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg inline-flex items-center gap-2">
+                        <a href="{{ supplier_route('catalog.listings.create') }}" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg inline-flex items-center gap-2">
                             <i class="fa-solid fa-plus"></i> Add Product
                         </a>
                     </x-slot:actions>
@@ -87,7 +87,7 @@
                         {{ $listings->firstItem() ? $listings->firstItem() + $loop->index : $loop->iteration }}
                     </td>
                     <td class="px-4 py-3.5">
-                        <a href="{{ route('supplier.catalog.listings.show', $item) }}" class="font-semibold text-gray-900 hover:text-indigo-600 truncate block max-w-xs transition-colors">
+                        <a href="{{ supplier_route('catalog.listings.show', $item) }}" class="font-semibold text-gray-900 hover:text-indigo-600 truncate block max-w-xs transition-colors">
                             {{ $item->name }}
                         </a>
                         <p class="text-xs text-gray-400 mt-0.5">
@@ -117,13 +117,13 @@
                     </td>
                     <td class="px-5 py-3.5 text-right">
                         <div class="flex items-center justify-end gap-1.5">
-                            <a href="{{ route('supplier.catalog.listings.show', $item) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition" title="View details">
+                            <a href="{{ supplier_route('catalog.listings.show', $item) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition" title="View details">
                                 <i class="fa-regular fa-eye text-xs"></i>
                             </a>
-                            <a href="{{ route('supplier.catalog.listings.edit', $item) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition" title="Edit product">
+                            <a href="{{ supplier_route('catalog.listings.edit', $item) }}" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition" title="Edit product">
                                 <i class="fa-regular fa-pen-to-square text-xs"></i>
                             </a>
-                            <form method="POST" action="{{ route('supplier.catalog.listings.destroy', $item) }}" onsubmit="return confirm('Are you sure you want to delete this product?')">
+                            <form method="POST" action="{{ supplier_route('catalog.listings.destroy', $item) }}" onsubmit="return confirm('Are you sure you want to delete this product?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 transition" title="Delete product">
                                     <i class="fa-regular fa-trash-can text-xs"></i>

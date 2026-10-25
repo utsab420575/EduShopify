@@ -38,7 +38,7 @@
         @endif
 
         {{-- Drag-and-drop list (SortableJS); the new order is saved instantly via AJAX. --}}
-        <div x-data="serviceSorter(@js(route('supplier.company.profile.services.reorder')))">
+        <div x-data="serviceSorter(@js(supplier_route('company.profile.services.reorder')))">
         @foreach($services as $service)
             <div data-service-id="{{ $service->id }}" class="mb-4 border border-gray-200 rounded-xl bg-white" :class="editing ? 'overflow-visible' : 'overflow-hidden'" x-data="{ editing: false }">
                 <div class="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-t-xl">
@@ -76,7 +76,7 @@
                         <button type="button" @click="editing = !editing" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition cursor-pointer" title="Edit Service">
                             <i class="fa-solid fa-pen text-xs"></i>
                         </button>
-                        <form method="POST" action="{{ route('supplier.company.profile.services.destroy', $service) }}" onsubmit="return confirmSwal(this, 'Delete this service?', '{{ addslashes($service->title) }} will be permanently removed.', 'warning', 'Yes, delete')">
+                        <form method="POST" action="{{ supplier_route('company.profile.services.destroy', $service) }}" onsubmit="return confirmSwal(this, 'Delete this service?', '{{ addslashes($service->title) }} will be permanently removed.', 'warning', 'Yes, delete')">
                             @csrf @method('DELETE')
                             <button type="submit" class="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition cursor-pointer" title="Delete Service">
                                 <i class="fa-solid fa-trash-can text-xs"></i>
@@ -86,7 +86,7 @@
                 </div>
 
                 <div x-show="editing" x-transition x-cloak class="p-4 border-t border-gray-100">
-                    <form method="POST" action="{{ route('supplier.company.profile.services.update', $service) }}">
+                    <form method="POST" action="{{ supplier_route('company.profile.services.update', $service) }}">
                         @csrf
                         @method('PUT')
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -132,7 +132,7 @@
             </button>
 
             <div x-show="open" x-transition x-cloak class="border border-violet-200 bg-violet-50/40 rounded-xl p-5">
-                <form method="POST" action="{{ route('supplier.company.profile.services.store') }}">
+                <form method="POST" action="{{ supplier_route('company.profile.services.store') }}">
                     @csrf
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                         <div class="sm:col-span-2">

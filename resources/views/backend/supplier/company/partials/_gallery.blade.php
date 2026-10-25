@@ -77,13 +77,13 @@
                                 </button>
                                 {{-- Edit caption button --}}
                                 <button type="button"
-                                        @click="editPhoto = { open: true, action: '{{ route('supplier.company.profile.gallery.update', $img) }}', caption: '{{ addslashes($img->caption ?? '') }}', alt: '{{ addslashes($img->alt_text ?? '') }}', src: '{{ $img->image_url }}', is_active: {{ $img->is_active ? 'true' : 'false' }} }"
+                                        @click="editPhoto = { open: true, action: '{{ supplier_route('company.profile.gallery.update', $img) }}', caption: '{{ addslashes($img->caption ?? '') }}', alt: '{{ addslashes($img->alt_text ?? '') }}', src: '{{ $img->image_url }}', is_active: {{ $img->is_active ? 'true' : 'false' }} }"
                                         class="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-indigo-600 text-xs flex items-center justify-center shadow transition cursor-pointer"
                                         title="Edit photo details">
                                     <i class="fa-solid fa-pen"></i>
                                 </button>
                                 {{-- Delete button --}}
-                                <form method="POST" action="{{ route('supplier.company.profile.gallery.destroy', $img) }}"
+                                <form method="POST" action="{{ supplier_route('company.profile.gallery.destroy', $img) }}"
                                       onsubmit="return confirmSwal(this, 'Remove this image?', '', 'warning', 'Yes, remove')">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="w-7 h-7 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs flex items-center justify-center shadow transition cursor-pointer"
@@ -97,7 +97,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('supplier.company.profile.gallery.store') }}" enctype="multipart/form-data"
+            <form method="POST" action="{{ supplier_route('company.profile.gallery.store') }}" enctype="multipart/form-data"
                   x-data="{ previews: [] }">
                 @csrf
 
@@ -199,7 +199,7 @@
                                     <button type="button"
                                             @click="editVideo = {
                                                 open: true,
-                                                action: '{{ route('supplier.company.profile.videos.update', $video) }}',
+                                                action: '{{ supplier_route('company.profile.videos.update', $video) }}',
                                                 title: '{{ addslashes($video->title) }}',
                                                 url: '{{ addslashes($video->video_url) }}',
                                                 caption: '{{ addslashes($video->caption ?? '') }}',
@@ -211,7 +211,7 @@
                                     </button>
 
                                     {{-- Delete Video Form --}}
-                                    <form method="POST" action="{{ route('supplier.company.profile.videos.destroy', $video) }}"
+                                    <form method="POST" action="{{ supplier_route('company.profile.videos.destroy', $video) }}"
                                           onsubmit="return confirmSwal(this, 'Remove this video?', '', 'warning', 'Yes, remove')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition cursor-pointer"
@@ -229,7 +229,7 @@
             {{-- Add Video Form --}}
             <div class="bg-gray-50/70 border border-gray-200 rounded-xl p-4">
                 <p class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Add New Video</p>
-                <form method="POST" action="{{ route('supplier.company.profile.videos.store') }}" class="space-y-3">
+                <form method="POST" action="{{ supplier_route('company.profile.videos.store') }}" class="space-y-3">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>

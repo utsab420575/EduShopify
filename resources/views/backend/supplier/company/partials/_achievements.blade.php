@@ -34,7 +34,7 @@
                         </div>
                         <x-backend.status-badge :status="$claim->status" />
                         @if(in_array($claim->status, ['pending', 'rejected'], true))
-                            <form method="POST" action="{{ route('supplier.company.profile.achievements.undo', $claim) }}" onsubmit="return confirmSwal(this, 'Undo this request?', 'Withdraw your claim on {{ addslashes($claim->achievement?->name) }}?', 'warning', 'Yes, Undo')">
+                            <form method="POST" action="{{ supplier_route('company.profile.achievements.undo', $claim) }}" onsubmit="return confirmSwal(this, 'Undo this request?', 'Withdraw your claim on {{ addslashes($claim->achievement?->name) }}?', 'warning', 'Yes, Undo')">
                                 @csrf @method('DELETE')
                                 <button type="submit" title="Undo Request" class="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition cursor-pointer shrink-0">
                                     <i class="fa-solid fa-rotate-left text-xs"></i>
@@ -61,7 +61,7 @@
                                 @endif
                             </div>
                         </div>
-                        <form method="POST" action="{{ route('supplier.company.profile.achievements.request', $achievement) }}" onsubmit="return confirmSwal(this, 'Request this achievement?', 'Submit a claim on {{ addslashes($achievement->name) }} for admin review?', 'question', 'Yes, Request')">
+                        <form method="POST" action="{{ supplier_route('company.profile.achievements.request', $achievement) }}" onsubmit="return confirmSwal(this, 'Request this achievement?', 'Submit a claim on {{ addslashes($achievement->name) }} for admin review?', 'question', 'Yes, Request')">
                             @csrf
                             <button type="submit" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition cursor-pointer shrink-0">
                                 Request
@@ -102,7 +102,7 @@
                                             </button>
                                         @endif
                                         @if($cert->isRemovableBySupplier())
-                                            <form method="POST" action="{{ route('supplier.company.profile.certifications.destroy', $cert) }}" onsubmit="return confirmSwal(this, 'Remove this certification?', '{{ addslashes($cert->certification_name) }} will be permanently removed.', 'warning', 'Yes, remove')">
+                                            <form method="POST" action="{{ supplier_route('company.profile.certifications.destroy', $cert) }}" onsubmit="return confirmSwal(this, 'Remove this certification?', '{{ addslashes($cert->certification_name) }} will be permanently removed.', 'warning', 'Yes, remove')">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" title="Remove" class="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition cursor-pointer">
                                                     <i class="fa-solid fa-trash-can text-xs"></i>
@@ -129,7 +129,7 @@
 
                             @if($cert->isEditableBySupplier())
                                 <div x-show="editing" x-transition x-cloak class="p-4 border-t border-gray-100 bg-gray-50/50">
-                                    <form method="POST" action="{{ route('supplier.company.profile.certifications.update', $cert) }}">
+                                    <form method="POST" action="{{ supplier_route('company.profile.certifications.update', $cert) }}">
                                         @csrf
                                         @method('PUT')
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -192,7 +192,7 @@
                 </button>
 
                 <div x-show="open" x-transition x-cloak class="border border-amber-200 bg-amber-50/40 rounded-xl p-5">
-                    <form method="POST" action="{{ route('supplier.company.profile.certifications.store') }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ supplier_route('company.profile.certifications.store') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>

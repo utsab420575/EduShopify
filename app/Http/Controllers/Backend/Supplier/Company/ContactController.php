@@ -15,7 +15,7 @@ class ContactController extends Controller
     {
         $service->saveDraft($this->currentAccount(), $request->validated());
 
-        return redirect()->route('supplier.company.profile', ['section' => 'contact'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'contact'])
             ->with('success', 'Contact information saved.');
     }
 }

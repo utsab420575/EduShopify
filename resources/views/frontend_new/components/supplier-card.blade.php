@@ -53,9 +53,13 @@
   <div class="p-4">
     <div class="flex items-start gap-3 -mt-8 mb-2 relative">
       <div class="w-12 h-12 rounded-xl bg-white border-2 border-white shadow-md flex items-center justify-center overflow-hidden shrink-0">
-        <div class="w-full h-full bg-emerald-50 flex items-center justify-center">
-          <span class="text-sm font-bold text-emerald-600">{{ strtoupper(substr($supplier->display_name, 0, 1)) }}</span>
-        </div>
+        @if($supplier->profile_photo)
+          <img src="{{ \Illuminate\Support\Facades\Storage::url($supplier->profile_photo) }}" alt="{{ $supplier->display_name }}" class="w-full h-full object-cover" />
+        @else
+          <div class="w-full h-full bg-emerald-50 flex items-center justify-center">
+            <span class="text-sm font-bold text-emerald-600">{{ strtoupper(substr($supplier->display_name, 0, 1)) }}</span>
+          </div>
+        @endif
       </div>
       <div class="pt-5 min-w-0 flex-1">
         <h3 class="font-bold text-sm text-gray-900 group-hover:text-emerald-700 transition-colors truncate leading-tight">{{ $supplier->display_name }}</h3>

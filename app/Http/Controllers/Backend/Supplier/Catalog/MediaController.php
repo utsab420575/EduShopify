@@ -39,7 +39,7 @@ class MediaController extends Controller
             ]);
         }
 
-        return redirect()->route('supplier.catalog.listings.show', $listing)->with('success', 'Image uploaded.');
+        return redirect()->supplierRoute('catalog.listings.show', $listing)->with('success', 'Image uploaded.');
     }
 
     public function destroy(Listing $listing, Media $media)
@@ -50,6 +50,6 @@ class MediaController extends Controller
 
         $media->delete();
 
-        return redirect()->route('supplier.catalog.listings.show', $listing)->with('success', 'Media removed.');
+        return redirect()->supplierRoute('catalog.listings.show', $listing)->with('success', 'Media removed.');
     }
 }

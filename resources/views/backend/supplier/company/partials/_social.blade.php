@@ -75,7 +75,7 @@
                             <button type="button"
                                     @click="editModal = {
                                         open: true,
-                                        action: '{{ route('supplier.company.profile.social-links.update', $link) }}',
+                                        action: '{{ supplier_route('company.profile.social-links.update', $link) }}',
                                         platform_id: '{{ $link->social_platform_id }}',
                                         platform_name: '{{ addslashes($link->platform_name) }}',
                                         url: '{{ addslashes($link->url) }}',
@@ -89,7 +89,7 @@
                             </button>
 
                             {{-- Delete Link Form --}}
-                            <form method="POST" action="{{ route('supplier.company.profile.social-links.destroy', $link) }}"
+                            <form method="POST" action="{{ supplier_route('company.profile.social-links.destroy', $link) }}"
                                   onsubmit="return confirmSwal(this, 'Remove this social link?', '', 'warning', 'Yes, remove')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition cursor-pointer"
@@ -112,7 +112,7 @@
         {{-- Add Social Link Form --}}
         <div class="bg-gray-50/70 border border-gray-200 rounded-xl p-4">
             <p class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Add Social Profile or Web Link</p>
-            <form method="POST" action="{{ route('supplier.company.profile.social-links.store') }}" class="space-y-3">
+            <form method="POST" action="{{ supplier_route('company.profile.social-links.store') }}" class="space-y-3">
                 @csrf
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     <div>

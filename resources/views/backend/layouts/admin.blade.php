@@ -13,6 +13,7 @@
 @endsection
 
 @section('content')
+    @include('backend.admin.suppliers.partials._managing-banner')
     @include('backend.layouts.partials.shared._flash')
     @yield('body')
 @endsection

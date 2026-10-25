@@ -40,7 +40,7 @@ class VideoController extends Controller
             'created_by_user_id' => Auth::id(),
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'gallery'])
             ->with('success', 'Video added.');
     }
 
@@ -68,7 +68,7 @@ class VideoController extends Controller
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $video->is_active,
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'gallery'])
             ->with('success', 'Video updated.');
     }
 
@@ -78,7 +78,7 @@ class VideoController extends Controller
 
         $video->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'gallery'])
             ->with('success', 'Video removed.');
     }
 }

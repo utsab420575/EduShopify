@@ -58,13 +58,13 @@
     categoryNodes: {{ json_encode($categoryOptions) }},
     selectedCategoryId: {{ json_encode($isEdit ? $listing->main_category_id : null) }},
     selectedCategoryPath: {{ json_encode($isEdit && $listing->mainCategory ? $listing->mainCategory->getBreadcrumbPath() : '') }},
-    step1Url: '{{ route('supplier.catalog.listings.wizard.step1') }}',
-    step2Url: '{{ $isEdit ? route('supplier.catalog.listings.wizard.step2', $listing) : '' }}',
-    step3Url: '{{ $isEdit ? route('supplier.catalog.listings.wizard.step3', $listing) : '' }}',
-    step4Url: '{{ $isEdit ? route('supplier.catalog.listings.wizard.step4', $listing) : '' }}',
-    previewUrl: '{{ $isEdit ? route('supplier.catalog.listings.show', $listing) : '' }}',
-    setCoverUrl: '{{ $isEdit ? route('supplier.catalog.listings.media.primary', $listing) : '' }}',
-    uploadMediaUrl: '{{ $isEdit ? route('supplier.catalog.listings.media.store', $listing) : '' }}',
+    step1Url: '{{ supplier_route('catalog.listings.wizard.step1') }}',
+    step2Url: '{{ $isEdit ? supplier_route('catalog.listings.wizard.step2', $listing) : '' }}',
+    step3Url: '{{ $isEdit ? supplier_route('catalog.listings.wizard.step3', $listing) : '' }}',
+    step4Url: '{{ $isEdit ? supplier_route('catalog.listings.wizard.step4', $listing) : '' }}',
+    previewUrl: '{{ $isEdit ? supplier_route('catalog.listings.show', $listing) : '' }}',
+    setCoverUrl: '{{ $isEdit ? supplier_route('catalog.listings.media.primary', $listing) : '' }}',
+    uploadMediaUrl: '{{ $isEdit ? supplier_route('catalog.listings.media.store', $listing) : '' }}',
     lastSavedTime: {{ json_encode($isEdit && $listing->last_autosaved_at ? $listing->last_autosaved_at->toISOString() : null) }},
     currencyCode: {{ json_encode($isEdit ? ($listing->currency_code ?: 'USD') : 'USD') }},
     unitId: {{ json_encode($isEdit ? ($listing->unit_id ? (string)$listing->unit_id : '') : '') }}
@@ -1838,7 +1838,7 @@ function productListingWizard(config) {
             if (!categoryId) return;
             this.isGeneratorLoading = true;
             try {
-                const url = '{{ route('supplier.catalog.listings.category.attributes', '__CAT__') }}'.replace('__CAT__', categoryId);
+                const url = '{{ supplier_route('catalog.listings.category.attributes', '__CAT__') }}'.replace('__CAT__', categoryId);
                 const res = await fetch(url);
                 const data = await res.json();
                 const vAttrs = [];

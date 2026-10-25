@@ -29,7 +29,7 @@ class GalleryController extends Controller
             ]);
         }
 
-        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'gallery'])
             ->with('success', 'Gallery updated.');
     }
 
@@ -43,7 +43,7 @@ class GalleryController extends Controller
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $image->is_active,
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'gallery'])
             ->with('success', 'Photo details updated.');
     }
 
@@ -56,7 +56,7 @@ class GalleryController extends Controller
         }
         $image->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'gallery'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'gallery'])
             ->with('success', 'Image removed.');
     }
 }

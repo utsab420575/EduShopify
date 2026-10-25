@@ -33,7 +33,7 @@ class ServiceController extends Controller
             'sort_order' => $sortOrder,
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'services'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'services'])
             ->with('success', 'Service added.');
     }
 
@@ -51,7 +51,7 @@ class ServiceController extends Controller
             'sort_order' => (int) ($data['sort_order'] ?? 0),
         ]);
 
-        return redirect()->route('supplier.company.profile', ['section' => 'services'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'services'])
             ->with('success', 'Service updated.');
     }
 
@@ -91,7 +91,7 @@ class ServiceController extends Controller
 
         $service->delete();
 
-        return redirect()->route('supplier.company.profile', ['section' => 'services'])
+        return redirect()->supplierRoute('company.profile', ['section' => 'services'])
             ->with('success', 'Service removed.');
     }
 }

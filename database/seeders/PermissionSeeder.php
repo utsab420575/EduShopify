@@ -124,6 +124,7 @@ class PermissionSeeder extends Seeder
             ['platform.capabilities.review', 'Platform · Capabilities', 'platform', 'Review Buyer/Supplier applications', ['sensitive']],
             ['platform.conversions.review', 'Platform · Capabilities', 'platform', 'Review account conversions', ['sensitive']],
             ['platform.supplier_documents.verify', 'Platform · Capabilities', 'platform', 'Verify supplier documents', ['sensitive']],
+            ['platform.suppliers.manage', 'Platform · Accounts', 'platform', "Edit a supplier's business profile and products on their behalf", ['sensitive']],
             ['platform.listings.moderate', 'Platform · Catalogue', 'platform', 'Moderate listings'],
             ['platform.categories.manage', 'Platform · Catalogue', 'platform', 'Manage categories'],
             ['platform.brands.manage', 'Platform · Catalogue', 'platform', 'Manage brands'],

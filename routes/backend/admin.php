@@ -106,6 +106,17 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         Route::get('/buyers/{account}', [BuyerController::class, 'show'])->name('buyers.show');
         Route::put('/buyers/{account}', [BuyerController::class, 'update'])->name('buyers.update');
 
+        // Admin manages a supplier's Business Profile and Catalog › Listings
+        // with the supplier's own pages (platform.suppliers.manage) — same
+        // controllers/views as /supplier/..., see routes/backend/supplier_workspace.php.
+        Route::prefix('suppliers/{supplierAccount}/manage')
+            ->whereNumber('supplierAccount')
+            ->name('supplier-manage.')
+            ->middleware(\App\Http\Middleware\ManageSupplierAccount::class)
+            ->group(function () {
+                require __DIR__.'/supplier_workspace.php';
+            });
+
         Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
         Route::get('/suppliers/{account}', [SupplierController::class, 'show'])->name('suppliers.show');
         Route::put('/suppliers/{account}', [SupplierController::class, 'update'])->name('suppliers.update');
