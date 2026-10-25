@@ -30,7 +30,15 @@
       @include('frontend_new.components.supplier-save-btn', ['supplier' => $supplier, 'class' => 'absolute top-3.5 right-3.5 z-20'])
       <div class="profile-bar">
         <div class="flex items-end gap-3">
-          <div class="supplier-avatar">{{ strtoupper(substr($supplier->display_name, 0, 1)) }}</div>
+          {{-- supplier_profiles.profile_photo in the avatar box; first letter when there's none --}}
+          <div class="supplier-avatar" @if($supplier->profile_photo) style="overflow:hidden;" @endif>
+            @if($supplier->profile_photo)
+              <img src="{{ \Illuminate\Support\Facades\Storage::url($supplier->profile_photo) }}" alt="{{ $supplier->display_name }}"
+                   style="width:100%;height:100%;object-fit:cover;display:block;" />
+            @else
+              {{ strtoupper(substr($supplier->display_name, 0, 1)) }}
+            @endif
+          </div>
           <div>
             <h1 class="text-white font-bold text-2xl leading-tight mb-1.5">{{ $supplier->display_name }}</h1>
             <div class="flex flex-wrap items-center gap-2 mb-2">
