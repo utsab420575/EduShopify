@@ -30,23 +30,7 @@
       @include('frontend_new.components.supplier-save-btn', ['supplier' => $supplier, 'class' => 'absolute top-3.5 right-3.5 z-20'])
       <div class="profile-bar">
         <div class="flex items-end gap-3">
-          {{-- Dual image: logo (square) + profile_photo (circle) side-by-side --}}
-          <div class="supplier-avatar-wrap">
-            {{-- Logo — rounded square, anchored bottom-left --}}
-            <div class="supplier-logo-box">
-              @if($supplier->logo)
-                <img src="{{ \Illuminate\Support\Facades\Storage::url($supplier->logo) }}" alt="{{ $supplier->display_name }} logo" class="w-full h-full object-contain p-0.5" />
-              @else
-                <span class="supplier-avatar-fallback">{{ strtoupper(substr($supplier->display_name, 0, 1)) }}</span>
-              @endif
-            </div>
-            {{-- Profile Photo — circle, overlapping to the right of the logo --}}
-            @if($supplier->profile_photo)
-              <div class="supplier-profile-photo-box">
-                <img src="{{ \Illuminate\Support\Facades\Storage::url($supplier->profile_photo) }}" alt="{{ $supplier->display_name }}" class="w-full h-full object-cover" />
-              </div>
-            @endif
-          </div>
+          <div class="supplier-avatar">{{ strtoupper(substr($supplier->display_name, 0, 1)) }}</div>
           <div>
             <h1 class="text-white font-bold text-2xl leading-tight mb-1.5">{{ $supplier->display_name }}</h1>
             <div class="flex flex-wrap items-center gap-2 mb-2">

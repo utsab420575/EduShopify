@@ -52,7 +52,7 @@ Route::get('/system-refresh', function () {
         '--force' => true,
     ]);
 
-
+    
     return response()->json([
         'status' => 'success',
         'message' => 'All caches cleared, migrated & storage linked ✅'
