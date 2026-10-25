@@ -4,7 +4,7 @@
     the image. Used inside bannerCropper()'s x-data — `fit` is its state.
 
     $src   — Alpine expression for the image URL
-    $ratio — box shape: desktop hero 22/5 (≈1232×280), phone 375/280
+    $ratio — box shape: desktop hero 1232/300 (≈1232×300), phone 375/300
 --}}
 <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-100" style="aspect-ratio: {{ $ratio }};">
     <template x-if="{{ $src }}">

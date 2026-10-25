@@ -95,7 +95,7 @@
                     <div class="flex-1 min-w-0">
                         <p class="text-[11px] font-medium text-gray-500 mb-1"><i class="fa-solid fa-desktop mr-1"></i> Desktop</p>
                         <div class="relative group cursor-pointer" @click="openRecrop()" title="Click to adjust the crop">
-                            @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'previewSrc', 'ratio' => '22/5'])
+                            @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'previewSrc', 'ratio' => '1232/300'])
                             <div x-show="sourceSrc"
                                  class="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center pointer-events-none">
                                 <span class="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-black/50 px-3 py-1.5 rounded-full">
@@ -106,10 +106,10 @@
                     </div>
                     <div class="w-36 shrink-0">
                         <p class="text-[11px] font-medium text-gray-500 mb-1"><i class="fa-solid fa-mobile-screen mr-1"></i> Mobile</p>
-                        @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'previewSrc', 'ratio' => '375/280'])
+                        @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'previewSrc', 'ratio' => '375/300'])
                     </div>
                 </div>
-                <div x-show="!previewSrc" class="w-full rounded-lg bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 py-8" style="aspect-ratio:22/5;">
+                <div x-show="!previewSrc" class="w-full rounded-lg bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 py-8" style="aspect-ratio:1232/300;">
                     <i class="fa-solid fa-image text-2xl mb-1.5"></i>
                     <p class="text-xs">No banner uploaded yet</p>
                 </div>
@@ -193,11 +193,11 @@
                                 <div class="flex flex-col sm:flex-row gap-3">
                                     <div class="flex-1 min-w-0">
                                         <p class="text-[11px] font-medium text-gray-500 mb-1"><i class="fa-solid fa-desktop mr-1"></i> Desktop</p>
-                                        @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'livePreviewSrc', 'ratio' => '22/5'])
+                                        @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'livePreviewSrc', 'ratio' => '1232/300'])
                                     </div>
                                     <div class="w-32 shrink-0">
                                         <p class="text-[11px] font-medium text-gray-500 mb-1"><i class="fa-solid fa-mobile-screen mr-1"></i> Mobile</p>
-                                        @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'livePreviewSrc', 'ratio' => '375/280'])
+                                        @include('backend.supplier.company.partials._banner-hero-preview', ['src' => 'livePreviewSrc', 'ratio' => '375/300'])
                                     </div>
                                 </div>
                             </div>
@@ -321,7 +321,7 @@
                 cropper: null,
                 zoomSlider: 50,
                 rawImageSrc: null,
-                aspectRatio: 22 / 5,
+                aspectRatio: 1232 / 300,
                 cropWidth: 1760,
                 previewPending: false,
 
@@ -413,7 +413,7 @@
                                 this.updateLivePreview();
                                 return;
                             }
-                            // Start at the hero's 22:5 ratio; height is then
+                            // Start at the hero's 1232:300 ratio; height is then
                             // freely draggable from this starting point via
                             // the n/s handles.
                             const container = this.cropper.getContainerData();
