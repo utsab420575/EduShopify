@@ -109,6 +109,24 @@
         $categoriesString = implode(' ', $supplierCategories);
         $initMatch = (($activeCategory ?? 'all') === 'all') || in_array($activeCategory, $supplierCategories);
         $animDelay = $initMatch ? ($initVisibleIndex++ * 55) : 0;
+
+        // Avatar: logo → profile photo → first letter.
+        $avatarPath = $supplier->logo ?: $supplier->profile_photo;
+        $avatarIsLogo = filled($supplier->logo);
+
+        // "Verified" while the supplier's account is active.
+        $isVerified = $supplier->account?->status === 'active';
+
+        // Admin-approved achievements (SupplierProfile::publicCardRelations): first 1, then "+N".
+        $achievements = $supplier->publicAchievements();
+        $shownAchievements = $achievements->take(1);
+        $extraAchievements = $achievements->count() - $shownAchievements->count();
+
+        // Active account_locations, primary (head office) first: show one, "+N" for the rest.
+        $locations = $supplier->account?->locations ?? collect();
+        $mainLocation = $locations->first();
+        $extraLocations = max(0, $locations->count() - 1);
+        $locationLabel = fn ($loc) => collect([$loc->city?->name, $loc->country?->name])->filter()->implode(', ');
       @endphp
       <div
         class="supplier-item"
@@ -120,8 +138,13 @@
             {{-- Header: Squircle Avatar + Name & Type + Heart Button --}}
             <div class="flex items-start justify-between gap-2.5 mb-3">
               <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">
-                  {{ strtoupper(substr($supplier->display_name, 0, 1)) }}
+                <div class="w-10 h-10 rounded-xl {{ $avatarPath ? 'bg-white' : 'bg-emerald-50' }} text-emerald-700 border border-emerald-100 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
+                  @if($avatarPath)
+                    <img src="{{ \Illuminate\Support\Facades\Storage::url($avatarPath) }}" alt="{{ $supplier->display_name }}" loading="lazy"
+                         class="w-full h-full {{ $avatarIsLogo ? 'object-contain p-0.5' : 'object-cover' }}" />
+                  @else
+                    {{ strtoupper(substr($supplier->display_name, 0, 1)) }}
+                  @endif
                 </div>
                 <div class="min-w-0">
                   <h3 class="font-bold text-sm text-gray-900 group-hover:text-emerald-700 transition-colors leading-tight truncate">{{ $supplier->display_name }}</h3>
@@ -133,24 +156,37 @@
               @include('frontend_new.components.supplier-save-btn', ['supplier' => $supplier, 'class' => 'shrink-0'])
             </div>
 
-            {{-- Badges --}}
-            <div class="flex gap-1.5 mb-3 flex-wrap">
-              <span class="badge-verified text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1">✓ Verified</span>
-              @if($supplier->demo_founding)
-                <span class="badge-founding text-[10px] font-medium px-2 py-0.5 rounded-full">Founding</span>
-              @endif
-              @if($supplier->demo_ise)
-                <span class="badge-ise text-[10px] font-medium px-2 py-0.5 rounded-full">ISE Exhibitor</span>
-              @endif
-            </div>
+            {{-- Badges, always one row: "Verified" (account active), 1 real achievement (display_badge /
+                 badge_color, default colour by type), then "+N"; a long label truncates rather than wrapping.
+                 Full list in the tooltip and on the supplier's profile page. --}}
+            @if($isVerified || $achievements->isNotEmpty())
+              <div class="flex items-center gap-1.5 mb-3 flex-nowrap overflow-hidden" title="{{ $achievements->map->badgeLabel()->implode(' · ') }}">
+                @if($isVerified)
+                  <span class="badge-verified text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 whitespace-nowrap">✓ Verified</span>
+                @endif
+                @foreach($shownAchievements as $achievement)
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-full min-w-0 truncate whitespace-nowrap" style="{{ $achievement->badgeStyle() }}">{{ $achievement->badgeLabel() }}</span>
+                @endforeach
+                @if($extraAchievements > 0)
+                  <span class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">+{{ $extraAchievements }}</span>
+                @endif
+              </div>
+            @endif
           </div>
 
           <div>
             {{-- Rating & Location --}}
             <div class="flex items-center justify-between text-[11px] text-gray-500 mb-2.5 pt-2.5 border-t border-gray-100">
               <span class="flex items-center gap-1 text-amber-600 font-medium"><span class="star">★</span> {{ number_format((float) $supplier->rating, 1) }} <span class="text-gray-400 font-normal">({{ $supplier->reviews_count ?? 0 }})</span></span>
-              @if($supplier->country)
-                <span class="flex items-center gap-1 text-gray-500">{{ $supplier->country->flag_emoji }} {{ $supplier->country->name }}</span>
+              @if($mainLocation?->country)
+                <span class="flex items-center gap-1 text-gray-500 min-w-0"
+                      title="{{ $locations->map($locationLabel)->filter()->implode(' · ') }}">
+                  <span class="shrink-0">{{ $mainLocation->country->flag_emoji }}</span>
+                  <span class="truncate">{{ $mainLocation->country->name }}</span>
+                  @if($extraLocations > 0)
+                    <span class="shrink-0 font-semibold text-gray-400">+{{ $extraLocations }}</span>
+                  @endif
+                </span>
               @endif
             </div>
 

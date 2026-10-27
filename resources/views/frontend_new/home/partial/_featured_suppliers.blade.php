@@ -84,7 +84,8 @@
     >
       @foreach($featuredSuppliers as $supplier)
         <div class="featured-supplier-item shrink-0 product-card-fade-up" style="animation-delay: {{ $loop->index * 45 }}ms">
-          @include('frontend_new.components.supplier-card', ['supplier' => $supplier])
+          {{-- Badge row: "Verified" (account active), 1 achievement, then "+N" --}}
+          @include('frontend_new.components.supplier-card', ['supplier' => $supplier, 'maxAchievements' => 1, 'verifiedWhenActive' => true])
         </div>
       @endforeach
     </div>

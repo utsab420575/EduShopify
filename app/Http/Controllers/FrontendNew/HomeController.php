@@ -91,7 +91,7 @@ class HomeController extends Controller
             $ids = array_merge([$category->id], $category->descendantIds());
 
             PublicSupplierQuery::base()
-                ->with(['country', 'account.supplierTypes', 'account.listings.categories'])
+                ->with(array_merge(['account.listings.categories'], \App\Models\SupplierProfile::publicCardRelations()))
                 ->whereHas('account.listings', function (Builder $q) use ($ids) {
                     $q->whereIn('main_category_id', $ids)
                         ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
@@ -114,7 +114,7 @@ class HomeController extends Controller
 
         if ($suppliers->count() < 8) {
             PublicSupplierQuery::base()
-                ->with(['country', 'account.supplierTypes', 'account.listings.categories'])
+                ->with(array_merge(['account.listings.categories'], \App\Models\SupplierProfile::publicCardRelations()))
                 ->whereNotIn('id', $suppliers->keys())
                 ->orderByDesc('rating')
                 ->limit(8 - $suppliers->count())

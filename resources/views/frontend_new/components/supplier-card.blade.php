@@ -1,6 +1,10 @@
 {{-- Included via @include('frontend_new.components.supplier-card', ['supplier' => $supplier])
      — a plain partial, not an anonymous Blade component (this directory
-     isn't on Blade's auto-discovered component path). --}}
+     isn't on Blade's auto-discovered component path).
+     Optional:
+       'maxAchievements'    — achievement badges before "+N" (default 2)
+       'verifiedWhenActive' — show "Verified" while the account is active,
+                              instead of once an admin approved it (default false) --}}
 <a href="{{ route('v2.suppliers.show', $supplier->slug) }}" class="group flex flex-col h-full bg-white rounded-2xl border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all duration-200 overflow-hidden">
 
   <div class="relative h-32 bg-emerald-50">
@@ -72,8 +76,11 @@
          list in the title tooltip; all of it on the profile page). --}}
     @php
       $achievements = $supplier->publicAchievements();
-      $shownAchievements = $achievements->take(2);
+      $shownAchievements = $achievements->take($maxAchievements ?? 2);
       $extraAchievements = $achievements->count() - $shownAchievements->count();
+      $cardVerified = ($verifiedWhenActive ?? false)
+          ? $supplier->account?->status === 'active'
+          : $supplier->isVerified();
 
       $typeNames = $supplierTypes?->pluck('name') ?? collect();
       $extraTypes = max(0, $typeNames->count() - 2);
@@ -82,8 +89,8 @@
       $firstCountry = $countries->first();
     @endphp
 
-    <div class="flex items-center gap-1 h-6 mb-2 overflow-hidden" title="{{ collect([$supplier->isVerified() ? 'Verified' : null])->merge($achievements->map->badgeLabel())->filter()->implode(' · ') }}">
-      @if($supplier->isVerified())
+    <div class="flex items-center gap-1 h-6 mb-2 overflow-hidden" title="{{ collect([$cardVerified ? 'Verified' : null])->merge($achievements->map->badgeLabel())->filter()->implode(' · ') }}">
+      @if($cardVerified)
         <span class="badge-verified text-[10px] font-medium px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 whitespace-nowrap leading-none">✓ Verified</span>
       @endif
       @foreach($shownAchievements as $achievement)
