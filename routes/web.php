@@ -33,15 +33,40 @@ Route::get('/system-refresh', function (Request $request) {
         abort(403, 'Unauthorized access. Please provide a valid ?token= or sign in as an administrator.');
     }
 
-    Artisan::call('optimize:clear');
-    Artisan::call('storage:link');
-    Artisan::call('migrate', [
-        '--force' => true,
-    ]);
+    // db:repair-auto-increment must run before migrate: when `migrations.id`
+    // has lost AUTO_INCREMENT, migrate itself fails recording each migration
+    // ("1364 Field 'id' doesn't have a default value"). No-op once fixed.
+    $steps = [
+        'optimize:clear' => [],
+        'storage:link' => [],
+        'db:repair-auto-increment' => [],
+        'migrate' => ['--force' => true],
+    ];
+    $output = [];
+
+    foreach ($steps as $command => $arguments) {
+        try {
+            $exitCode = Artisan::call($command, $arguments);
+            $output[$command] = trim(Artisan::output());
+        } catch (\Throwable $e) {
+            $exitCode = 1;
+            $output[$command] = $e->getMessage();
+        }
+
+        // storage:link fails harmlessly when the link already exists.
+        if ($exitCode !== 0 && $command !== 'storage:link') {
+            return response()->json([
+                'status'  => 'error',
+                'message' => "'{$command}' failed — later steps were not run.",
+                'output'  => $output,
+            ], 500);
+        }
+    }
 
     return response()->json([
         'status'  => 'success',
         'message' => 'All caches cleared, migrations executed & storage linked successfully ✅',
+        'output'  => $output,
     ]);
 });
 
