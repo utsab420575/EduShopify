@@ -26,7 +26,7 @@ return new class extends Migration
             // (a MyISAM default makes every FK to this table fail with errno 150).
             $table->engine('InnoDB');
 
-            $table->bigIncrements('id');
+            $table->id();
             $table->string('code', 100)->unique();
             $table->string('name', 150);
             $table->text('description')->nullable();
