@@ -38,10 +38,10 @@
     <div>
       <p class="font-semibold text-[15px] text-gray-900 mb-5">Company</p>
       <ul class="space-y-4">
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">About Us</a></li>
-        <li><a href="{{ route('v2.resources.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Blog</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Contact</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Careers</a></li>
+        <li><a href="{{ route('v2.pages.about') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">About Us</a></li>
+        <li><a href="{{ route('v2.blogs.index') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Blog</a></li>
+        <li><a href="{{ route('v2.pages.contact') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Contact</a></li>
+        <li><a href="{{ route('v2.pages.careers') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Careers</a></li>
       </ul>
     </div>
 
@@ -49,10 +49,10 @@
     <div>
       <p class="font-semibold text-[15px] text-gray-900 mb-5">Support</p>
       <ul class="space-y-4">
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Help Center</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Pricing</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Terms of Service</a></li>
-        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Privacy Policy</a></li>
+        <li><a href="{{ route('v2.pages.help') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Help Center</a></li>
+        <li><a href="{{ route('v2.pages.pricing') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Pricing</a></li>
+        <li><a href="{{ route('v2.pages.terms') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Terms of Service</a></li>
+        <li><a href="{{ route('v2.pages.privacy') }}" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Privacy Policy</a></li>
       </ul>
     </div>
   </div>
@@ -60,8 +60,8 @@
   <div class="max-w-7xl mx-auto border-t border-gray-200 pt-6 flex items-center justify-between">
     <p class="text-sm text-gray-400">© {{ date('Y') }} Edushopify. All rights reserved.</p>
     <div class="flex gap-6 text-sm text-gray-400">
-      <a href="#" class="hover:text-gray-700 transition-colors">Terms</a>
-      <a href="#" class="hover:text-gray-700 transition-colors">Privacy</a>
+      <a href="{{ route('v2.pages.terms') }}" class="hover:text-gray-700 transition-colors">Terms</a>
+      <a href="{{ route('v2.pages.privacy') }}" class="hover:text-gray-700 transition-colors">Privacy</a>
     </div>
   </div>
 </footer>

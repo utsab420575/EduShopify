@@ -5,6 +5,7 @@ use App\Http\Controllers\FrontendNew\CategoryController;
 use App\Http\Controllers\FrontendNew\CompareController;
 use App\Http\Controllers\FrontendNew\HandoffController;
 use App\Http\Controllers\FrontendNew\HomeController;
+use App\Http\Controllers\FrontendNew\PageController;
 use App\Http\Controllers\FrontendNew\ProductController;
 use App\Http\Controllers\FrontendNew\ResourceController;
 use App\Http\Controllers\FrontendNew\RfqController;
@@ -44,6 +45,17 @@ Route::prefix('v2')->name('v2.')->group(function () {
     Route::get('/compare', [CompareController::class, 'index'])->name('compare.index');
     Route::post('/compare/data', [CompareController::class, 'data'])->name('compare.data');
     Route::get('/compare/search', [CompareController::class, 'search'])->name('compare.search');
+
+    /* ── Company / support pages (footer links) ── */
+    Route::get('/about', [PageController::class, 'about'])->name('pages.about');
+    Route::get('/contact', [PageController::class, 'contact'])->name('pages.contact');
+    Route::post('/contact', [PageController::class, 'contactSubmit'])->name('pages.contact.submit')
+        ->middleware('throttle:5,1');
+    Route::get('/careers', [PageController::class, 'careers'])->name('pages.careers');
+    Route::get('/help', [PageController::class, 'help'])->name('pages.help');
+    Route::get('/pricing', [PageController::class, 'pricing'])->name('pages.pricing');
+    Route::get('/terms', [PageController::class, 'terms'])->name('pages.terms');
+    Route::get('/privacy', [PageController::class, 'privacy'])->name('pages.privacy');
 
     Route::get('/rfqs', [RfqController::class, 'index'])->name('rfqs.index');
     Route::get('/rfqs/{rfq_number}', [RfqController::class, 'show'])->name('rfqs.show');
