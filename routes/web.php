@@ -24,42 +24,20 @@ Route::get('/', [HomeController::class, 'index'])
     ->name('home');
 
 Route::get('/system-refresh', function (Request $request) {
-    $expectedToken = config('app.system_refresh_token') ?: env('SYSTEM_REFRESH_TOKEN');
-
-    $isAuthorizedByToken = ! empty($expectedToken) && hash_equals((string) $expectedToken, (string) $request->query('token'));
-    $isAuthorizedByAdmin = auth()->check() && (auth()->user()->isAdmin() ?? false);
-
-    if (! $isAuthorizedByToken && ! $isAuthorizedByAdmin) {
-        abort(403, 'Unauthorized access. Please provide a valid ?token= or sign in as an administrator.');
-    }
-
-    $output = '';
 
     Artisan::call('migrate', [
-        '--path'  => 'database/migrations/2026_10_28_100000_create_subscription_benefits_table.php',
+        '--path' => 'database/migrations/2026_10_28_100000_create_subscription_benefits_table.php',
         '--force' => true,
     ]);
-    $output .= trim(Artisan::output()) . "\n";
 
-    Artisan::call('migrate', [
-        '--path'  => 'database/migrations/2026_10_28_100100_create_subscription_plan_benefits_table.php',
-        '--force' => true,
-    ]);
-    $output .= trim(Artisan::output()) . "\n";
-
-    Artisan::call('migrate', [
-        '--path'  => 'database/migrations/2026_10_28_100200_create_account_benefit_overrides_table.php',
-        '--force' => true,
-    ]);
-    $output .= trim(Artisan::output());
+    $output = Artisan::output();
 
     return response()->json([
-        'status'  => 'success',
-        'message' => 'Cache clearing, storage linking, and migrations completed successfully.',
-        'output'  => trim($output),
+        'status' => 'success',
+        'message' => 'Migration executed successfully.',
+        'output' => $output,
     ]);
 });
-
 /* ── Public Auth: Registration & Login ── */
 Route::middleware('guest')->group(function () {
 
