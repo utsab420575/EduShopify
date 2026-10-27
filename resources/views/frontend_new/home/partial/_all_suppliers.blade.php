@@ -114,6 +114,10 @@
         $avatarPath = $supplier->logo ?: $supplier->profile_photo;
         $avatarIsLogo = filled($supplier->logo);
 
+        // Supplier types: first 2, then "+N" (all of them in the tooltip).
+        $typeNames = $supplier->account?->supplierTypes?->pluck('name') ?? collect();
+        $extraTypes = max(0, $typeNames->count() - 2);
+
         // "Verified" while the supplier's account is active.
         $isVerified = $supplier->account?->status === 'active';
 
@@ -148,8 +152,13 @@
                 </div>
                 <div class="min-w-0">
                   <h3 class="font-bold text-sm text-gray-900 group-hover:text-emerald-700 transition-colors leading-tight truncate">{{ $supplier->display_name }}</h3>
-                  @if($supplier->account?->supplierTypes?->isNotEmpty())
-                    <p class="text-[11px] text-gray-500 truncate mt-0.5">{{ $supplier->account->supplierTypes->pluck('name')->implode(' · ') }}</p>
+                  @if($typeNames->isNotEmpty())
+                    <p class="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5 min-w-0" title="{{ $typeNames->implode(' · ') }}">
+                      <span class="truncate min-w-0">{{ $typeNames->take(2)->implode(' · ') }}</span>
+                      @if($extraTypes > 0)
+                        <span class="shrink-0 font-semibold text-gray-400">+{{ $extraTypes }}</span>
+                      @endif
+                    </p>
                   @endif
                 </div>
               </div>
