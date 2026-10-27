@@ -33,31 +33,51 @@ Route::get('/system-refresh', function (Request $request) {
         abort(403, 'Unauthorized access. Please provide a valid ?token= or sign in as an administrator.');
     }
 
-    // db:repair-auto-increment must run before migrate: when `migrations.id`
-    // has lost AUTO_INCREMENT, migrate itself fails recording each migration
-    // ("1364 Field 'id' doesn't have a default value"). No-op once fixed.
-    $steps = [
-        'optimize:clear' => [],
-        'storage:link' => [],
-        'db:repair-auto-increment' => [],
-        'migrate' => ['--force' => true],
+    $migrationPaths = [
+        'database/migrations/2026_10_28_100000_create_subscription_benefits_table.php',
+        'database/migrations/2026_10_28_100100_create_subscription_plan_benefits_table.php',
+        'database/migrations/2026_10_28_100200_create_account_benefit_overrides_table.php',
     ];
+
+    $steps = [
+        'optimize:clear' => ['command' => 'optimize:clear', 'arguments' => []],
+        'storage:link'   => ['command' => 'storage:link', 'arguments' => []],
+    ];
+
+    foreach ($migrationPaths as $path) {
+        $steps['migrate:' . basename($path)] = [
+            'command'   => 'migrate',
+            'arguments' => [
+                '--path'  => $path,
+                '--force' => true,
+            ],
+        ];
+    }
+
+    $steps['migrate:all'] = [
+        'command'   => 'migrate',
+        'arguments' => ['--force' => true],
+    ];
+
     $output = [];
 
-    foreach ($steps as $command => $arguments) {
+    foreach ($steps as $stepName => $config) {
+        $command = $config['command'];
+        $arguments = $config['arguments'];
+
         try {
             $exitCode = Artisan::call($command, $arguments);
-            $output[$command] = trim(Artisan::output());
+            $output[$stepName] = trim(Artisan::output());
         } catch (\Throwable $e) {
             $exitCode = 1;
-            $output[$command] = $e->getMessage();
+            $output[$stepName] = $e->getMessage();
         }
 
         // storage:link fails harmlessly when the link already exists.
         if ($exitCode !== 0 && $command !== 'storage:link') {
             return response()->json([
                 'status'  => 'error',
-                'message' => "'{$command}' failed — later steps were not run.",
+                'message' => "'{$stepName}' failed — later steps were not run.",
                 'output'  => $output,
             ], 500);
         }
