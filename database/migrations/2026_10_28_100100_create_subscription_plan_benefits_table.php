@@ -22,6 +22,10 @@ return new class extends Migration
         Schema::dropIfExists('subscription_plan_benefits');
 
         Schema::create('subscription_plan_benefits', function (Blueprint $table) {
+            // Foreign keys need InnoDB — never rely on the server's default engine
+            // (a MyISAM default makes every FK to this table fail with errno 150).
+            $table->engine('InnoDB');
+
             $table->bigIncrements('id');
 
             $table->unsignedBigInteger('subscription_plan_id')->index();

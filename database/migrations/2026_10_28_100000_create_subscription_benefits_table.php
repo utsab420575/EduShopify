@@ -22,6 +22,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('subscription_benefits', function (Blueprint $table) {
+            // Foreign keys need InnoDB — never rely on the server's default engine
+            // (a MyISAM default makes every FK to this table fail with errno 150).
+            $table->engine('InnoDB');
+
             $table->bigIncrements('id');
             $table->string('code', 100)->unique();
             $table->string('name', 150);

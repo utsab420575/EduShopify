@@ -22,6 +22,10 @@ return new class extends Migration
         Schema::dropIfExists('account_benefit_overrides');
 
         Schema::create('account_benefit_overrides', function (Blueprint $table) {
+            // Foreign keys need InnoDB — never rely on the server's default engine
+            // (a MyISAM default makes every FK to this table fail with errno 150).
+            $table->engine('InnoDB');
+
             $table->bigIncrements('id');
 
             $table->unsignedBigInteger('account_id')->index();
@@ -37,10 +41,7 @@ return new class extends Migration
 
             $table->boolean('is_active')->default(true);
 
-            $table->foreignId('created_by_user_id')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
+            $table->unsignedBigInteger('created_by_user_id')->nullable()->index();
 
             $table->text('reason')->nullable();
 
