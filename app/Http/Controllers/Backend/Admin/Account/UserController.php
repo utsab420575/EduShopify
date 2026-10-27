@@ -3,36 +3,65 @@
 namespace App\Http\Controllers\Backend\Admin\Account;
 
 use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
+use App\Http\Controllers\Backend\Admin\Concerns\LiveFilters;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    use InteractsWithAdmin;
+    use InteractsWithAdmin, LiveFilters;
+
+    private const STATUSES = ['pending_verification' => 'Pending Verification', 'active' => 'Active', 'inactive' => 'Inactive', 'suspended' => 'Suspended', 'deleted' => 'Deleted'];
+
+    private const ACCOUNT_KINDS = ['buyer' => 'Buyer account', 'supplier' => 'Supplier account', 'none' => 'No account'];
 
     public function index(Request $request)
     {
         $this->authorize('platform.users.view');
 
-        $users = User::query()
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->string('search');
+        $search = trim($request->string('search')->toString());
+        $selected = [
+            'status' => $this->selectedFilter($request, 'status', self::STATUSES),
+            'account' => $this->selectedFilter($request, 'account', self::ACCOUNT_KINDS),
+        ];
+
+        $applyAccountKind = fn ($q, string $kind) => $kind === 'none'
+            ? $q->whereDoesntHave('accountMember')
+            : $q->whereHas('accountMember.account.capabilities.capabilityType', fn ($q2) => $q2->where('code', $kind));
+
+        // Each option's count reflects every *other* active filter, so ticking
+        // a box never changes the numbers beside its siblings.
+        $query = fn (?string $except = null) => User::query()
+            ->when($search !== '', function ($q) use ($search) {
                 $q->where(fn ($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"));
             })
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($except !== 'status' && $selected['status'], fn ($q) => $q->whereIn('status', $selected['status']))
+            ->when($except !== 'account' && $selected['account'], function ($q) use ($selected, $applyAccountKind) {
+                $q->where(fn ($q2) => collect($selected['account'])->each(fn ($kind) => $q2->orWhere(fn ($q3) => $applyAccountKind($q3, $kind))));
+            });
+
+        $counts = [
+            'status' => $this->countBy($query('status'), 'status'),
+            'account' => $this->countEach($query('account'), self::ACCOUNT_KINDS, $applyAccountKind),
+        ];
+
+        $users = $query()
             ->with(['accountMember.account.capabilities.capabilityType', 'roles', 'socialAccounts'])
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
-        return view('backend.admin.users.index', [
+        return $this->liveFilterResponse($request, 'backend.admin.users.index', 'backend.admin.users.partials._table', [
             'users' => $users,
             // Supplier users get "Edit Supplier Profile" / "Manage Products" actions.
             'canManageSuppliers' => $request->user()->can('platform.suppliers.manage'),
-            'search' => $request->string('search')->toString(),
-            'status' => $request->string('status')->toString(),
-        ]);
+            'search' => $search,
+            'filters' => [
+                'status' => ['label' => 'Status', 'options' => self::STATUSES, 'selected' => $selected['status']],
+                'account' => ['label' => 'Account', 'options' => self::ACCOUNT_KINDS, 'selected' => $selected['account']],
+            ],
+        ], $counts);
     }
 
     public function show(User $user)

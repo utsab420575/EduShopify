@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend\Admin\Account;
 
 use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
+use App\Http\Controllers\Backend\Admin\Concerns\LiveFilters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backend\Admin\ReasonRequest;
 use App\Models\AccountCapability;
@@ -12,30 +13,51 @@ use Illuminate\Validation\ValidationException;
 
 class CapabilityController extends Controller
 {
-    use InteractsWithAdmin;
+    use InteractsWithAdmin, LiveFilters;
+
+    private const TYPES = ['buyer' => 'Buyer', 'supplier' => 'Supplier'];
+
+    private const STATUSES = ['draft' => 'Draft', 'pending' => 'Pending', 'active' => 'Active', 'revision_required' => 'Revision Required', 'rejected' => 'Rejected', 'suspended' => 'Suspended'];
 
     public function index(Request $request)
     {
         $this->authorize('platform.capabilities.review');
 
-        $capabilities = AccountCapability::query()
+        $search = trim($request->string('search')->toString());
+        $selected = [
+            'type' => $this->selectedFilter($request, 'type', self::TYPES),
+            'status' => $this->selectedFilter($request, 'status', self::STATUSES),
+        ];
+
+        $hasType = fn ($q, $codes) => $q->whereHas('capabilityType', fn ($q2) => $q2->whereIn('code', (array) $codes));
+
+        $query = fn (?string $except = null) => AccountCapability::query()
             ->whereHas('account', fn ($q) => $q->where('is_system_account', false))
-            ->when($request->filled('type'), fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', $request->string('type'))))
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $q->whereHas('account', fn ($q2) => $q2->where('display_name', 'like', '%'.$request->string('search').'%'));
+            ->when($search !== '', function ($q) use ($search) {
+                $q->whereHas('account', fn ($q2) => $q2->where(fn ($q3) => $q3->where('display_name', 'like', "%{$search}%")->orWhere('account_number', 'like', "%{$search}%")));
             })
+            ->when($except !== 'type' && $selected['type'], fn ($q) => $hasType($q, $selected['type']))
+            ->when($except !== 'status' && $selected['status'], fn ($q) => $q->whereIn('status', $selected['status']));
+
+        $counts = [
+            'type' => $this->countEach($query('type'), self::TYPES, $hasType),
+            'status' => $this->countBy($query('status'), 'status'),
+        ];
+
+        $capabilities = $query()
             ->with(['account', 'capabilityType'])
             ->latest('applied_at')
             ->paginate(15)
             ->withQueryString();
 
-        return view('backend.admin.capabilities.index', [
+        return $this->liveFilterResponse($request, 'backend.admin.capabilities.index', 'backend.admin.capabilities.partials._table', [
             'capabilities' => $capabilities,
-            'type' => $request->string('type')->toString(),
-            'status' => $request->string('status')->toString(),
-            'search' => $request->string('search')->toString(),
-        ]);
+            'search' => $search,
+            'filters' => [
+                'type' => ['label' => 'Capability', 'options' => self::TYPES, 'selected' => $selected['type']],
+                'status' => ['label' => 'Status', 'options' => self::STATUSES, 'selected' => $selected['status']],
+            ],
+        ], $counts);
     }
 
     public function show(AccountCapability $capability)

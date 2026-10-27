@@ -3,37 +3,72 @@
 namespace App\Http\Controllers\Backend\Admin\Account;
 
 use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
+use App\Http\Controllers\Backend\Admin\Concerns\LiveFilters;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
-    use InteractsWithAdmin;
+    use InteractsWithAdmin, LiveFilters;
+
+    private const STATUSES = ['draft' => 'Draft', 'pending' => 'Pending', 'active' => 'Active', 'revision_required' => 'Revision Required', 'rejected' => 'Rejected', 'suspended' => 'Suspended'];
+
+    private const DOCUMENT_STATUSES = ['pending' => 'Has pending', 'verified' => 'Has verified', 'rejected' => 'Has rejected', 'none' => 'No documents'];
+
+    private const TYPES = ['individual' => 'Individual', 'organization' => 'Organization'];
 
     public function index(Request $request)
     {
         $this->authorize('platform.accounts.view');
 
-        $accounts = Account::where('is_system_account', false)
-            ->whereHas('capabilities', fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'supplier')))
-            ->when($request->filled('search'), fn ($q) => $q->where('display_name', 'like', '%'.$request->string('search').'%'))
-            ->when($request->filled('status'), function ($q) use ($request) {
-                $q->whereHas('capabilities', fn ($q2) => $q2->whereHas('capabilityType', fn ($q3) => $q3->where('code', 'supplier'))->where('status', $request->string('status')));
+        $search = trim($request->string('search')->toString());
+        $selected = [
+            'status' => $this->selectedFilter($request, 'status', self::STATUSES),
+            // "document_status" keeps the admin dashboard's "pending documents" link working.
+            'document_status' => $this->selectedFilter($request, 'document_status', self::DOCUMENT_STATUSES),
+            'type' => $this->selectedFilter($request, 'type', self::TYPES),
+        ];
+
+        $supplierCapability = fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'supplier'));
+        $hasStatus = fn ($q, $statuses) => $q->whereHas('capabilities', fn ($q2) => $supplierCapability($q2)->whereIn('status', (array) $statuses));
+        $hasDocuments = fn ($q, string $status) => $status === 'none'
+            ? $q->whereDoesntHave('supplierDocuments', fn ($q2) => $q2->current())
+            : $q->whereHas('supplierDocuments', fn ($q2) => $q2->current()->where('status', $status));
+
+        $query = fn (?string $except = null) => Account::where('is_system_account', false)
+            ->whereHas('capabilities', $supplierCapability)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(fn ($q2) => $q2->where('display_name', 'like', "%{$search}%")->orWhere('account_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplierProfile', fn ($q3) => $q3->where('legal_name', 'like', "%{$search}%")->orWhere('contact_email', 'like', "%{$search}%")));
             })
-            ->when($request->filled('document_status'), function ($q) use ($request) {
-                $q->whereHas('supplierDocuments', fn ($q2) => $q2->where('status', $request->string('document_status')));
+            ->when($except !== 'status' && $selected['status'], fn ($q) => $hasStatus($q, $selected['status']))
+            ->when($except !== 'document_status' && $selected['document_status'], function ($q) use ($selected, $hasDocuments) {
+                $q->where(fn ($q2) => collect($selected['document_status'])->each(fn ($status) => $q2->orWhere(fn ($q3) => $hasDocuments($q3, $status))));
             })
-            ->with(['supplierProfile.country', 'activeSubscription.plan', 'primaryOwner', 'supplierDocuments' => fn ($q) => $q->current(), 'capabilities' => fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'supplier'))])
+            ->when($except !== 'type' && $selected['type'], fn ($q) => $q->whereIn('account_type', $selected['type']));
+
+        $counts = [
+            'status' => $this->countEach($query('status'), self::STATUSES, $hasStatus),
+            'document_status' => $this->countEach($query('document_status'), self::DOCUMENT_STATUSES, $hasDocuments),
+            'type' => $this->countBy($query('type'), 'account_type'),
+        ];
+
+        $accounts = $query()
+            ->with(['supplierProfile.country', 'activeSubscription.plan', 'primaryOwner', 'supplierDocuments' => fn ($q) => $q->current(), 'capabilities' => $supplierCapability])
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
-        return view('backend.admin.suppliers.index', [
+        return $this->liveFilterResponse($request, 'backend.admin.suppliers.index', 'backend.admin.suppliers.partials._table', [
             'accounts' => $accounts,
-            'search' => $request->string('search')->toString(),
-            'status' => $request->string('status')->toString(),
-        ]);
+            'search' => $search,
+            'filters' => [
+                'status' => ['label' => 'Capability Status', 'options' => self::STATUSES, 'selected' => $selected['status']],
+                'document_status' => ['label' => 'Documents', 'options' => self::DOCUMENT_STATUSES, 'selected' => $selected['document_status']],
+                'type' => ['label' => 'Type', 'options' => self::TYPES, 'selected' => $selected['type']],
+            ],
+        ], $counts);
     }
 
     public function update(Request $request, Account $account)

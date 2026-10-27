@@ -35,6 +35,17 @@ class Achievement extends Model
         return $this->hasMany(AccountAchievement::class);
     }
 
+    /** Public badge colour (frontend_new.css .badge-*), one per achievement type. */
+    public function badgeClass(): string
+    {
+        return match ($this->type) {
+            'milestone' => 'badge-founding',
+            'exhibition' => 'badge-ise',
+            'performance' => 'badge-performance',
+            default => 'badge-compliance',
+        };
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

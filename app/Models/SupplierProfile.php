@@ -232,4 +232,41 @@ class SupplierProfile extends Model
     {
         return $this->profile_completed_at === null;
     }
+
+    /* ── Public card / profile hero data ─────────────────────────────────
+     * The supplier card and the profile hero both read these, so the two
+     * always show the same Verified flag, badges and countries. Eager-load
+     * publicCardRelations() first to keep listing pages free of N+1s.
+     */
+
+    public static function publicCardRelations(): array
+    {
+        return [
+            'account.supplierTypes',
+            'account.accountAchievements' => fn ($q) => $q->approved()
+                ->whereHas('achievement', fn ($a) => $a->active())
+                ->with('achievement')
+                ->orderBy('id'),
+            'account.locations' => fn ($q) => $q->active()->with(['country', 'state', 'city'])
+                ->orderByDesc('is_primary')->orderBy('id'),
+        ];
+    }
+
+    /** Verified once Platform Admin has approved the owning account. */
+    public function isVerified(): bool
+    {
+        return $this->account?->approved_at !== null;
+    }
+
+    /** Admin-approved achievements of the owning account, as Achievement models. */
+    public function publicAchievements(): \Illuminate\Support\Collection
+    {
+        return ($this->account?->accountAchievements ?? collect())->pluck('achievement')->filter()->values();
+    }
+
+    /** Distinct countries of the account's active locations, primary location first. */
+    public function locationCountries(): \Illuminate\Support\Collection
+    {
+        return ($this->account?->locations ?? collect())->pluck('country')->filter()->unique('id')->values();
+    }
 }

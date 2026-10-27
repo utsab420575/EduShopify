@@ -3,34 +3,60 @@
 namespace App\Http\Controllers\Backend\Admin\Account;
 
 use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
+use App\Http\Controllers\Backend\Admin\Concerns\LiveFilters;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use Illuminate\Http\Request;
 
 class BuyerController extends Controller
 {
-    use InteractsWithAdmin;
+    use InteractsWithAdmin, LiveFilters;
+
+    private const STATUSES = ['draft' => 'Draft', 'pending' => 'Pending', 'active' => 'Active', 'revision_required' => 'Revision Required', 'rejected' => 'Rejected', 'suspended' => 'Suspended'];
+
+    private const TYPES = ['individual' => 'Individual', 'organization' => 'Organization'];
 
     public function index(Request $request)
     {
         $this->authorize('platform.accounts.view');
 
-        $accounts = Account::where('is_system_account', false)
-            ->whereHas('capabilities', fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'buyer')))
-            ->when($request->filled('search'), fn ($q) => $q->where('display_name', 'like', '%'.$request->string('search').'%'))
-            ->when($request->filled('status'), function ($q) use ($request) {
-                $q->whereHas('capabilities', fn ($q2) => $q2->whereHas('capabilityType', fn ($q3) => $q3->where('code', 'buyer'))->where('status', $request->string('status')));
+        $search = trim($request->string('search')->toString());
+        $selected = [
+            'status' => $this->selectedFilter($request, 'status', self::STATUSES),
+            'type' => $this->selectedFilter($request, 'type', self::TYPES),
+        ];
+
+        $buyerCapability = fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'buyer'));
+        $hasStatus = fn ($q, $statuses) => $q->whereHas('capabilities', fn ($q2) => $buyerCapability($q2)->whereIn('status', (array) $statuses));
+
+        $query = fn (?string $except = null) => Account::where('is_system_account', false)
+            ->whereHas('capabilities', $buyerCapability)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(fn ($q2) => $q2->where('display_name', 'like', "%{$search}%")->orWhere('account_number', 'like', "%{$search}%")
+                    ->orWhereHas('buyerProfile', fn ($q3) => $q3->where('organization_name', 'like', "%{$search}%")->orWhere('contact_person', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
             })
-            ->with(['buyerProfile.country', 'buyerTypes', 'locations', 'primaryOwner', 'capabilities' => fn ($q) => $q->whereHas('capabilityType', fn ($q2) => $q2->where('code', 'buyer'))])
+            ->when($except !== 'status' && $selected['status'], fn ($q) => $hasStatus($q, $selected['status']))
+            ->when($except !== 'type' && $selected['type'], fn ($q) => $q->whereIn('account_type', $selected['type']));
+
+        $counts = [
+            'status' => $this->countEach($query('status'), self::STATUSES, $hasStatus),
+            'type' => $this->countBy($query('type'), 'account_type'),
+        ];
+
+        $accounts = $query()
+            ->with(['buyerProfile.country', 'buyerTypes', 'locations', 'primaryOwner', 'capabilities' => $buyerCapability])
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
-        return view('backend.admin.buyers.index', [
+        return $this->liveFilterResponse($request, 'backend.admin.buyers.index', 'backend.admin.buyers.partials._table', [
             'accounts' => $accounts,
-            'search' => $request->string('search')->toString(),
-            'status' => $request->string('status')->toString(),
-        ]);
+            'search' => $search,
+            'filters' => [
+                'status' => ['label' => 'Capability Status', 'options' => self::STATUSES, 'selected' => $selected['status']],
+                'type' => ['label' => 'Type', 'options' => self::TYPES, 'selected' => $selected['type']],
+            ],
+        ], $counts);
     }
 
     public function update(Request $request, Account $account)

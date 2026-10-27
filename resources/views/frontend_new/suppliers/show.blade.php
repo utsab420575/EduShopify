@@ -41,15 +41,24 @@
           </div>
           <div>
             <h1 class="text-white font-bold text-2xl leading-tight mb-1.5">{{ $supplier->display_name }}</h1>
+            {{-- Same Verified flag, achievements and location countries as
+                 the supplier card (SupplierProfile helpers) — all of them
+                 here, where the card shows the first few plus "+N". --}}
+            @php($heroCountries = $supplier->locationCountries())
             <div class="flex flex-wrap items-center gap-2 mb-2">
-              <span class="badge-verified"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Verified Supplier</span>
-              @if($demoBett)<span class="badge-bett">BETT Exhibitor</span>@endif
-              @if($demoFounding)<span class="badge-founding">Founding Supplier</span>@endif
-              @if($demoIse)<span class="badge-ise">ISE Exhibitor</span>@endif
+              @if($supplier->isVerified())
+                <span class="badge-verified"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Verified Supplier</span>
+              @endif
+              @foreach($supplier->publicAchievements() as $achievement)
+                <span class="{{ $achievement->badgeClass() }} text-[10px] font-semibold px-2 py-0.5 rounded-full">{{ $achievement->name }}</span>
+              @endforeach
             </div>
             <div class="flex flex-wrap items-center gap-4 text-[12px] text-white/85">
-              @if($supplier->country)
-                <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>{{ $supplier->country->name }}</span>
+              @if($heroCountries->isNotEmpty())
+                <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>{{ $heroCountries->map(fn ($c) => trim($c->flag_emoji.' '.$c->name))->implode(' · ') }}</span>
+              @endif
+              @if($supplier->account?->supplierTypes?->isNotEmpty())
+                <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>{{ $supplier->account->supplierTypes->pluck('name')->implode(' · ') }}</span>
               @endif
               @if($supplier->founded_year)
                 <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Since {{ $supplier->founded_year }}</span>

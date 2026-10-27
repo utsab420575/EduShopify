@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend\Admin\Account;
 
 use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
+use App\Http\Controllers\Backend\Admin\Concerns\LiveFilters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backend\Admin\ReasonRequest;
 use App\Models\Account;
@@ -11,19 +12,40 @@ use Illuminate\Support\Collection;
 
 class ClosureController extends Controller
 {
-    use InteractsWithAdmin;
+    use InteractsWithAdmin, LiveFilters;
+
+    private const TYPES = ['individual' => 'Individual', 'organization' => 'Organization'];
 
     public function index(Request $request)
     {
         $this->authorize('platform.accounts.view');
 
-        $accounts = Account::where('is_system_account', false)
+        $search = trim($request->string('search')->toString());
+        $selected = ['type' => $this->selectedFilter($request, 'type', self::TYPES)];
+
+        $query = fn (?string $except = null) => Account::where('is_system_account', false)
             ->where('status', 'deletion_pending')
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(fn ($q2) => $q2->where('display_name', 'like', "%{$search}%")->orWhere('account_number', 'like', "%{$search}%")
+                    ->orWhereHas('primaryOwner', fn ($q3) => $q3->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
+            })
+            ->when($except !== 'type' && $selected['type'], fn ($q) => $q->whereIn('account_type', $selected['type']));
+
+        $counts = ['type' => $this->countBy($query('type'), 'account_type')];
+
+        $accounts = $query()
             ->with('primaryOwner')
             ->latest('deletion_requested_at')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
-        return view('backend.admin.closures.index', ['accounts' => $accounts]);
+        return $this->liveFilterResponse($request, 'backend.admin.closures.index', 'backend.admin.closures.partials._table', [
+            'accounts' => $accounts,
+            'search' => $search,
+            'filters' => [
+                'type' => ['label' => 'Type', 'options' => self::TYPES, 'selected' => $selected['type']],
+            ],
+        ], $counts);
     }
 
     public function show(Account $account)

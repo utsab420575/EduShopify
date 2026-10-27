@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend\Admin\Account;
 
 use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
+use App\Http\Controllers\Backend\Admin\Concerns\LiveFilters;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Services\AccountModerationService;
@@ -11,30 +12,57 @@ use Illuminate\Validation\ValidationException;
 
 class AccountController extends Controller
 {
-    use InteractsWithAdmin;
+    use InteractsWithAdmin, LiveFilters;
+
+    private const TYPES = ['individual' => 'Individual', 'organization' => 'Organization'];
+
+    private const STATUSES = ['draft' => 'Draft', 'pending_approval' => 'Pending Approval', 'active' => 'Active', 'inactive' => 'Inactive', 'suspended' => 'Suspended', 'deletion_pending' => 'Deletion Pending', 'deleted' => 'Deleted'];
+
+    private const CAPABILITIES = ['buyer' => 'Buyer', 'supplier' => 'Supplier'];
 
     public function index(Request $request)
     {
         $this->authorize('platform.accounts.view');
 
-        $accounts = Account::where('is_system_account', false)
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->string('search');
-                $q->where(fn ($q2) => $q2->where('display_name', 'like', "%{$search}%")->orWhere('account_number', 'like', "%{$search}%"));
+        $search = trim($request->string('search')->toString());
+        $selected = [
+            'type' => $this->selectedFilter($request, 'type', self::TYPES),
+            'status' => $this->selectedFilter($request, 'status', self::STATUSES),
+            'capability' => $this->selectedFilter($request, 'capability', self::CAPABILITIES),
+        ];
+
+        $hasCapability = fn ($q, $codes) => $q->whereHas('capabilities.capabilityType', fn ($q2) => $q2->whereIn('code', (array) $codes));
+
+        $query = fn (?string $except = null) => Account::where('is_system_account', false)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(fn ($q2) => $q2->where('display_name', 'like', "%{$search}%")->orWhere('account_number', 'like', "%{$search}%")
+                    ->orWhereHas('primaryOwner', fn ($q3) => $q3->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
             })
-            ->when($request->filled('type'), fn ($q) => $q->where('account_type', $request->string('type')))
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($except !== 'type' && $selected['type'], fn ($q) => $q->whereIn('account_type', $selected['type']))
+            ->when($except !== 'status' && $selected['status'], fn ($q) => $q->whereIn('status', $selected['status']))
+            ->when($except !== 'capability' && $selected['capability'], fn ($q) => $hasCapability($q, $selected['capability']));
+
+        $counts = [
+            'type' => $this->countBy($query('type'), 'account_type'),
+            'status' => $this->countBy($query('status'), 'status'),
+            'capability' => $this->countEach($query('capability'), self::CAPABILITIES, $hasCapability),
+        ];
+
+        $accounts = $query()
             ->with(['primaryOwner', 'capabilities.capabilityType', 'locations', 'members.user'])
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
-        return view('backend.admin.accounts.index', [
+        return $this->liveFilterResponse($request, 'backend.admin.accounts.index', 'backend.admin.accounts.partials._table', [
             'accounts' => $accounts,
-            'search' => $request->string('search')->toString(),
-            'type' => $request->string('type')->toString(),
-            'status' => $request->string('status')->toString(),
-        ]);
+            'search' => $search,
+            'filters' => [
+                'type' => ['label' => 'Type', 'options' => self::TYPES, 'selected' => $selected['type']],
+                'status' => ['label' => 'Status', 'options' => self::STATUSES, 'selected' => $selected['status']],
+                'capability' => ['label' => 'Capability', 'options' => self::CAPABILITIES, 'selected' => $selected['capability']],
+            ],
+        ], $counts);
     }
 
     public function show(Account $account)

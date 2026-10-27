@@ -1,7 +1,7 @@
 {{-- Included via @include('frontend_new.components.supplier-card', ['supplier' => $supplier])
      — a plain partial, not an anonymous Blade component (this directory
      isn't on Blade's auto-discovered component path). --}}
-<a href="{{ route('v2.suppliers.show', $supplier->slug) }}" class="group block bg-white rounded-2xl border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all duration-200 overflow-hidden">
+<a href="{{ route('v2.suppliers.show', $supplier->slug) }}" class="group flex flex-col h-full bg-white rounded-2xl border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all duration-200 overflow-hidden">
 
   <div class="relative h-32 bg-emerald-50">
     {{-- Banner Image with hover zoom --}}
@@ -50,7 +50,7 @@
     @include('frontend_new.components.supplier-save-btn', ['supplier' => $supplier, 'class' => 'absolute top-2.5 right-2.5 z-20'])
   </div>
 
-  <div class="p-4">
+  <div class="p-4 flex-1 flex flex-col">
     <div class="flex items-start gap-3 -mt-8 mb-2 relative">
       <div class="w-12 h-12 rounded-xl bg-white border-2 border-white shadow-md flex items-center justify-center overflow-hidden shrink-0">
         @if($supplier->profile_photo)
@@ -66,28 +66,54 @@
       </div>
     </div>
 
-    <div class="flex flex-wrap gap-1 mb-2.5">
-      <span class="badge-verified text-[10px] font-medium px-1.5 py-0.5 rounded-full inline-flex items-center gap-1">✓ Verified</span>
-      @if($supplier->demo_founding)
-        <span class="badge-founding text-[10px] font-medium px-1.5 py-0.5 rounded-full">Founding</span>
+    {{-- Every row below always renders at a fixed height — empty when
+         there's no data — so all cards in a grid line up at the same size.
+         Each row stays on one line: the first few items, then "+N" (full
+         list in the title tooltip; all of it on the profile page). --}}
+    @php
+      $achievements = $supplier->publicAchievements();
+      $shownAchievements = $achievements->take(2);
+      $extraAchievements = $achievements->count() - $shownAchievements->count();
+
+      $typeNames = $supplierTypes?->pluck('name') ?? collect();
+      $extraTypes = max(0, $typeNames->count() - 2);
+
+      $countries = $supplier->locationCountries();
+      $firstCountry = $countries->first();
+    @endphp
+
+    <div class="flex items-center gap-1 h-5 mb-2 overflow-hidden" title="{{ collect([$supplier->isVerified() ? 'Verified' : null])->merge($achievements->pluck('name'))->filter()->implode(' · ') }}">
+      @if($supplier->isVerified())
+        <span class="badge-verified text-[10px] font-medium px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 whitespace-nowrap">✓ Verified</span>
       @endif
-      @if($supplier->demo_ise)
-        <span class="badge-ise text-[10px] font-medium px-1.5 py-0.5 rounded-full">ISE Exhibitor</span>
+      @foreach($shownAchievements as $achievement)
+        <span class="{{ $achievement->badgeClass() }} text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-0 truncate">{{ $achievement->name }}</span>
+      @endforeach
+      @if($extraAchievements > 0)
+        <span class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">+{{ $extraAchievements }}</span>
       @endif
     </div>
 
-    @if($supplier->account?->supplierTypes?->isNotEmpty())
-      <p class="text-[11px] text-gray-500 leading-relaxed mb-2.5 truncate">{{ $supplier->account->supplierTypes->pluck('name')->implode(' · ') }}</p>
-    @endif
-
-    <div class="flex items-center justify-between text-[11px] text-gray-500 mb-3">
-      <span class="flex items-center gap-1 text-amber-600 font-medium"><span class="star">★</span> {{ number_format((float) $supplier->rating, 1) }} <span class="text-gray-400 font-normal">({{ $supplier->reviews_count ?? 0 }})</span></span>
-      @if($supplier->country)
-        <span class="flex items-center gap-1">{{ $supplier->country->flag_emoji }} {{ $supplier->country->name }}</span>
+    <p class="flex items-center gap-1 h-4 text-[11px] text-gray-500 mb-2.5 overflow-hidden" title="{{ $typeNames->implode(' · ') }}">
+      <span class="truncate min-w-0">{{ $typeNames->take(2)->implode(' · ') }}</span>
+      @if($extraTypes > 0)
+        <span class="shrink-0 text-gray-400 font-semibold">+{{ $extraTypes }}</span>
       @endif
+    </p>
+
+    <div class="flex items-center justify-between gap-2 h-4 text-[11px] text-gray-500 mb-3">
+      <span class="flex items-center gap-1 text-amber-600 font-medium shrink-0"><span class="star">★</span> {{ number_format((float) $supplier->rating, 1) }} <span class="text-gray-400 font-normal">({{ $supplier->reviews_count ?? 0 }})</span></span>
+      <span class="flex items-center gap-1 min-w-0" title="{{ $countries->pluck('name')->implode(' · ') }}">
+        @if($firstCountry)
+          <span class="truncate">{{ $firstCountry->flag_emoji }} {{ $firstCountry->name }}</span>
+          @if($countries->count() > 1)
+            <span class="shrink-0 text-gray-400 font-semibold">+{{ $countries->count() - 1 }}</span>
+          @endif
+        @endif
+      </span>
     </div>
 
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between mt-auto">
       <span class="text-[11px] text-gray-500">🛍 {{ $supplier->product_count }}+ Products</span>
       <span class="text-[11px] text-emerald-600 font-semibold group-hover:underline">View Profile →</span>
     </div>

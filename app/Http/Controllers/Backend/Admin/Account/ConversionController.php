@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend\Admin\Account;
 
 use App\Http\Controllers\Backend\Admin\Concerns\InteractsWithAdmin;
+use App\Http\Controllers\Backend\Admin\Concerns\LiveFilters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backend\Admin\ReasonRequest;
 use App\Models\AccountConversionRequest;
@@ -12,27 +13,39 @@ use Illuminate\Validation\ValidationException;
 
 class ConversionController extends Controller
 {
-    use InteractsWithAdmin;
+    use InteractsWithAdmin, LiveFilters;
+
+    private const STATUSES = ['pending' => 'Pending', 'approved' => 'Approved', 'revision_required' => 'Revision Required', 'rejected' => 'Rejected'];
 
     public function index(Request $request)
     {
         $this->authorize('platform.conversions.review');
 
-        $conversions = AccountConversionRequest::query()
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $q->whereHas('account', fn ($q2) => $q2->where('display_name', 'like', '%'.$request->string('search').'%'));
+        $search = trim($request->string('search')->toString());
+        $selected = ['status' => $this->selectedFilter($request, 'status', self::STATUSES)];
+
+        $query = fn (?string $except = null) => AccountConversionRequest::query()
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(fn ($q2) => $q2->where('proposed_display_name', 'like', "%{$search}%")
+                    ->orWhereHas('account', fn ($q3) => $q3->where('display_name', 'like', "%{$search}%")->orWhere('account_number', 'like', "%{$search}%")));
             })
+            ->when($except !== 'status' && $selected['status'], fn ($q) => $q->whereIn('status', $selected['status']));
+
+        $counts = ['status' => $this->countBy($query('status'), 'status')];
+
+        $conversions = $query()
             ->with('account', 'submittedBy')
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
-        return view('backend.admin.conversions.index', [
+        return $this->liveFilterResponse($request, 'backend.admin.conversions.index', 'backend.admin.conversions.partials._table', [
             'conversions' => $conversions,
-            'status' => $request->string('status')->toString(),
-            'search' => $request->string('search')->toString(),
-        ]);
+            'search' => $search,
+            'filters' => [
+                'status' => ['label' => 'Status', 'options' => self::STATUSES, 'selected' => $selected['status']],
+            ],
+        ], $counts);
     }
 
     public function show(AccountConversionRequest $conversion)

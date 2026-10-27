@@ -10,7 +10,6 @@ use App\Models\SavedItem;
 use App\Models\SupplierProfile;
 use App\Services\Account\PublicSupplierQuery;
 use App\Services\Catalog\PublicListingQuery;
-use App\Support\FrontendNewDemo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -40,7 +39,7 @@ class SupplierController extends Controller
                 return $category;
             });
 
-        $query = PublicSupplierQuery::base()->with(['country', 'account.supplierTypes']);
+        $query = PublicSupplierQuery::base()->with(SupplierProfile::publicCardRelations());
 
         if ($categorySlug && $categorySlug !== 'all') {
             $activeCategory = Category::where('slug', $categorySlug)->first();
@@ -60,9 +59,6 @@ class SupplierController extends Controller
         $query->orderByDesc('rating');
 
         $suppliers = $query->paginate(24)->withQueryString()->through(function ($supplier) {
-            $flags = FrontendNewDemo::supplierBadges($supplier->id);
-            $supplier->demo_founding = $flags['founding'];
-            $supplier->demo_ise = $flags['ise'];
             $supplier->product_count = PublicListingQuery::forSupplierAccount($supplier->account_id)->count();
 
             return $supplier;
@@ -111,16 +107,16 @@ class SupplierController extends Controller
     {
         abort_unless(PublicSupplierQuery::base()->whereKey($supplier->id)->exists(), 404);
 
-        $supplier->load([
+        // Card relations include supplierTypes, approved achievements and
+        // active locations — the hero shows the same data as the card.
+        $supplier->load(array_merge(SupplierProfile::publicCardRelations(), [
             'country',
             'city',
-            'account.supplierTypes',
             'account.socialLinks.platform',
-            'account.locations' => fn ($q) => $q->active()->with(['country', 'state', 'city'])->orderByDesc('is_primary')->orderBy('id'),
             'businessHours',
             'gallery' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
             'videos' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
-        ]);
+        ]));
 
         $services = $supplier->account->services()->where('status', 'active')->with('icon')->orderBy('sort_order', 'asc')->orderBy('id', 'asc')->get();
 
@@ -185,20 +181,15 @@ class SupplierController extends Controller
 
         $similarSuppliers = PublicSupplierQuery::base()
             ->where('id', '!=', $supplier->id)
-            ->with(['country', 'account.supplierTypes'])
+            ->with(SupplierProfile::publicCardRelations())
             ->orderByDesc('rating')
             ->limit(4)
             ->get()
             ->map(function ($s) {
-                $flags = FrontendNewDemo::supplierBadges($s->id);
-                $s->demo_founding = $flags['founding'];
-                $s->demo_ise = $flags['ise'];
                 $s->product_count = PublicListingQuery::forSupplierAccount($s->account_id)->count();
 
                 return $s;
             });
-
-        $badges = FrontendNewDemo::supplierBadges($supplier->id);
 
         $this->attachSingleSupplierSavesData($supplier);
         $this->attachSavesData($similarSuppliers);
@@ -216,9 +207,6 @@ class SupplierController extends Controller
             'avgResponseHours' => $avgResponseHours,
             'yearsInBusiness' => $yearsInBusiness,
             'similarSuppliers' => $similarSuppliers,
-            'demoFounding' => $badges['founding'],
-            'demoIse' => $badges['ise'],
-            'demoBett' => $badges['bett'],
             'services' => $services,
             'certifications' => $certifications,
             'achievements' => $achievements,

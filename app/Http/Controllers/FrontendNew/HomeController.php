@@ -27,7 +27,7 @@ class HomeController extends Controller
         $featuredSuppliers = $this->attachSavesData(
             $this->applyBadgePattern(
                 PublicSupplierQuery::base()
-                    ->with(['country', 'account.supplierTypes'])
+                    ->with(\App\Models\SupplierProfile::publicCardRelations())
                     ->orderByDesc('rating')
                     ->limit(12)
                     ->get()
