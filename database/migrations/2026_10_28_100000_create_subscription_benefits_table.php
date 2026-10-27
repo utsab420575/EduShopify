@@ -22,7 +22,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('subscription_benefits', function (Blueprint $table) {
-            $table->id();
+            $table->bigIncrements('id');
             $table->string('code', 100)->unique();
             $table->string('name', 150);
             $table->text('description')->nullable();

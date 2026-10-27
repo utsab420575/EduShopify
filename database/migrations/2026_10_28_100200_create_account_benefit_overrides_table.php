@@ -19,16 +19,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('account_benefit_overrides', function (Blueprint $table) {
-            $table->id();
+        Schema::dropIfExists('account_benefit_overrides');
 
-            $table->foreignId('account_id')
-                ->constrained('accounts')
-                ->cascadeOnDelete();
+        Schema::create('account_benefit_overrides', function (Blueprint $table) {
+            $table->bigIncrements('id');
+
+            $table->unsignedBigInteger('account_id')->index();
 
             $table->foreignId('subscription_benefit_id')
                 ->constrained('subscription_benefits')
-                ->restrictOnDelete();
+                ->cascadeOnDelete();
 
             $table->json('value');
 

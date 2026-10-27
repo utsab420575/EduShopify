@@ -19,16 +19,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('subscription_plan_benefits', function (Blueprint $table) {
-            $table->id();
+        Schema::dropIfExists('subscription_plan_benefits');
 
-            $table->foreignId('subscription_plan_id')
-                ->constrained('subscription_plans')
-                ->cascadeOnDelete();
+        Schema::create('subscription_plan_benefits', function (Blueprint $table) {
+            $table->bigIncrements('id');
+
+            $table->unsignedBigInteger('subscription_plan_id')->index();
 
             $table->foreignId('subscription_benefit_id')
                 ->constrained('subscription_benefits')
-                ->restrictOnDelete();
+                ->cascadeOnDelete();
 
             $table->json('value');
 
