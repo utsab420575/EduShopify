@@ -7,6 +7,7 @@ use App\Models\BlogPost;
 use App\Models\Category;
 use App\Models\SavedItem;
 use App\Services\Account\PublicSupplierQuery;
+use App\Services\Billing\FeaturedSupplierService;
 use App\Services\Catalog\PublicListingQuery;
 use App\Support\FrontendNewDemo;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,48 +17,16 @@ class HomeController extends Controller
 {
     public function index()
     {
-        $topCategories = Category::query()
-            ->active()
-            ->approved()
-            ->roots()
-            ->orderBy('sort_order')
-            ->limit(5)
-            ->get();
-
+        // Suppliers with the `featured_supplier` benefit (override → snapshot →
+        // plan → default), highest rating first, max 20; topped up to 4 with
+        // the best-rated others. Genuinely featured ones carry is_featured_supplier.
         $featuredSuppliers = $this->attachSavesData(
-            $this->applyBadgePattern(
-                PublicSupplierQuery::base()
-                    ->with(\App\Models\SupplierProfile::publicCardRelations())
-                    ->orderByDesc('rating')
-                    ->limit(12)
-                    ->get()
-                    ->unique('id')
-                    ->values()
-            )
+            $this->applyBadgePattern(app(FeaturedSupplierService::class)->forHomepage(max: 20, min: 4))
         );
 
-        $allSuppliers = $this->attachSavesData(
-            $this->applyBadgePattern(
-                $this->allSuppliersByCategory($topCategories)
-            )
-        );
+        [$allSuppliersGrid, $allSuppliersTabs] = $this->allSuppliersByCategory();
 
-        // Computed independently of $allSuppliers' per-supplier category
-        // assignment above: that assignment dedupes each supplier into
-        // exactly one category (first match wins), so with few real
-        // suppliers, one supplier matching multiple categories would
-        // otherwise "use up" every category but the first — starving every
-        // other real tab even though it does have a match. A tab should
-        // show whenever a category has *any* matching supplier, regardless
-        // of which specific supplier the grid below happened to assign it.
-        $allSuppliersTabs = $topCategories->filter(function (Category $category) {
-            $ids = array_merge([$category->id], $category->descendantIds());
-
-            return PublicSupplierQuery::base()->whereHas('account.listings', function (Builder $q) use ($ids) {
-                $q->whereIn('main_category_id', $ids)
-                    ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
-            })->exists();
-        })->values();
+        $allSuppliers = $this->attachSavesData($this->applyBadgePattern($allSuppliersGrid));
 
         $blogPosts = BlogPost::published()
             ->with(['category', 'account.supplierProfile', 'account.buyerProfile', 'tags'])
@@ -66,7 +35,11 @@ class HomeController extends Controller
             ->limit(4)
             ->get();
 
+        // Only a tab that exists can be pre-selected (?category=slug); anything else → All.
         $activeCategory = request()->input('category', 'all');
+        if (! $allSuppliersTabs->contains('slug', $activeCategory)) {
+            $activeCategory = 'all';
+        }
 
         return view('frontend_new.home.index', [
             'featuredSuppliers' => $featuredSuppliers,
@@ -79,64 +52,103 @@ class HomeController extends Controller
     }
 
     /**
-     * Up to 2 suppliers per top category (tagged for the client-side tab
-     * filter), topped up with generic eligible suppliers, capped at 8.
-     * Accurately associates each supplier with ALL matching root category slugs.
+     * "All Suppliers" grid + its category tabs, from supplier_categories
+     * (what each supplier says it supplies), matched to top-level categories:
+     * a supplier counts under a tab when any of its active supplier_categories
+     * is that root category or anywhere beneath it (suppliers mostly pick
+     * sub-categories, e.g. Mouse → Accessories).
+     *
+     *  - Grid: up to 2 top-rated suppliers per root category, topped up with
+     *    the highest-rated remaining suppliers, max 8.
+     *  - Each card is tagged with ALL of its root categories (not only the one
+     *    it was picked for), so it shows under every tab it belongs to.
+     *  - Tabs: exactly the root categories with at least one card in the grid,
+     *    so no tab ever opens empty.
+     *
+     * @return array{0: Collection, 1: Collection} [suppliers, tab categories]
      */
-    private function allSuppliersByCategory(Collection $categories): Collection
+    private function allSuppliersByCategory(int $limit = 8, int $perCategory = 2): array
     {
-        $suppliers = collect();
+        // Active, approved category tree, resolved to roots in memory.
+        $categories = Category::query()->active()->approved()
+            ->get(['id', 'parent_id', 'name', 'slug', 'sort_order'])
+            ->keyBy('id');
 
-        foreach ($categories as $category) {
-            $ids = array_merge([$category->id], $category->descendantIds());
+        $rootOf = function (int $id) use ($categories): ?int {
+            for ($depth = 0; $depth < 25 && isset($categories[$id]); $depth++) {
+                $parent = $categories[$id]->parent_id;
+                if ($parent === null) {
+                    return $id;
+                }
+                $id = (int) $parent;
+            }
 
-            PublicSupplierQuery::base()
-                ->with(array_merge(['account.listings.categories'], \App\Models\SupplierProfile::publicCardRelations()))
-                ->whereHas('account.listings', function (Builder $q) use ($ids) {
-                    $q->whereIn('main_category_id', $ids)
-                        ->orWhereHas('categories', fn (Builder $c) => $c->whereIn('categories.id', $ids));
-                })
-                ->orderByDesc('rating')
-                ->limit(2)
-                ->get()
-                ->each(function ($supplier) use ($category, $suppliers) {
-                    if (! $suppliers->has($supplier->id)) {
-                        $supplier->matched_categories = collect([$category->slug]);
-                        $suppliers->put($supplier->id, $supplier);
-                    } else {
-                        $existing = $suppliers->get($supplier->id);
-                        if ($existing->matched_categories && ! $existing->matched_categories->contains($category->slug)) {
-                            $existing->matched_categories->push($category->slug);
-                        }
-                    }
-                });
+            return null; // an ancestor is inactive/unapproved (or a broken loop)
+        };
+
+        $roots = $categories->whereNull('parent_id')->sortBy([['sort_order', 'asc'], ['name', 'asc']]);
+        $treeIdsByRoot = $roots->keys()->mapWithKeys(fn ($rootId) => [$rootId => []])->all();
+        foreach ($categories->keys() as $id) {
+            if (($root = $rootOf($id)) !== null) {
+                $treeIdsByRoot[$root][] = $id;
+            }
         }
 
-        if ($suppliers->count() < 8) {
-            PublicSupplierQuery::base()
-                ->with(array_merge(['account.listings.categories'], \App\Models\SupplierProfile::publicCardRelations()))
-                ->whereNotIn('id', $suppliers->keys())
-                ->orderByDesc('rating')
-                ->limit(8 - $suppliers->count())
-                ->get()
-                ->each(function ($supplier) use ($categories, $suppliers) {
-                    $matched = collect();
-                    $listingCatIds = $supplier->account?->listings?->flatMap(function ($l) {
-                        return array_merge([$l->main_category_id], $l->categories->pluck('id')->all());
-                    })->filter()->unique()->all() ?? [];
+        $withSupplierCategories = fn (array $categoryIds) => fn (Builder $q) => $q->where('is_active', true)->whereIn('category_id', $categoryIds);
 
-                    foreach ($categories as $cat) {
-                        $ids = array_merge([$cat->id], $cat->descendantIds());
-                        if (! empty(array_intersect($listingCatIds, $ids))) {
-                            $matched->push($cat->slug);
-                        }
-                    }
-                    $supplier->matched_categories = $matched;
-                    $suppliers->put($supplier->id, $supplier);
-                });
+        // 1. Up to $perCategory top-rated suppliers for each root category.
+        $pickedIds = collect();
+        foreach ($roots as $rootId => $root) {
+            $pickedIds = $pickedIds->merge(
+                PublicSupplierQuery::base()
+                    ->whereHas('account.supplierCategories', $withSupplierCategories($treeIdsByRoot[$rootId]))
+                    ->whereNotIn('supplier_profiles.id', $pickedIds)
+                    ->orderByDesc('rating')
+                    ->limit($perCategory)
+                    ->pluck('supplier_profiles.id')
+            );
+            if ($pickedIds->count() >= $limit) {
+                break;
+            }
+        }
+        $pickedIds = $pickedIds->unique()->take($limit);
+
+        // 2. Top up with the highest-rated remaining suppliers.
+        if ($pickedIds->count() < $limit) {
+            $pickedIds = $pickedIds->merge(
+                PublicSupplierQuery::base()
+                    ->whereNotIn('supplier_profiles.id', $pickedIds)
+                    ->orderByDesc('rating')
+                    ->limit($limit - $pickedIds->count())
+                    ->pluck('supplier_profiles.id')
+            );
         }
 
-        return $suppliers->take(8)->values();
+        $suppliers = PublicSupplierQuery::base()
+            ->whereIn('supplier_profiles.id', $pickedIds)
+            ->with(array_merge(
+                ['account.supplierCategories' => fn ($q) => $q->where('is_active', true)],
+                \App\Models\SupplierProfile::publicCardRelations()
+            ))
+            ->get()
+            ->sortBy(fn ($supplier) => $pickedIds->search($supplier->id)) // keep pick order
+            ->values();
+
+        // 3. Tag each supplier with every root category its supplier_categories fall under.
+        foreach ($suppliers as $supplier) {
+            $supplier->matched_categories = ($supplier->account?->supplierCategories ?? collect())
+                ->map(fn ($row) => $rootOf((int) $row->category_id))
+                ->filter(fn ($rootId) => $rootId !== null && isset($roots[$rootId]))
+                ->unique()
+                ->map(fn ($rootId) => $roots[$rootId]->slug)
+                ->values();
+        }
+
+        // 4. Tabs: root categories that have at least one supplier in the grid.
+        $usedSlugs = $suppliers->flatMap(fn ($supplier) => $supplier->matched_categories)->unique();
+        $tabs = $roots->filter(fn ($root) => $usedSlugs->contains($root->slug))->values();
+
+        return [$suppliers, $tabs];
     }
 
     /**

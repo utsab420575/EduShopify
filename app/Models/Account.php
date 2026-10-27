@@ -299,6 +299,12 @@ class Account extends Model
             ->latestOfMany();
     }
 
+    /** Admin-set benefit overrides for this account (history included). */
+    public function benefitOverrides(): HasMany
+    {
+        return $this->hasMany(AccountBenefitOverride::class);
+    }
+
     public function subscriptionPayments(): HasMany
     {
         return $this->hasMany(SubscriptionPayment::class, 'supplier_account_id');

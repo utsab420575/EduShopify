@@ -54,14 +54,22 @@
     return content ? (content.dataset.activeCategory || 'all') : 'all';
   }
 
-  function runFilter(query, category) {
+  // "★ Featured" filter state lives on #supplier-content (data-featured).
+  function featuredOnly() {
+    const content = document.getElementById('supplier-content');
+    return content ? content.dataset.featured === '1' : false;
+  }
+
+  function runFilter(query, category, featured) {
     if (currentRequest) currentRequest.abort();
     currentRequest = new AbortController();
 
     const cat = category !== undefined ? category : activeCategory();
+    const onlyFeatured = featured !== undefined ? featured : featuredOnly();
     const params = new URLSearchParams();
     if (query) params.set('search', query);
     if (cat && cat !== 'all') params.set('category', cat);
+    if (onlyFeatured) params.set('featured', '1');
 
     const qs = params.toString();
     const url = baseUrl + (qs ? '?' + qs : '');
@@ -79,7 +87,7 @@
         if (content) {
           content.outerHTML = html;
         }
-        window.history.replaceState({ category: cat, search: query }, '', url);
+        window.history.replaceState({ category: cat, search: query, featured: onlyFeatured }, '', url);
       })
       .catch(function (e) {
         if (e.name !== 'AbortError') { /* error ignored */ }
@@ -117,6 +125,13 @@
 
   // Delegated click handler for category tabs and clear-all
   document.addEventListener('click', function (e) {
+    const featuredBtn = e.target.closest('#supplier-featured-toggle');
+    if (featuredBtn) {
+      e.preventDefault();
+      runFilter(input ? input.value.trim() : '', undefined, ! featuredOnly());
+      return;
+    }
+
     const tabBtn = e.target.closest('.category-tab-btn');
     if (tabBtn) {
       e.preventDefault();
@@ -131,7 +146,7 @@
       e.preventDefault();
       if (input) input.value = '';
       if (clearBtn) clearBtn.classList.add('hidden');
-      runFilter('', 'all');
+      runFilter('', 'all', false);
       return;
     }
   });
@@ -144,7 +159,7 @@
       input.value = q;
       if (clearBtn) clearBtn.classList.toggle('hidden', q.length === 0);
     }
-    runFilter(q, cat);
+    runFilter(q, cat, params.get('featured') === '1');
   });
 })();
 </script>

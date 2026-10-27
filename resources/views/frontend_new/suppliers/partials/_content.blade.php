@@ -62,12 +62,31 @@
   }
 </style>
 
-<main id="supplier-content" data-active-category="{{ $activeCategory }}" class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+@php
+  $featuredOnly ??= false;
+  $featuredCount ??= 0;
+@endphp
+<main id="supplier-content" data-active-category="{{ $activeCategory }}" data-featured="{{ $featuredOnly ? '1' : '0' }}" class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
-  {{-- ── Category Tabs ── --}}
+  {{-- ── Category Tabs (+ Featured filter) ── --}}
   <div class="flex items-center gap-2 flex-wrap mb-6" id="supplier-tabs-row">
+    {{-- ★ Featured toggle — combines with the category tab and search (live-filter JS in _hero) --}}
     <a
-      href="{{ route('v2.suppliers.index', array_filter(['search' => $search])) }}"
+      href="{{ route('v2.suppliers.index', array_filter(['category' => $activeCategory !== 'all' ? $activeCategory : null, 'search' => $search, 'featured' => $featuredOnly ? null : 1])) }}"
+      id="supplier-featured-toggle"
+      aria-pressed="{{ $featuredOnly ? 'true' : 'false' }}"
+      class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-full border transition-colors {{ $featuredOnly ? 'bg-amber-400 border-amber-400 text-amber-950' : 'bg-white border-amber-300 text-amber-700 hover:bg-amber-50' }}"
+      title="{{ $featuredOnly ? 'Show all suppliers' : 'Show only featured suppliers' }}"
+    >
+      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M9.05 2.93c.3-.92 1.6-.92 1.9 0l1.07 3.29a1 1 0 0 0 .95.69h3.46c.97 0 1.37 1.24.59 1.81l-2.8 2.03a1 1 0 0 0-.36 1.12l1.07 3.29c.3.92-.75 1.69-1.54 1.12l-2.8-2.03a1 1 0 0 0-1.18 0l-2.8 2.03c-.78.57-1.84-.2-1.54-1.12l1.07-3.29a1 1 0 0 0-.36-1.12L2.98 8.72c-.78-.57-.38-1.81.59-1.81h3.46a1 1 0 0 0 .95-.69l1.07-3.29z"/></svg>
+      Featured
+      @if($featuredCount > 0)<span class="opacity-75">({{ $featuredCount }})</span>@endif
+      @if($featuredOnly)<span aria-hidden="true">✕</span>@endif
+    </a>
+    <span class="w-px h-5 bg-gray-200 mx-1" aria-hidden="true"></span>
+
+    <a
+      href="{{ route('v2.suppliers.index', array_filter(['search' => $search, 'featured' => $featuredOnly ? 1 : null])) }}"
       data-category="all"
       class="category-tab-btn {{ $activeCategory === 'all' ? 'active' : '' }}"
     >
@@ -76,7 +95,7 @@
     @foreach($categories as $cat)
       @if($cat->supplier_count > 0)
         <a
-          href="{{ route('v2.suppliers.index', array_filter(['category' => $cat->slug, 'search' => $search])) }}"
+          href="{{ route('v2.suppliers.index', array_filter(['category' => $cat->slug, 'search' => $search, 'featured' => $featuredOnly ? 1 : null])) }}"
           data-category="{{ $cat->slug }}"
           class="category-tab-btn {{ $activeCategory === $cat->slug ? 'active' : '' }}"
         >
@@ -89,7 +108,7 @@
   {{-- ── Results count ── --}}
   <p class="text-sm text-gray-500 mb-5">
     <span class="font-semibold text-gray-900">{{ number_format($totalSuppliers) }}</span>
-    {{ Str::plural('supplier', $totalSuppliers) }} found
+    {{ $featuredOnly ? 'featured' : '' }} {{ Str::plural('supplier', $totalSuppliers) }} found
     @if($search)
       for "<span class="text-emerald-600 font-medium">{{ $search }}</span>"
     @endif
@@ -103,7 +122,8 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="supplier-cards-grid">
       @foreach($suppliers as $supplier)
         <div class="product-card-fade-up" style="animation-delay: {{ $loop->index * 55 }}ms">
-          @include('frontend_new.components.supplier-card', ['supplier' => $supplier])
+          {{-- Badge row: "Verified" (account active), 1 achievement, then "+N" --}}
+          @include('frontend_new.components.supplier-card', ['supplier' => $supplier, 'maxAchievements' => 1, 'verifiedWhenActive' => true, 'featured' => (bool) $supplier->is_featured_supplier])
         </div>
       @endforeach
     </div>

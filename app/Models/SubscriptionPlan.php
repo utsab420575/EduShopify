@@ -73,6 +73,12 @@ class SubscriptionPlan extends Model
         return $this->hasMany(Subscription::class, 'plan_id');
     }
 
+    /** Benefit values configured for this plan (subscription_plan_benefits). */
+    public function planBenefits(): HasMany
+    {
+        return $this->hasMany(SubscriptionPlanBenefit::class);
+    }
+
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'currency_code', 'code');

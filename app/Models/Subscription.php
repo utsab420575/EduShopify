@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Billing\BenefitResolver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,12 @@ class Subscription extends Model
         'cancellation_reason',
         'auto_renew',
     ];
+
+    protected static function booted(): void
+    {
+        // Subscribing, renewing, cancelling or expiring can change who is featured.
+        static::saved(fn () => \App\Services\Billing\FeaturedSupplierService::flush());
+    }
 
     protected $casts = [
         'price_snapshot'       => 'decimal:2',
@@ -157,7 +164,15 @@ class Subscription extends Model
             'provider_customer_id'     => $providerCustomerId ?? $this->provider_customer_id,
             'plan_name_snapshot'       => $plan?->name ?? $this->plan_name_snapshot,
             'price_snapshot'           => $plan?->price ?? $this->price_snapshot,
-            'features_snapshot'        => $plan?->features ?? $this->features_snapshot,
+            // Keep the snapshot taken at selection and refresh only its dynamic
+            // benefits from the plan as it is now — activation is when the
+            // purchase (or renewal) actually takes effect.
+            'features_snapshot'        => $plan
+                ? array_merge(
+                    is_array($this->features_snapshot) ? $this->features_snapshot : [],
+                    ['benefits' => app(BenefitResolver::class)->planBenefitMap($plan)]
+                )
+                : $this->features_snapshot,
         ]);
     }
 

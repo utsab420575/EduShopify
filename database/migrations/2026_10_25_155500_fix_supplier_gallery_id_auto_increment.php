@@ -16,11 +16,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE `supplier_gallery` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT');
+        // MySQL-only syntax (and a MySQL-only problem) — skipped on other
+        // drivers, e.g. the SQLite database the test suite runs on.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE `supplier_gallery` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE `supplier_gallery` MODIFY `id` BIGINT UNSIGNED NOT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE `supplier_gallery` MODIFY `id` BIGINT UNSIGNED NOT NULL');
+        }
     }
 };

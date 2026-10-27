@@ -44,7 +44,7 @@
   <div class="flex items-center justify-between mb-3">
     <h2 class="font-bold text-lg text-gray-900">Featured Suppliers</h2>
     <div class="flex items-center gap-2.5">
-      <a href="{{ route('v2.suppliers.index') }}" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium hover:underline cursor-pointer">See all</a>
+      <a href="{{ route('v2.suppliers.index', ['featured' => 1]) }}" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium hover:underline cursor-pointer">See all</a>
       <div class="flex items-center gap-1.5">
         <button
           type="button"
@@ -84,8 +84,9 @@
     >
       @foreach($featuredSuppliers as $supplier)
         <div class="featured-supplier-item shrink-0 product-card-fade-up" style="animation-delay: {{ $loop->index * 45 }}ms">
-          {{-- Badge row: "Verified" (account active), 1 achievement, then "+N" --}}
-          @include('frontend_new.components.supplier-card', ['supplier' => $supplier, 'maxAchievements' => 1, 'verifiedWhenActive' => true])
+          {{-- Badge row: "Verified" (account active), 1 achievement, then "+N"; ★ Featured
+               only on suppliers with the featured_supplier benefit (not the top-up ones). --}}
+          @include('frontend_new.components.supplier-card', ['supplier' => $supplier, 'maxAchievements' => 1, 'verifiedWhenActive' => true, 'featured' => (bool) $supplier->is_featured_supplier])
         </div>
       @endforeach
     </div>

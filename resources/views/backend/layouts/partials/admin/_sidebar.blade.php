@@ -217,6 +217,9 @@
                 <a href="{{ route('admin.billing.plans.index') }}" class="sidebar-submenu-item {{ $isActive('admin.billing.plans.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Subscription Plans</a>
                 <a href="{{ route('admin.billing.subscriptions.index') }}" class="sidebar-submenu-item {{ $isActive('admin.billing.subscriptions.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Supplier Subscriptions</a>
                 <a href="{{ route('admin.billing.payments.index') }}" class="sidebar-submenu-item {{ $isActive('admin.billing.payments.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Subscription Payments</a>
+                <a href="{{ route('admin.billing.benefits.index') }}" class="sidebar-submenu-item {{ $isActive('admin.billing.benefits.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Manage Benefits</a>
+                <a href="{{ route('admin.billing.plan-benefits.index') }}" class="sidebar-submenu-item {{ $isActive('admin.billing.plan-benefits.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Plan Benefit Assignment</a>
+                <a href="{{ route('admin.billing.benefit-overrides.index') }}" class="sidebar-submenu-item {{ $isActive('admin.billing.benefit-overrides.*') ? 'active' : '' }} block px-3 py-2 text-sm rounded-md">Supplier Benefit Overrides</a>
             </div>
         </div>
         @endcan

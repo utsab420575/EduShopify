@@ -332,6 +332,23 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
             Route::post('/subscriptions/{subscription}/cancel', [AdminSubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
             Route::post('/subscriptions/{subscription}/extend', [AdminSubscriptionController::class, 'extend'])->name('subscriptions.extend');
 
+            // Dynamic Subscription Benefits — catalogue, per-plan values, per-supplier overrides.
+            Route::resource('benefits', \App\Http\Controllers\Backend\Admin\Billing\SubscriptionBenefitController::class);
+            Route::post('/benefits/{benefit}/activate', [\App\Http\Controllers\Backend\Admin\Billing\SubscriptionBenefitController::class, 'activate'])->name('benefits.activate');
+            Route::post('/benefits/{benefit}/deactivate', [\App\Http\Controllers\Backend\Admin\Billing\SubscriptionBenefitController::class, 'deactivate'])->name('benefits.deactivate');
+
+            Route::get('/plan-benefits', [\App\Http\Controllers\Backend\Admin\Billing\PlanBenefitController::class, 'index'])->name('plan-benefits.index');
+            Route::get('/plan-benefits/{plan}', [\App\Http\Controllers\Backend\Admin\Billing\PlanBenefitController::class, 'edit'])->name('plan-benefits.edit');
+            Route::put('/plan-benefits/{plan}', [\App\Http\Controllers\Backend\Admin\Billing\PlanBenefitController::class, 'update'])->name('plan-benefits.update');
+
+            Route::get('/benefit-overrides', [\App\Http\Controllers\Backend\Admin\Billing\AccountBenefitOverrideController::class, 'index'])->name('benefit-overrides.index');
+            Route::get('/benefit-overrides/{account}', [\App\Http\Controllers\Backend\Admin\Billing\AccountBenefitOverrideController::class, 'show'])->whereNumber('account')->name('benefit-overrides.show');
+            Route::post('/benefit-overrides/{account}', [\App\Http\Controllers\Backend\Admin\Billing\AccountBenefitOverrideController::class, 'store'])->whereNumber('account')->name('benefit-overrides.store');
+            Route::put('/benefit-overrides/{account}/{override}', [\App\Http\Controllers\Backend\Admin\Billing\AccountBenefitOverrideController::class, 'update'])->whereNumber(['account', 'override'])->name('benefit-overrides.update');
+            Route::post('/benefit-overrides/{account}/{override}/deactivate', [\App\Http\Controllers\Backend\Admin\Billing\AccountBenefitOverrideController::class, 'deactivate'])->whereNumber(['account', 'override'])->name('benefit-overrides.deactivate');
+            Route::post('/benefit-overrides/{account}/{override}/reactivate', [\App\Http\Controllers\Backend\Admin\Billing\AccountBenefitOverrideController::class, 'reactivate'])->whereNumber(['account', 'override'])->name('benefit-overrides.reactivate');
+            Route::post('/benefit-overrides/{account}/{override}/revoke', [\App\Http\Controllers\Backend\Admin\Billing\AccountBenefitOverrideController::class, 'revoke'])->whereNumber(['account', 'override'])->name('benefit-overrides.revoke');
+
             Route::get('/payments', [SubscriptionPaymentController::class, 'index'])->name('payments.index');
             Route::get('/payments/{payment}', [SubscriptionPaymentController::class, 'show'])->name('payments.show');
             Route::post('/payments/{payment}/mark-paid', [SubscriptionPaymentController::class, 'markPaid'])->name('payments.mark-paid');

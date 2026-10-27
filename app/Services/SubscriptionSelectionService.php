@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Billing\BenefitResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -121,6 +122,10 @@ class SubscriptionSelectionService
             'has_homepage_placement' => $plan->has_homepage_placement,
             'has_team_members'       => $plan->has_team_members,
             'features'               => $plan->features ?? [],
+            // Dynamic benefits (subscription_plan_benefits) as they are now —
+            // the subscriber keeps these until renewal or plan change
+            // (BenefitResolver priority 2).
+            'benefits'               => app(BenefitResolver::class)->planBenefitMap($plan),
         ];
     }
 }

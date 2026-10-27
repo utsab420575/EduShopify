@@ -4,7 +4,8 @@
      Optional:
        'maxAchievements'    — achievement badges before "+N" (default 2)
        'verifiedWhenActive' — show "Verified" while the account is active,
-                              instead of once an admin approved it (default false) --}}
+                              instead of once an admin approved it (default false)
+       'featured'           — show the "★ Featured" badge (has the featured_supplier benefit) --}}
 <a href="{{ route('v2.suppliers.show', $supplier->slug) }}" class="group flex flex-col h-full bg-white rounded-2xl border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all duration-200 overflow-hidden">
 
   <div class="relative h-32 bg-emerald-50">
@@ -52,6 +53,14 @@
 
     {{-- Favorite Heart Button --}}
     @include('frontend_new.components.supplier-save-btn', ['supplier' => $supplier, 'class' => 'absolute top-2.5 right-2.5 z-20'])
+
+    {{-- Featured (featured_supplier subscription benefit / admin override) --}}
+    @if($featured ?? false)
+      <span class="absolute bottom-2 right-2.5 z-20 inline-flex items-center gap-1 bg-amber-400 text-amber-950 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm" title="Featured supplier">
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M9.05 2.93c.3-.92 1.6-.92 1.9 0l1.07 3.29a1 1 0 0 0 .95.69h3.46c.97 0 1.37 1.24.59 1.81l-2.8 2.03a1 1 0 0 0-.36 1.12l1.07 3.29c.3.92-.75 1.69-1.54 1.12l-2.8-2.03a1 1 0 0 0-1.18 0l-2.8 2.03c-.78.57-1.84-.2-1.54-1.12l1.07-3.29a1 1 0 0 0-.36-1.12L2.98 8.72c-.78-.57-.38-1.81.59-1.81h3.46a1 1 0 0 0 .95-.69l1.07-3.29z"/></svg>
+        Featured
+      </span>
+    @endif
   </div>
 
   <div class="p-4 flex-1 flex flex-col">

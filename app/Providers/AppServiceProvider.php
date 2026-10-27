@@ -33,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
         // pages act on (the supplier's own, or one an admin is managing).
         $this->app->scoped(SupplierWorkspace::class);
 
+        // One per request so its per-account memo is shared by every caller.
+        $this->app->scoped(\App\Services\Billing\BenefitResolver::class);
+
         require_once app_path('Support/helpers.php');
     }
 

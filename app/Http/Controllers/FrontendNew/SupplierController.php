@@ -9,6 +9,7 @@ use App\Models\Review;
 use App\Models\SavedItem;
 use App\Models\SupplierProfile;
 use App\Services\Account\PublicSupplierQuery;
+use App\Services\Billing\FeaturedSupplierService;
 use App\Services\Catalog\PublicListingQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -56,10 +57,19 @@ class SupplierController extends Controller
             $query->where('display_name', 'like', "%{$search}%");
         }
 
+        // ?featured=1 — only suppliers with the featured_supplier benefit
+        // (the homepage "Featured Suppliers" → See all).
+        $featuredIds = app(FeaturedSupplierService::class)->featuredAccountIds();
+        $featuredOnly = $request->boolean('featured');
+        if ($featuredOnly) {
+            $query->whereIn('supplier_profiles.account_id', $featuredIds);
+        }
+
         $query->orderByDesc('rating');
 
-        $suppliers = $query->paginate(24)->withQueryString()->through(function ($supplier) {
+        $suppliers = $query->paginate(24)->withQueryString()->through(function ($supplier) use ($featuredIds) {
             $supplier->product_count = PublicListingQuery::forSupplierAccount($supplier->account_id)->count();
+            $supplier->is_featured_supplier = in_array((int) $supplier->account_id, $featuredIds, true);
 
             return $supplier;
         });
@@ -72,6 +82,8 @@ class SupplierController extends Controller
             'totalSuppliers' => $suppliers->total(),
             'activeCategory' => $categorySlug,
             'search' => $search,
+            'featuredOnly' => $featuredOnly,
+            'featuredCount' => count($featuredIds),
         ];
 
         // Live search/tab requests (fetch(), not a normal navigation) get
