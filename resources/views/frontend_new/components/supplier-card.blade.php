@@ -82,15 +82,15 @@
       $firstCountry = $countries->first();
     @endphp
 
-    <div class="flex items-center gap-1 h-5 mb-2 overflow-hidden" title="{{ collect([$supplier->isVerified() ? 'Verified' : null])->merge($achievements->pluck('name'))->filter()->implode(' · ') }}">
+    <div class="flex items-center gap-1 h-6 mb-2 overflow-hidden" title="{{ collect([$supplier->isVerified() ? 'Verified' : null])->merge($achievements->map->badgeLabel())->filter()->implode(' · ') }}">
       @if($supplier->isVerified())
-        <span class="badge-verified text-[10px] font-medium px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 whitespace-nowrap">✓ Verified</span>
+        <span class="badge-verified text-[10px] font-medium px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0 whitespace-nowrap leading-none">✓ Verified</span>
       @endif
       @foreach($shownAchievements as $achievement)
-        <span class="{{ $achievement->badgeClass() }} text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-0 truncate">{{ $achievement->name }}</span>
+        <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-0 truncate inline-flex items-center leading-none" style="{{ $achievement->badgeStyle() }}">{{ $achievement->badgeLabel() }}</span>
       @endforeach
       @if($extraAchievements > 0)
-        <span class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">+{{ $extraAchievements }}</span>
+        <span class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0 leading-none">+{{ $extraAchievements }}</span>
       @endif
     </div>
 

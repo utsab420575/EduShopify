@@ -40,6 +40,7 @@
             <x-slot:head>
                 <tr>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Achievement</th>
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Public Badge</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Requirement</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Claims</th>
@@ -61,6 +62,9 @@
                                 @endif
                             </div>
                         </div>
+                    </td>
+                    <td class="px-5 py-3.5">
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap" style="{{ $achievement->badgeStyle() }}">{{ $achievement->badgeLabel() }}</span>
                     </td>
                     <td class="px-5 py-3.5 text-sm text-gray-600">{{ $achievement->type ?: '—' }}</td>
                     <td class="px-5 py-3.5 text-sm text-gray-600 font-mono">{{ $achievement->requirement_value ?? '—' }}</td>
@@ -101,15 +105,17 @@
 
     {{-- Create Achievement Modal --}}
     <x-backend.modal id="create-achievement" title="New Achievement" width="max-w-xl">
-        <form method="POST" action="{{ route('admin.achievements.store') }}" class="space-y-4">
+        <form method="POST" action="{{ route('admin.achievements.store') }}" class="space-y-4" x-data="achievementBadgeForm({})">
             @csrf
-            <x-backend.input name="name" label="Achievement Name" placeholder="e.g. Top Rated Supplier" required />
+            <x-backend.input name="name" label="Achievement Name" placeholder="e.g. Top Rated Supplier" x-model="name" required />
             <x-backend.textarea name="description" label="Description" placeholder="What does an account need to do to earn this?" rows="2" />
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <x-backend.input name="badge_icon" label="Badge Icon" placeholder="fa-trophy" hint="Font Awesome solid icon class" />
-                <x-backend.input name="type" label="Type" placeholder="e.g. sales, tenure, quality" />
+                <x-backend.input name="type" label="Type" placeholder="e.g. milestone, exhibition, performance" x-model="type" />
             </div>
+
+            @include('backend.admin.achievements.partials._badge-fields', ['idPrefix' => 'create'])
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
                 <x-backend.input name="requirement_value" label="Requirement Value" type="number" placeholder="e.g. 100" />
@@ -131,16 +137,19 @@
     {{-- Edit Achievement Modals --}}
     @foreach($achievements as $achievement)
         <x-backend.modal :id="'edit-achievement-'.$achievement->id" :title="'Edit Achievement: '.$achievement->name" width="max-w-xl">
-            <form method="POST" action="{{ route('admin.achievements.update', $achievement) }}" class="space-y-4">
+            <form method="POST" action="{{ route('admin.achievements.update', $achievement) }}" class="space-y-4"
+                  x-data="achievementBadgeForm({{ Js::from(['name' => $achievement->name, 'type' => (string) $achievement->type, 'label' => (string) $achievement->display_badge, 'color' => (string) $achievement->badge_color]) }})">
                 @csrf
                 @method('PUT')
-                <x-backend.input name="name" label="Achievement Name" :value="$achievement->name" required />
+                <x-backend.input name="name" label="Achievement Name" :value="$achievement->name" x-model="name" required />
                 <x-backend.textarea name="description" label="Description" :value="$achievement->description" rows="2" />
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <x-backend.input name="badge_icon" label="Badge Icon" :value="$achievement->badge_icon" hint="Font Awesome solid icon class" />
-                    <x-backend.input name="type" label="Type" :value="$achievement->type" />
+                    <x-backend.input name="type" label="Type" :value="$achievement->type" x-model="type" />
                 </div>
+
+                @include('backend.admin.achievements.partials._badge-fields', ['idPrefix' => 'edit_'.$achievement->id])
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
                     <x-backend.input name="requirement_value" label="Requirement Value" type="number" :value="$achievement->requirement_value" />

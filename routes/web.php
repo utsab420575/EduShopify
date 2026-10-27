@@ -23,39 +23,25 @@ Route::get('/', [HomeController::class, 'index'])
     ->middleware([EnsureOnboardingComplete::class])
     ->name('home');
 
-Route::get('/system-refresh', function () {
+Route::get('/system-refresh', function (Request $request) {
+    $expectedToken = config('app.system_refresh_token') ?: env('SYSTEM_REFRESH_TOKEN');
 
-    Artisan::call('optimize:clear');      // clears config, route, view, cache
-    Artisan::call('config:clear');
-    Artisan::call('route:clear');
-    Artisan::call('view:clear');
-    Artisan::call('cache:clear');
-   /* Artisan::call('weather:fetch');*/
+    $isAuthorizedByToken = ! empty($expectedToken) && hash_equals((string) $expectedToken, (string) $request->query('token'));
+    $isAuthorizedByAdmin = auth()->check() && (auth()->user()->isAdmin() ?? false);
 
+    if (! $isAuthorizedByToken && ! $isAuthorizedByAdmin) {
+        abort(403, 'Unauthorized access. Please provide a valid ?token= or sign in as an administrator.');
+    }
 
-    Artisan::call('storage:link');  // recreate storage link (safe if exists)
-
-    /*Artisan::call('migrate', [
-        '--force' => true,                 // required for production
-    ]);*/
-    /*
-        Artisan::call('db:seed', [
-            '--class' => 'Database\\Seeders\\DeleteSpecificUserSeeder',
-            '--force' => true,
-        ]);*/
-
-
-    // Run only these migration files
-
+    Artisan::call('optimize:clear');
+    Artisan::call('storage:link');
     Artisan::call('migrate', [
-        '--path' => 'database/migrations/2026_10_25_155500_fix_supplier_gallery_id_auto_increment.php',
         '--force' => true,
     ]);
 
-    
     return response()->json([
-        'status' => 'success',
-        'message' => 'All caches cleared, migrated & storage linked ✅'
+        'status'  => 'success',
+        'message' => 'All caches cleared, migrations executed & storage linked successfully ✅',
     ]);
 });
 

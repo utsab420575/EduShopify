@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'system_refresh_token' => env('SYSTEM_REFRESH_TOKEN'),
+
 ];

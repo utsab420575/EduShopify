@@ -50,7 +50,7 @@
                 <span class="badge-verified"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Verified Supplier</span>
               @endif
               @foreach($supplier->publicAchievements() as $achievement)
-                <span class="{{ $achievement->badgeClass() }} text-[10px] font-semibold px-2 py-0.5 rounded-full">{{ $achievement->name }}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full" style="{{ $achievement->badgeStyle() }}">{{ $achievement->badgeLabel() }}</span>
               @endforeach
             </div>
             <div class="flex flex-wrap items-center gap-4 text-[12px] text-white/85">
