@@ -24,72 +24,143 @@ Route::get('/', [HomeController::class, 'index'])
     ->name('home');
 
 Route::get('/system-refresh', function (Request $request) {
+
     $expectedToken = config('app.system_refresh_token') ?: env('SYSTEM_REFRESH_TOKEN');
 
-    $isAuthorizedByToken = ! empty($expectedToken) && hash_equals((string) $expectedToken, (string) $request->query('token'));
-    $isAuthorizedByAdmin = auth()->check() && (auth()->user()->isAdmin() ?? false);
+    $isAuthorizedByToken = !empty($expectedToken)
+        && hash_equals(
+            (string) $expectedToken,
+            (string) $request->query('token')
+        );
 
-    if (! $isAuthorizedByToken && ! $isAuthorizedByAdmin) {
+    $isAuthorizedByAdmin = auth()->check()
+        && (auth()->user()->isAdmin() ?? false);
+
+    if (!$isAuthorizedByToken && !$isAuthorizedByAdmin) {
         abort(403, 'Unauthorized access. Please provide a valid ?token= or sign in as an administrator.');
     }
 
-    $migrationPaths = [
-        'database/migrations/2026_10_28_100000_create_subscription_benefits_table.php',
-        'database/migrations/2026_10_28_100100_create_subscription_plan_benefits_table.php',
-        'database/migrations/2026_10_28_100200_create_account_benefit_overrides_table.php',
-    ];
-
-    $steps = [
-        'optimize:clear' => ['command' => 'optimize:clear', 'arguments' => []],
-        'storage:link'   => ['command' => 'storage:link', 'arguments' => []],
-    ];
-
-    foreach ($migrationPaths as $path) {
-        $steps['migrate:' . basename($path)] = [
-            'command'   => 'migrate',
-            'arguments' => [
-                '--path'  => $path,
-                '--force' => true,
-            ],
-        ];
-    }
-
-    $steps['migrate:all'] = [
-        'command'   => 'migrate',
-        'arguments' => ['--force' => true],
-    ];
-
     $output = [];
 
-    foreach ($steps as $stepName => $config) {
-        $command = $config['command'];
-        $arguments = $config['arguments'];
+// Step 1: Clear caches
+    try {
+        $exitCode = Artisan::call('optimize:clear');
+        $output['optimize:clear'] = trim(Artisan::output());
 
-        try {
-            $exitCode = Artisan::call($command, $arguments);
-            $output[$stepName] = trim(Artisan::output());
-        } catch (\Throwable $e) {
-            $exitCode = 1;
-            $output[$stepName] = $e->getMessage();
+        if ($exitCode !== 0) {
+            throw new \RuntimeException($output['optimize:clear']);
         }
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Cache clearing failed.',
+            'output' => $e->getMessage(),
+        ], 500);
+    }
 
-        // storage:link fails harmlessly when the link already exists.
-        if ($exitCode !== 0 && $command !== 'storage:link') {
-            return response()->json([
-                'status'  => 'error',
-                'message' => "'{$stepName}' failed — later steps were not run.",
-                'output'  => $output,
-            ], 500);
+// Step 2: Create storage link
+    try {
+        $exitCode = Artisan::call('storage:link');
+        $output['storage:link'] = trim(Artisan::output());
+
+        // An existing storage link may cause a non-zero exit code.
+        if ($exitCode !== 0) {
+            $output['storage:link'] .= ' (Check whether the storage link already exists.)';
         }
+    } catch (\Throwable $e) {
+        $output['storage:link'] = $e->getMessage();
+    }
+
+// Step 3: Run subscription_benefits migration
+    try {
+        $exitCode = Artisan::call('migrate', [
+            '--path' => 'database/migrations/2026_10_28_100000_create_subscription_benefits_table.php',
+            '--force' => true,
+        ]);
+
+        $output['subscription_benefits'] = trim(Artisan::output());
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException($output['subscription_benefits']);
+        }
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'subscription_benefits migration failed. Later steps were not run.',
+            'output' => $output,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+
+// Step 4: Run subscription_plan_benefits migration
+    try {
+        $exitCode = Artisan::call('migrate', [
+            '--path' => 'database/migrations/2026_10_28_100100_create_subscription_plan_benefits_table.php',
+            '--force' => true,
+        ]);
+
+        $output['subscription_plan_benefits'] = trim(Artisan::output());
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException($output['subscription_plan_benefits']);
+        }
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'subscription_plan_benefits migration failed. Later steps were not run.',
+            'output' => $output,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+
+// Step 5: Run account_benefit_overrides migration
+    try {
+        $exitCode = Artisan::call('migrate', [
+            '--path' => 'database/migrations/2026_10_28_100200_create_account_benefit_overrides_table.php',
+            '--force' => true,
+        ]);
+
+        $output['account_benefit_overrides'] = trim(Artisan::output());
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException($output['account_benefit_overrides']);
+        }
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'account_benefit_overrides migration failed.',
+            'output' => $output,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+
+// Step 6: Run all remaining pending migrations
+    try {
+        $exitCode = Artisan::call('migrate', [
+            '--force' => true,
+        ]);
+
+        $output['migrate:all'] = trim(Artisan::output());
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException($output['migrate:all']);
+        }
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Remaining migrations failed.',
+            'output' => $output,
+            'error' => $e->getMessage(),
+        ], 500);
     }
 
     return response()->json([
-        'status'  => 'success',
-        'message' => 'All caches cleared, migrations executed & storage linked successfully ✅',
-        'output'  => $output,
+        'status' => 'success',
+        'message' => 'Cache clearing, storage linking, and migrations completed successfully.',
+        'output' => $output,
     ]);
-});
 
+});
 
 /* ── Public Auth: Registration & Login ── */
 Route::middleware('guest')->group(function () {
