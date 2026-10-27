@@ -26,7 +26,11 @@ Route::get('/', [HomeController::class, 'index'])
 Route::get('/system-refresh', function (Request $request) {
 
     Artisan::call('migrate', [
-        '--path' => 'database/migrations/2026_10_28_100000_create_subscription_benefits_table.php',
+        '--path' => [
+            'database/migrations/2026_10_28_100000_create_subscription_benefits_table.php',
+            'database/migrations/2026_10_28_100100_create_subscription_plan_benefits_table.php',
+            'database/migrations/2026_10_28_100200_create_account_benefit_overrides_table.php',
+        ],
         '--force' => true,
     ]);
 
