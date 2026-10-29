@@ -61,6 +61,7 @@
         #pdp-zoom.is-on { opacity: 1; visibility: visible; transition: opacity .15s ease; }
         /* Magnifier (+) cursor: a clear 28px glass with a dark ring and white
            halo so it reads on light and dark photos; zoom-in as the fallback. */
+        #pdp-thumbs::-webkit-scrollbar { display: none; }
         .pdp-stage.can-zoom {
           cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Ccircle cx='11.5' cy='11.5' r='8' stroke='%23fff' stroke-width='4.5'/%3E%3Cline x1='17.5' y1='17.5' x2='25' y2='25' stroke='%23fff' stroke-width='6'/%3E%3Ccircle cx='11.5' cy='11.5' r='8' fill='%23ffffff' fill-opacity='.35' stroke='%23111827' stroke-width='2'/%3E%3Cline x1='17.5' y1='17.5' x2='25' y2='25' stroke='%23111827' stroke-width='3'/%3E%3Cline x1='8' y1='11.5' x2='15' y2='11.5' stroke='%23111827' stroke-width='2'/%3E%3Cline x1='11.5' y1='8' x2='11.5' y2='15' stroke='%23111827' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 11 11, zoom-in;
         }
@@ -69,19 +70,20 @@
         <div class="pdp-stage relative bg-gray-100 overflow-hidden">
           @if($firstImage)
             <img id="main-img-bg" src="{{ \App\Models\Listing::mediaUrl($firstImage, 'product_banner') }}" alt="" aria-hidden="true"
-                 class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60 {{ $firstFit === 'contain' ? '' : 'hidden' }}" />
+                 class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60 {{ $firstFit === 'contain' && $videos->isEmpty() ? '' : 'hidden' }}" />
             <img id="main-img" src="{{ \App\Models\Listing::mediaUrl($firstImage, 'product_banner') }}" alt="{{ $listing->name }}"
                  data-media="{{ json_encode($zoomData($firstImage)) }}"
-                 class="absolute inset-0 w-full h-full" style="object-fit: {{ $firstFit }};" />
+                 class="absolute inset-0 w-full h-full {{ $videos->isNotEmpty() ? 'hidden' : '' }}" style="object-fit: {{ $firstFit }};" />
             {{-- Zoom pane (shown on hover, never blocks clicks) --}}
             <div id="pdp-zoom" aria-hidden="true"></div>
           @elseif($videos->isEmpty())
             <div id="main-img" class="absolute inset-0 flex items-center justify-center text-gray-400">No image available</div>
           @endif
+          {{-- Videos come first: the first one shows on load (poster; plays on click). --}}
           @if($videos->isNotEmpty())
             <video id="main-video" controls playsinline preload="none"
-                   class="absolute inset-0 w-full h-full bg-black object-contain {{ $images->isNotEmpty() ? 'hidden' : '' }}"
-                   @if($images->isEmpty()) src="{{ $videos->first()['url'] }}" poster="{{ $videos->first()['poster'] }}" @endif></video>
+                   class="absolute inset-0 w-full h-full bg-black object-contain"
+                   src="{{ $videos->first()['url'] }}" @if($videos->first()['poster']) poster="{{ $videos->first()['poster'] }}" @endif></video>
           @endif
 
           {{-- Badges Overlay in Top-Left Corner of Image --}}
@@ -115,18 +117,22 @@
             @include('frontend_new.components.listing-save-btn', ['listing' => $listing, 'class' => 'shadow-sm'])
           </div>
         </div>
-        {{-- Thumbnails (thumb, 160×120) — photos first, then videos (▶ on their poster). --}}
+        {{-- Thumbnails (thumb, 160×120) — videos first (▶ on their poster), then photos.
+             Hover (desktop) or click a photo to show it; videos play on click.
+             ‹ › buttons scroll the strip when it overflows (no visible scrollbar). --}}
         @if($images->count() + $videos->count() > 1)
-          <div class="flex gap-2 p-3 border-t border-gray-100 overflow-x-auto">
-            @foreach($images as $img)
-              <div class="thumb {{ $loop->first ? 'active' : '' }} w-16 h-12 shrink-0"
-                   data-media="{{ json_encode($zoomData($img)) }}"
-                   onclick="pdpShowImage(this)">
-                <img src="{{ \App\Models\Listing::mediaUrl($img, 'thumb') }}" alt="" loading="lazy" class="w-full h-full object-cover" />
-              </div>
-            @endforeach
+          <div class="relative border-t border-gray-100">
+          <button type="button" id="pdp-thumbs-prev" aria-label="Previous images" hidden
+                  class="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
+          </button>
+          <button type="button" id="pdp-thumbs-next" aria-label="Next images" hidden
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
+            <i class="fa-solid fa-chevron-right text-xs"></i>
+          </button>
+          <div id="pdp-thumbs" class="flex gap-2 p-3 overflow-x-auto scroll-smooth" style="scrollbar-width:none">
             @foreach($videos as $video)
-              <div class="thumb {{ $images->isEmpty() && $loop->first ? 'active' : '' }} w-16 h-12 shrink-0 relative bg-gray-900"
+              <div class="thumb {{ $loop->first ? 'active' : '' }} w-16 h-12 shrink-0 relative bg-gray-900"
                    onclick="pdpShowVideo(this, @js($video['url']), @js($video['poster']))" title="Play video">
                 @if($video['poster'])
                   <img src="{{ $video['poster'] }}" alt="" loading="lazy" class="w-full h-full object-cover opacity-80" />
@@ -138,6 +144,14 @@
                 </span>
               </div>
             @endforeach
+            @foreach($images as $img)
+              <div class="thumb {{ $videos->isEmpty() && $loop->first ? 'active' : '' }} w-16 h-12 shrink-0"
+                   data-media="{{ json_encode($zoomData($img)) }}"
+                   onclick="pdpShowImage(this)" onmouseenter="pdpHoverImage(this)">
+                <img src="{{ \App\Models\Listing::mediaUrl($img, 'thumb') }}" alt="" loading="lazy" class="w-full h-full object-cover" />
+              </div>
+            @endforeach
+          </div>
           </div>
         @endif
         <script>
@@ -154,7 +168,7 @@
             const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
 
             let media = img && img.dataset.media ? JSON.parse(img.dataset.media) : null;
-            let showingVideo = !img || img.tagName !== 'IMG';
+            let showingVideo = !img || img.tagName !== 'IMG' || (video && !video.classList.contains('hidden'));
             let loaded = {};          // original URL → true once decoded
             let frame = null, lastEvent = null;
 
@@ -165,6 +179,7 @@
 
             // Thumbnails: photo (with its fit + zoom data) or video.
             window.pdpShowImage = function (thumb) {
+              if (thumb.classList.contains('active') && !showingVideo) return;
               setActiveThumb(thumb);
               media = JSON.parse(thumb.dataset.media);
               showingVideo = false;
@@ -174,6 +189,37 @@
               zoomOff();
               refresh();
             };
+            // Hovering a photo thumbnail shows it (and it stays), like clicking —
+            // after a short pause so sweeping the mouse across doesn't flicker.
+            let hoverTimer = null;
+            window.pdpHoverImage = function (thumb) {
+              if (!canHover.matches) return;
+              clearTimeout(hoverTimer);
+              hoverTimer = setTimeout(() => window.pdpShowImage(thumb), 70);
+              thumb.addEventListener('mouseleave', () => clearTimeout(hoverTimer), { once: true });
+            };
+
+            // ‹ › carousel buttons: shown only when the strip overflows, hidden at either end.
+            (function () {
+              const strip = document.getElementById('pdp-thumbs');
+              const prev = document.getElementById('pdp-thumbs-prev');
+              const next = document.getElementById('pdp-thumbs-next');
+              if (!strip || !prev || !next) return;
+              function update() {
+                const overflow = strip.scrollWidth > strip.clientWidth + 1;
+                prev.hidden = next.hidden = !overflow;
+                prev.disabled = strip.scrollLeft <= 1;
+                next.disabled = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 1;
+              }
+              const step = () => Math.max(strip.clientWidth * 0.8, 72);
+              prev.addEventListener('click', () => strip.scrollBy({ left: -step(), behavior: 'smooth' }));
+              next.addEventListener('click', () => strip.scrollBy({ left: step(), behavior: 'smooth' }));
+              strip.addEventListener('scroll', update, { passive: true });
+              window.addEventListener('resize', update);
+              strip.querySelectorAll('img').forEach((i) => i.addEventListener('load', update, { once: true }));
+              update();
+            })();
+
             window.pdpShowVideo = function (thumb, src, poster) {
               setActiveThumb(thumb);
               showingVideo = true;
