@@ -27,7 +27,7 @@ class ListingService
                 'brand_id'            => $data['brand_id'] ?? null,
                 'name'                => $data['name'],
                 'sku'                 => $data['sku'] ?? null,
-                'short_description'   => $data['short_description'] ?? null,
+                'short_description'   => \App\Support\RichText::sanitize($data['short_description'] ?? null) ?: null,
                 'description'         => $data['description'] ?? null,
                 'pricing_type_id'     => $data['pricing_type_id'],
                 'sales_mode_id'       => $data['sales_mode_id'],

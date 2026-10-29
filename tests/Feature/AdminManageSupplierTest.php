@@ -125,6 +125,42 @@ class AdminManageSupplierTest extends TestCase
         $this->assertSoftDeleted($listing);
     }
 
+    /**
+     * The product wizard's JavaScript (step saves, media, preview) must call
+     * the admin-panel URLs, never /supplier/... — those are behind
+     * RequireSupplierCapability and 403 for an admin ("Your Supplier
+     * capability is not active").
+     */
+    public function test_admin_product_wizard_uses_admin_urls_and_saves_for_the_supplier(): void
+    {
+        $admin = $this->makeStaff('manage-wizard@example.com', 'admin');
+        $supplier = $this->makeSupplier('managed-wizard@example.com');
+        $accountId = $supplier->account->id;
+        $listing = $this->makeListing($supplier, 'Wizard Microscope');
+        $adminBase = route('admin.supplier-manage.catalog.listings.index', ['supplierAccount' => $accountId]);
+        $supplierBase = url('supplier/catalog/listings');
+
+        foreach ([
+            route('admin.supplier-manage.catalog.listings.create', ['supplierAccount' => $accountId]),
+            route('admin.supplier-manage.catalog.listings.edit', ['supplierAccount' => $accountId, 'listing' => $listing->id]),
+        ] as $page) {
+            $html = $this->actingAs($admin)->get($page)->assertOk()->getContent();
+            $this->assertStringContainsString($adminBase.'/', $html);
+            $this->assertStringNotContainsString($supplierBase, $html, "Wizard on {$page} still calls a /supplier/ URL.");
+        }
+
+        // Step 1 saved by the admin creates the product on the supplier's account.
+        $type = \App\Models\ListingType::firstOrCreate(['code' => 'product'], ['name' => 'Product', 'is_active' => true]);
+        $this->actingAs($admin)->postJson(route('admin.supplier-manage.catalog.listings.wizard.step1', ['supplierAccount' => $accountId]), [
+            'listing_type_id' => $type->id,
+            'name' => 'Admin Added Projector',
+        ])->assertOk();
+
+        $created = Listing::where('name', 'Admin Added Projector')->firstOrFail();
+        $this->assertSame($accountId, $created->supplier_account_id);
+        $this->assertSame($admin->id, $created->created_by_user_id);
+    }
+
     public function test_admin_cannot_reach_another_suppliers_listing_through_this_supplier(): void
     {
         $admin = $this->makeStaff('manage-admin3@example.com', 'admin');

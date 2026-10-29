@@ -5,7 +5,7 @@
 </div>
 
 @if($listing->short_description)
-    <p class="text-sm text-gray-600 mt-4">{{ $listing->short_description }}</p>
+    <x-rich-text :html="$listing->summaryHtml()" class="text-sm text-gray-600 mt-4" />
 @endif
 
 @if($listing->description)

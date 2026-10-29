@@ -21,17 +21,71 @@
     {{-- ══════════════ LEFT COLUMN ══════════════ --}}
     <div class="w-full lg:flex-1 flex flex-col gap-5 min-w-0">
 
-      {{-- ── Gallery ── --}}
+      {{-- ── Gallery ──
+           Stage 400px tall (260px on phones), left-column wide. Each photo shows its
+           product_banner (the product page box the supplier picked) the way the
+           supplier chose: cover / contain (on a blurred copy of itself) / fill.
+
+           Hover zoom (desktop mouse only — hover + fine pointer): an inner zoom
+           pane over the stage, drawn from the stored original (up to 2000px,
+           loaded on first hover) and lined up with the supplier's crop. ~2.5×,
+           reduced for small photos so it never shows blown-up pixels; off when
+           a photo is too small to zoom, over a contain photo's blurred edges,
+           and while a video plays. --}}
+      @php
+        $firstImage = $images->first();
+        $firstFit = \App\Models\Listing::bannerFitFor($firstImage);
+        // Per photo: what the page shows + what the zoom needs (original, its size, the banner box).
+        $zoomData = function ($media) {
+            [$w, $h] = \App\Models\Listing::mediaDimensions($media);
+
+            return [
+                'src' => \App\Models\Listing::mediaUrl($media, 'product_banner'),
+                'fit' => \App\Models\Listing::bannerFitFor($media),
+                'zoom' => $media->getUrl(),
+                'w' => $w,
+                'h' => $h,
+                'crop' => \App\Models\Listing::bannerCropFor($media),
+            ];
+        };
+      @endphp
+      <style>
+        .pdp-stage { height: 260px; }
+        @media (min-width: 640px) { .pdp-stage { height: 400px; } }
+        #pdp-zoom {
+          position: absolute; inset: 0; z-index: 10;
+          background-color: #fff; background-repeat: no-repeat;
+          opacity: 0; visibility: hidden; pointer-events: none;
+          transition: opacity .15s ease, visibility 0s linear .15s;
+        }
+        #pdp-zoom.is-on { opacity: 1; visibility: visible; transition: opacity .15s ease; }
+        /* Magnifier (+) cursor: a clear 28px glass with a dark ring and white
+           halo so it reads on light and dark photos; zoom-in as the fallback. */
+        .pdp-stage.can-zoom {
+          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Ccircle cx='11.5' cy='11.5' r='8' stroke='%23fff' stroke-width='4.5'/%3E%3Cline x1='17.5' y1='17.5' x2='25' y2='25' stroke='%23fff' stroke-width='6'/%3E%3Ccircle cx='11.5' cy='11.5' r='8' fill='%23ffffff' fill-opacity='.35' stroke='%23111827' stroke-width='2'/%3E%3Cline x1='17.5' y1='17.5' x2='25' y2='25' stroke='%23111827' stroke-width='3'/%3E%3Cline x1='8' y1='11.5' x2='15' y2='11.5' stroke='%23111827' stroke-width='2'/%3E%3Cline x1='11.5' y1='8' x2='11.5' y2='15' stroke='%23111827' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 11 11, zoom-in;
+        }
+      </style>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="relative">
-          @if($images->isNotEmpty())
-            <img id="main-img" src="{{ $images->first()->getUrl() }}" alt="{{ $listing->name }}" class="w-full h-[340px] sm:h-[400px] object-cover" />
-          @else
-            <div id="main-img" class="w-full h-[340px] sm:h-[400px] bg-gray-100 flex items-center justify-center text-gray-400">No image available</div>
+        <div class="pdp-stage relative bg-gray-100 overflow-hidden">
+          @if($firstImage)
+            <img id="main-img-bg" src="{{ \App\Models\Listing::mediaUrl($firstImage, 'product_banner') }}" alt="" aria-hidden="true"
+                 class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60 {{ $firstFit === 'contain' ? '' : 'hidden' }}" />
+            <img id="main-img" src="{{ \App\Models\Listing::mediaUrl($firstImage, 'product_banner') }}" alt="{{ $listing->name }}"
+                 data-media="{{ json_encode($zoomData($firstImage)) }}"
+                 class="absolute inset-0 w-full h-full" style="object-fit: {{ $firstFit }};" />
+            {{-- Zoom pane (shown on hover, never blocks clicks) --}}
+            <div id="pdp-zoom" aria-hidden="true"></div>
+          @elseif($videos->isEmpty())
+            <div id="main-img" class="absolute inset-0 flex items-center justify-center text-gray-400">No image available</div>
+          @endif
+          @if($videos->isNotEmpty())
+            <video id="main-video" controls playsinline preload="none"
+                   class="absolute inset-0 w-full h-full bg-black object-contain {{ $images->isNotEmpty() ? 'hidden' : '' }}"
+                   @if($images->isEmpty()) src="{{ $videos->first()['url'] }}" poster="{{ $videos->first()['poster'] }}" @endif></video>
           @endif
 
           {{-- Badges Overlay in Top-Left Corner of Image --}}
-          <div class="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-1.5 pointer-events-none">
+          <div class="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 pointer-events-none">
             @if($supplierProfile)
               <span class="badge-verified text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 shadow-sm bg-white/95 backdrop-blur-xs">
                 <i class="fa-solid fa-circle-check text-emerald-600 text-xs"></i> Verified Supplier
@@ -45,7 +99,7 @@
           </div>
 
           {{-- Floating Compare & Save Buttons on Main Image (Top Right) --}}
-          <div class="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
+          <div class="pdp-no-zoom absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
             <button
               type="button"
               onclick="event.preventDefault(); event.stopPropagation(); fnToggleCompare({{ (int) $listing->id }});"
@@ -61,15 +115,154 @@
             @include('frontend_new.components.listing-save-btn', ['listing' => $listing, 'class' => 'shadow-sm'])
           </div>
         </div>
-        @if($images->count() > 1)
-          <div class="flex gap-2 p-3 border-t border-gray-100">
+        {{-- Thumbnails (thumb, 160×120) — photos first, then videos (▶ on their poster). --}}
+        @if($images->count() + $videos->count() > 1)
+          <div class="flex gap-2 p-3 border-t border-gray-100 overflow-x-auto">
             @foreach($images as $img)
-              <div class="thumb {{ $loop->first ? 'active' : '' }} w-16 h-14" onclick="switchImg(this,'{{ $img->getUrl() }}')">
-                <img src="{{ $img->getUrl() }}" class="w-full h-full object-cover" />
+              <div class="thumb {{ $loop->first ? 'active' : '' }} w-16 h-12 shrink-0"
+                   data-media="{{ json_encode($zoomData($img)) }}"
+                   onclick="pdpShowImage(this)">
+                <img src="{{ \App\Models\Listing::mediaUrl($img, 'thumb') }}" alt="" loading="lazy" class="w-full h-full object-cover" />
+              </div>
+            @endforeach
+            @foreach($videos as $video)
+              <div class="thumb {{ $images->isEmpty() && $loop->first ? 'active' : '' }} w-16 h-12 shrink-0 relative bg-gray-900"
+                   onclick="pdpShowVideo(this, @js($video['url']), @js($video['poster']))" title="Play video">
+                @if($video['poster'])
+                  <img src="{{ $video['poster'] }}" alt="" loading="lazy" class="w-full h-full object-cover opacity-80" />
+                @endif
+                <span class="absolute inset-0 flex items-center justify-center">
+                  <span class="w-6 h-6 rounded-full bg-white/90 flex items-center justify-center shadow">
+                    <svg class="w-3 h-3 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  </span>
+                </span>
               </div>
             @endforeach
           </div>
         @endif
+        <script>
+          (function () {
+            const stage = document.querySelector('.pdp-stage');
+            const img = document.getElementById('main-img');
+            const bg = document.getElementById('main-img-bg');
+            const video = document.getElementById('main-video');
+            const pane = document.getElementById('pdp-zoom');
+
+            const TARGET_ZOOM = 2.5;  // magnification of what's on screen
+            const MAX_UPSCALE = 1.25; // never show the original's pixels bigger than this
+            const MIN_ZOOM = 1.4;     // below this a zoom isn't worth showing
+            const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+            let media = img && img.dataset.media ? JSON.parse(img.dataset.media) : null;
+            let showingVideo = !img || img.tagName !== 'IMG';
+            let loaded = {};          // original URL → true once decoded
+            let frame = null, lastEvent = null;
+
+            function setActiveThumb(thumb) {
+              document.querySelectorAll('.thumb').forEach((t) => t.classList.remove('active'));
+              thumb.classList.add('active');
+            }
+
+            // Thumbnails: photo (with its fit + zoom data) or video.
+            window.pdpShowImage = function (thumb) {
+              setActiveThumb(thumb);
+              media = JSON.parse(thumb.dataset.media);
+              showingVideo = false;
+              if (video) { video.pause(); video.classList.add('hidden'); }
+              if (img) { img.src = media.src; img.style.objectFit = media.fit; img.classList.remove('hidden'); }
+              if (bg) { bg.src = media.src; bg.classList.toggle('hidden', media.fit !== 'contain'); }
+              zoomOff();
+              refresh();
+            };
+            window.pdpShowVideo = function (thumb, src, poster) {
+              setActiveThumb(thumb);
+              showingVideo = true;
+              zoomOff();
+              if (img) img.classList.add('hidden');
+              if (bg) bg.classList.add('hidden');
+              if (video) {
+                if (video.getAttribute('src') !== src) { video.src = src; video.poster = poster || ''; }
+                video.classList.remove('hidden');
+                video.play().catch(() => {});
+              }
+              refresh();
+            };
+
+            if (!stage || !pane || !img) return;
+
+            // Where the original image sits on screen (stage px), from the banner
+            // box + fit — the same geometry the browser uses for object-fit.
+            function geometry() {
+              const W = stage.clientWidth, H = stage.clientHeight, c = media.crop;
+              let sx, sy, dx, dy;
+              if (media.fit === 'fill') {
+                sx = W / c.width; sy = H / c.height; dx = 0; dy = 0;
+              } else {
+                const s = media.fit === 'contain' ? Math.min(W / c.width, H / c.height) : Math.max(W / c.width, H / c.height);
+                sx = sy = s; dx = (W - c.width * s) / 2; dy = (H - c.height * s) / 2;
+              }
+              // Visible photo area (contain leaves blurred edges, cover overflows the stage).
+              const vis = { x: Math.max(0, dx), y: Math.max(0, dy), r: Math.min(W, dx + c.width * sx), b: Math.min(H, dy + c.height * sy) };
+              const zoom = Math.min(TARGET_ZOOM, MAX_UPSCALE / Math.max(sx, sy));
+              return { sx, sy, ox: dx - c.x * sx, oy: dy - c.y * sy, vis, zoom };
+            }
+
+            function zoomable() {
+              return canHover.matches && !showingVideo && media && media.zoom && media.w > 0 && media.crop && geometry().zoom >= MIN_ZOOM;
+            }
+
+            // Magnifier cursor only when this photo can be zoomed.
+            function refresh() {
+              stage.classList.toggle('can-zoom', !!zoomable());
+            }
+
+            function zoomOff() {
+              pane.classList.remove('is-on');
+              stage.classList.remove('is-zooming');
+            }
+
+            function preload(url, then) {
+              if (loaded[url]) return then();
+              const i = new Image();
+              i.onload = () => { loaded[url] = true; then(); };
+              i.src = url;
+            }
+
+            function render() {
+              frame = null;
+              const e = lastEvent;
+              if (!e || !zoomable()) return zoomOff();
+              const r = stage.getBoundingClientRect();
+              const mx = e.clientX - r.left, my = e.clientY - r.top;
+              const g = geometry();
+              // Off over a contain photo's blurred edges, or over the buttons.
+              if (mx < g.vis.x || mx > g.vis.r || my < g.vis.y || my > g.vis.b || e.target.closest('.pdp-no-zoom')) return zoomOff();
+              if (!loaded[media.zoom]) return preload(media.zoom, () => { if (lastEvent) render(); });
+
+              // The original, scaled by `zoom` around the cursor.
+              const z = g.zoom;
+              pane.style.backgroundImage = 'url("' + media.zoom + '")';
+              pane.style.backgroundSize = (media.w * g.sx * z) + 'px ' + (media.h * g.sy * z) + 'px';
+              pane.style.backgroundPosition = (mx - (mx - g.ox) * z) + 'px ' + (my - (my - g.oy) * z) + 'px';
+              pane.classList.add('is-on');
+              stage.classList.add('is-zooming');
+            }
+
+            stage.addEventListener('mouseenter', () => { refresh(); if (zoomable()) preload(media.zoom, () => {}); });
+            stage.addEventListener('mousemove', (e) => {
+              lastEvent = e;
+              if (!frame) frame = requestAnimationFrame(render); // one update per frame
+            });
+            stage.addEventListener('mouseleave', () => {
+              lastEvent = null;
+              if (frame) { cancelAnimationFrame(frame); frame = null; }
+              zoomOff();
+            });
+            canHover.addEventListener?.('change', () => { zoomOff(); refresh(); });
+            window.addEventListener('resize', refresh);
+            refresh();
+          })();
+        </script>
       </div>
 
       {{-- ── Product Description ── --}}
@@ -78,9 +271,18 @@
           <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <h2 class="text-[15px] font-semibold text-gray-900">Product Description</h2>
         </div>
-        <div class="text-sm text-gray-600 leading-relaxed space-y-3">
-          {!! nl2br(e($listing->description ?? $listing->short_description ?? 'No description provided.')) !!}
-        </div>
+        {{-- "Summary Description of Product" (short_description, sanitized rich text);
+             an older listing with only the legacy long description still shows that. --}}
+        @php
+          $summaryHtml = $listing->summaryHtml();
+        @endphp
+        @if($summaryHtml !== '')
+          <x-rich-text :html="$summaryHtml" class="text-sm text-gray-600" />
+        @elseif(filled($listing->description))
+          <div class="text-sm text-gray-600 leading-relaxed">{!! nl2br(e($listing->description)) !!}</div>
+        @else
+          <p class="text-sm text-gray-400">No description provided.</p>
+        @endif
       </div>
 
       {{-- ── Specifications ── --}}
@@ -371,7 +573,7 @@
     <div class="flex items-center gap-3 p-3 my-4 bg-gray-50 rounded-xl border border-gray-100">
       <div class="w-14 h-14 rounded-lg bg-white overflow-hidden border border-gray-200 shrink-0 flex items-center justify-center">
         @if($images->isNotEmpty())
-          <img src="{{ $images->first()->getUrl() }}" alt="{{ $listing->name }}" class="w-full h-full object-cover">
+          <img src="{{ \App\Models\Listing::mediaUrl($images->first(), 'thumb') }}" alt="{{ $listing->name }}" class="w-full h-full object-cover">
         @else
           <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
         @endif

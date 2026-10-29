@@ -21,9 +21,129 @@ class Listing extends Model implements HasMedia
 {
     use HasFactory, SoftDeletes, InteractsWithMedia;
 
+    /**
+     * gallery       — product images: an uncropped "_original" (≤2000px JPEG)
+     *                 plus cropped WebP conversions (product_banner, card, thumb)
+     * videos        — short product videos (mp4/webm, ≤2 MB), stored as-is
+     * video_posters — a still frame per video (captured in the browser)
+     * Sizes/limits: config/product_media.php. Upload flow: ProductMediaService.
+     */
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('gallery');
+        $this->addMediaCollection('videos')->acceptsMimeTypes(\App\Support\Media\ProductMediaLimits::videoMimeTypes());
+        $this->addMediaCollection('video_posters');
+    }
+
+    /**
+     * Copies of every gallery image (original-image pixel crop boxes in its
+     * custom properties). Generated immediately (nonQueued): a database queue
+     * needs a worker that shared hosting often doesn't run.
+     *
+     *  product_banner — "banner_crop": the product page box the supplier picked
+     *                   (stage-shaped for cover, full width for contain/fill);
+     *                   scaled to 1600 wide (never enlarged). Without one: the
+     *                   largest stage-shaped box, centred.
+     *  card / thumb   — "crop": the 4:3 card box (centred crop without one).
+     */
+    public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
+    {
+        $banner = config('product_media.images.banner');
+        $bannerCrop = $media ? static::bannerCropFor($media) : null;
+
+        $conversion = $this->addMediaConversion('product_banner')
+            ->performOnCollections('gallery')
+            ->nonQueued()
+            ->format('webp')
+            ->quality($banner['quality']);
+        if ($bannerCrop) {
+            $conversion->manualCrop($bannerCrop['width'], $bannerCrop['height'], $bannerCrop['x'], $bannerCrop['y']);
+        }
+        $conversion->fit(\Spatie\Image\Enums\Fit::Max, $banner['width'], $banner['max_height']);
+
+        $crop = $media?->getCustomProperty('crop');
+
+        foreach (config('product_media.images.conversions') as $name => [$width, $height, $quality]) {
+            $conversion = $this->addMediaConversion($name)
+                ->performOnCollections('gallery')
+                ->nonQueued()
+                ->format('webp')
+                ->quality($quality);
+
+            if (is_array($crop) && ($crop['width'] ?? 0) > 0 && ($crop['height'] ?? 0) > 0) {
+                $conversion->manualCrop((int) $crop['width'], (int) $crop['height'], (int) $crop['x'], (int) $crop['y']);
+            }
+
+            $conversion->fit(\Spatie\Image\Enums\Fit::Crop, $width, $height);
+        }
+    }
+
+    /**
+     * The product-banner crop box for an image: the chosen one, or (older
+     * images) the largest stage-shaped box, centred.
+     *
+     * @return array{x:int,y:int,width:int,height:int}|null
+     */
+    public static function bannerCropFor(\Spatie\MediaLibrary\MediaCollections\Models\Media $media): ?array
+    {
+        $crop = $media->getCustomProperty('banner_crop');
+        if (is_array($crop) && ($crop['width'] ?? 0) > 0 && ($crop['height'] ?? 0) > 0) {
+            return array_map('intval', array_intersect_key($crop, array_flip(['x', 'y', 'width', 'height'])));
+        }
+
+        [$width, $height] = static::mediaDimensions($media);
+        if (! $width || ! $height) {
+            return null;
+        }
+        $ratio = (float) config('product_media.images.banner.default_ratio');
+        $cropWidth = (int) min($width, round($height * $ratio));
+        $cropHeight = (int) min($height, round($cropWidth / $ratio));
+
+        return ['x' => intdiv($width - $cropWidth, 2), 'y' => intdiv($height - $cropHeight, 2), 'width' => $cropWidth, 'height' => $cropHeight];
+    }
+
+    /** Stored original's pixel size (custom properties, else read from the file). */
+    public static function mediaDimensions(\Spatie\MediaLibrary\MediaCollections\Models\Media $media): array
+    {
+        $width = (int) $media->getCustomProperty('width', 0);
+        $height = (int) $media->getCustomProperty('height', 0);
+        if ((! $width || ! $height) && is_file($path = $media->getPath()) && ($size = @getimagesize($path))) {
+            [$width, $height] = $size;
+        }
+
+        return [(int) $width, (int) $height];
+    }
+
+    /** How a gallery image fills the product page stage: cover (default), contain or fill. */
+    public static function bannerFitFor(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media): string
+    {
+        $fit = $media?->getCustomProperty('banner_fit');
+
+        return in_array($fit, config('product_media.images.fits'), true) ? $fit : 'cover';
+    }
+
+    /** A gallery image's URL in a given size, falling back to the original until it exists. */
+    public static function mediaUrl(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media, string $conversion): ?string
+    {
+        if (! $media) {
+            return null;
+        }
+
+        return $media->hasGeneratedConversion($conversion) ? $media->getUrl($conversion) : $media->getUrl();
+    }
+
+    /** The cover image: the chosen primary, else the first gallery image. */
+    public function coverMedia(): ?\Spatie\MediaLibrary\MediaCollections\Models\Media
+    {
+        $primary = $this->primaryImage;
+
+        return $primary && $primary->collection_name === 'gallery' ? $primary : $this->getFirstMedia('gallery');
+    }
+
+    /** Card-size cover image URL (product cards/listings). */
+    public function cardImageUrl(): ?string
+    {
+        return static::mediaUrl($this->coverMedia(), 'card');
     }
 
     protected static function booted(): void
@@ -386,6 +506,26 @@ class Listing extends Model implements HasMedia
                 ['name' => ucfirst(str_replace('_', ' ', $value)), 'is_active' => true]
             )->id;
         }
+    }
+
+    /**
+     * "Summary Description of Product" (short_description) as safe HTML for
+     * display: editor HTML is re-sanitized (App\Support\RichText); older
+     * plain-text summaries are escaped with their line breaks kept.
+     */
+    public function summaryHtml(): string
+    {
+        $value = (string) $this->short_description;
+
+        return \App\Support\RichText::isHtml($value)
+            ? \App\Support\RichText::sanitize($value)
+            : nl2br(e(trim($value)));
+    }
+
+    /** The summary as plain text — for snippets, meta tags, RFQ/quotation item text. */
+    public function summaryText(): string
+    {
+        return \App\Support\RichText::toText((string) $this->short_description);
     }
 
     public function isPublished(): bool

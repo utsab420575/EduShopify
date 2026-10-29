@@ -547,43 +547,6 @@
       {{-- CONTACT TAB --}}
       <div id="tab-contact" class="tab-panel" style="display:none;flex-direction:column;gap:16px;">
 
-        {{--
-          Presentational only for now — not wired to a real inquiry
-          submission endpoint in this phase.
-        --}}
-        <div class="sec-card">
-          <h2 class="text-[15px] font-bold text-gray-900 mb-1">Send a Message</h2>
-          <p class="text-sm text-emerald-600 mb-5">Fill in the form and our team will get back to you within 24 hours.</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Full Name</label>
-              <input type="text" placeholder="Your name" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Email Address</label>
-              <input type="email" placeholder="you@school.edu" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Organization</label>
-              <input type="text" placeholder="Your institution" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1.5">Subject</label>
-              <input type="text" placeholder="What is this about?" class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-            </div>
-          </div>
-          <div class="mb-5">
-            <label class="block text-xs font-medium text-gray-700 mb-1.5">Message</label>
-            <textarea rows="4" placeholder="Tell us what you need..." class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"></textarea>
-          </div>
-          <button type="button" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold py-3 rounded-md flex items-center justify-center gap-2 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Send Message
-          </button>
-        </div>
-
         <div class="sec-card">
           <h2 class="text-[15px] font-bold text-gray-900 mb-4">Contact Details</h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">

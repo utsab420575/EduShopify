@@ -2,10 +2,8 @@
 
 @php
     $productUrl      = route('v2.products.show', $listing->slug);
-    $img             = $listing->primaryImage?->getUrl()
-                       ?? ($listing->relationLoaded('media') && $listing->media->isNotEmpty() ? $listing->media->first()?->getUrl() : null)
-                       ?? $listing->getFirstMediaUrl('gallery')
-                       ?: null;
+    // Cover photo's "card" copy (600×450 WebP, cropped 4:3) — falls back to the original.
+    $img             = $listing->cardImageUrl();
     $supplierAccount = $listing->supplierAccount;
     $supplierProfile = $supplierAccount?->supplierProfile;
     $brand           = $listing->brand?->name
@@ -22,8 +20,8 @@
     class="group block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-emerald-200 transition-all duration-200 product-card-fade-up relative flex flex-col h-full"
     @if($animationDelay !== null) style="animation-delay: {{ $animationDelay }}ms" @endif
 >
-    {{-- Image Container --}}
-    <div class="relative h-48 bg-gray-100 overflow-hidden shrink-0">
+    {{-- Image Container — 4:3, the frame the supplier cropped to --}}
+    <div class="relative bg-gray-100 overflow-hidden shrink-0" style="aspect-ratio: 4 / 3;">
         @if($img)
             <img
                 src="{{ $img }}"

@@ -150,7 +150,7 @@
             'quantity' => rtrim(rtrim((string) $i->quantity, '0'), '.'),
             'unit' => $i->unit?->symbol ?? $i->unit?->name ?? $i->custom_unit ?? $i->listing?->unit?->symbol ?? $i->listing?->unit?->name,
             'unit_id' => $i->unit_id,
-            'description' => $i->description ?? $i->listing?->short_description,
+            'description' => $i->description ?? $i->listing?->summaryText(),
             'listing_image_url' => $imageUrl,
             'is_marketplace' => !empty($i->listing_id),
             'is_requirement' => method_exists($i, 'isRequirement') ? $i->isRequirement() : false,

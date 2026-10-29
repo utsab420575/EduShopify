@@ -8,7 +8,7 @@
 {{-- Description Section --}}
 @if($listing->short_description)
     <div class="mb-5 p-4 rounded-lg bg-indigo-50/60 border border-indigo-100">
-        <p class="text-sm font-semibold text-gray-800 leading-relaxed">{{ $listing->short_description }}</p>
+        <x-rich-text :html="$listing->summaryHtml()" class="text-sm text-gray-800" />
     </div>
 @endif
 

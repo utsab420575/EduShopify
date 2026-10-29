@@ -35,7 +35,7 @@
 @if($listing->short_description)
     <div class="mt-4 flex items-start gap-3 p-4 rounded-xl bg-indigo-50/70 border border-indigo-100">
         <i class="fa-solid fa-quote-left text-indigo-300 text-base mt-0.5 flex-shrink-0"></i>
-        <p class="text-sm text-indigo-900 leading-relaxed font-medium">{{ $listing->short_description }}</p>
+        <x-rich-text :html="$listing->summaryHtml()" class="text-sm text-indigo-900 font-medium" />
     </div>
 @endif
 

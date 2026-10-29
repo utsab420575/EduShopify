@@ -1,13 +1,24 @@
 @php
     $isEdit = isset($listing) && $listing !== null;
     $currentStep = request('step') ? (int)request('step') : ($isEdit ? min(max($listing->setup_step, 1), 4) : 1);
-    $mediaList = $isEdit ? $listing->getMedia('gallery')->map(fn ($m) => [
-        'id'         => $m->id,
-        'url'        => $m->getUrl(),
-        'file_name'  => $m->file_name,
-        'size'       => $m->human_readable_size,
-        'is_primary' => $m->id === $listing->primary_image_media_id,
-    ])->values()->toArray() : [];
+    // Images (every size + crop box) and videos — ProductMediaService::payload().
+    $mediaPayload = $isEdit
+        ? app(\App\Services\Catalog\ProductMediaService::class)->payload($listing)
+        : ['media' => [], 'videos' => []];
+    $mediaList = $mediaPayload['media'];
+    // Photo/video counts and video size + file types: admin System Settings (ProductMediaLimits).
+    $mediaLimits = [
+        'cropRatio' => config('product_media.images.crop_ratio'),
+        'bannerRatio' => (float) config('product_media.images.banner.default_ratio'),
+        'coverTolerance' => (float) config('product_media.images.banner.cover_tolerance', 1.2),
+        'stage' => config('product_media.images.stage'),
+        'maxImages' => \App\Support\Media\ProductMediaLimits::maxImages(),
+        'maxVideos' => \App\Support\Media\ProductMediaLimits::maxVideos(),
+        'videoMaxKb' => \App\Support\Media\ProductMediaLimits::videoMaxKb(),
+        'videoMaxLabel' => \App\Support\Media\ProductMediaLimits::videoMaxLabel(),
+        'videoExtensions' => \App\Support\Media\ProductMediaLimits::videoExtensions(),
+        'videoExtensionsLabel' => \App\Support\Media\ProductMediaLimits::videoExtensionsLabel(),
+    ];
 
     $tierPricesList = $isEdit ? $listing->globalTierPrices->map(fn ($t) => [
         'min_quantity' => (float)$t->min_quantity,
@@ -51,6 +62,8 @@
     serviceTypeId: {{ json_encode((string) ($listingTypes->firstWhere('code', 'service')?->id ?? '')) }},
     primaryImageId: {{ json_encode($isEdit ? $listing->primary_image_media_id : null) }},
     mediaItems: {{ json_encode($mediaList) }},
+    videoItems: {{ json_encode($mediaPayload['videos']) }},
+    mediaLimits: {{ json_encode($mediaLimits) }},
     pricingType: {{ json_encode($isEdit ? ($listing->pricing_type_id ?? '') : old('pricing_type_id', '')) }},
     hasTierPricing: {{ json_encode($isEdit ? $listing->globalTierPrices->isNotEmpty() : false) }},
     tierPrices: {{ json_encode($tierPricesList) }},
@@ -195,20 +208,19 @@ class="space-y-6">
                                 </div>
                             </div>
 
+                            {{-- Summary Description of Product → listings.short_description (rich text, no images;
+                                 sanitized server-side by App\Support\RichText). Shown on the public product page. --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Short Summary</label>
-                                <textarea name="short_description" rows="2" placeholder="1-2 sentences highlighting core features and suitability."
-                                          class="focus-accent w-full px-3.5 py-2 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400"
-                                          :class="fieldErrors['short_description'] ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'">{{ $isEdit ? $listing->short_description : old('short_description') }}</textarea>
+                                <label for="listing-summary-editor" class="block text-sm font-medium text-gray-700 mb-1.5">Summary Description of Product</label>
+                                <div class="rounded-lg overflow-hidden border"
+                                     :class="fieldErrors['short_description'] ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'">
+                                    <textarea id="listing-summary-editor" name="short_description"
+                                              class="w-full px-3.5 py-2 text-sm">{{ $isEdit ? $listing->short_description : old('short_description') }}</textarea>
+                                </div>
                                 <p x-show="fieldErrors['short_description']" x-text="fieldErrors['short_description'] ? fieldErrors['short_description'][0] : ''" class="text-xs text-red-600 mt-1 font-semibold"></p>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Technical & Detailed Description</label>
-                                <textarea name="description" rows="4" placeholder="Full technical overview, package contents, usage guidelines..."
-                                          class="focus-accent w-full px-3.5 py-2 border rounded-lg text-sm text-gray-900 placeholder:text-gray-400"
-                                          :class="fieldErrors['description'] ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'">{{ $isEdit ? $listing->description : old('description') }}</textarea>
-                                <p x-show="fieldErrors['description']" x-text="fieldErrors['description'] ? fieldErrors['description'][0] : ''" class="text-xs text-red-600 mt-1 font-semibold"></p>
+                                <p x-show="!fieldErrors['short_description']" class="text-[11px] text-gray-400 mt-1">
+                                    Key features, specifications, package contents and suitability. Headings, lists, tables and links are supported — images are not.
+                                </p>
                             </div>
                         </div>
                     </x-backend.form-card>
@@ -216,50 +228,57 @@ class="space-y-6">
 
                 {{-- Right Column: Media Gallery (4/12) --}}
                 <div class="xl:col-span-4 space-y-6 flex flex-col">
+                    {{-- ── Product Photos: cropped to the store-wide 4:3 frame before upload ── --}}
                     <x-backend.form-card title="Product Photos & Gallery" class="flex flex-col xl:max-h-[70vh]">
-                        <p class="text-xs text-gray-500 mb-3 shrink-0">Upload multiple images (cover photo, side angles, close-ups, packaging). PNG, JPG, WebP up to 10MB each.</p>
+                        <p class="text-xs text-gray-500 mb-3 shrink-0">
+                            Cover photo, side angles, close-ups, packaging. For each photo you choose the part shown full-width on the product page and a 4:3 frame for product cards. JPG, PNG or WebP.
+                        </p>
 
                         {{-- Drag and drop upload box --}}
-                        <div class="border-2 border-dashed border-indigo-200 bg-indigo-50/20 rounded-2xl p-6 text-center hover:border-indigo-400 hover:bg-indigo-50/40 transition-all cursor-pointer relative shrink-0"
+                        <div class="border-2 border-dashed border-indigo-200 bg-indigo-50/20 rounded-2xl p-5 text-center hover:border-indigo-400 hover:bg-indigo-50/40 transition-all cursor-pointer relative shrink-0"
                              :class="(fieldErrors['images'] || fieldErrors['images.0']) ? 'border-red-400 bg-red-50/30' : ''"
                              @dragover.prevent="$el.classList.add('border-indigo-500', 'bg-indigo-50/60')"
                              @dragleave.prevent="$el.classList.remove('border-indigo-500', 'bg-indigo-50/60')"
                              @drop.prevent="$el.classList.remove('border-indigo-500', 'bg-indigo-50/60'); handleFileDrop($event)">
-                            <div class="w-12 h-12 bg-white rounded-full border border-indigo-100 flex items-center justify-center mx-auto mb-2.5 text-indigo-600 shadow-2xs">
+                            <div class="w-11 h-11 bg-white rounded-full border border-indigo-100 flex items-center justify-center mx-auto mb-2 text-indigo-600 shadow-2xs">
                                 <i class="fa-solid fa-images text-lg"></i>
                             </div>
-                            <p class="text-xs font-bold text-gray-800">Drag & drop multiple product images</p>
-                            <p class="text-[11px] text-gray-400 mt-0.5">or click to browse from your device</p>
-                            <input type="file" id="imageInput" name="images[]" multiple accept="image/*" @change="handleFileSelect($event)"
+                            <p class="text-xs font-bold text-gray-800">Drag & drop product photos</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">or click to browse — you'll crop each one</p>
+                            {{-- No name: the cropped, resized copy is sent instead (saveStep1). --}}
+                            <input type="file" id="imageInput" multiple accept="image/jpeg,image/png,image/webp" @change="handleFileSelect($event)"
                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                         </div>
                         <p x-show="fieldErrors['images'] || fieldErrors['images.0']" x-text="fieldErrors['images'] ? fieldErrors['images'][0] : (fieldErrors['images.0'] ? fieldErrors['images.0'][0] : '')" class="text-xs text-red-600 mt-1 font-semibold"></p>
 
-                        {{-- Preview Count and Instructions --}}
                         <div class="flex items-center justify-between text-xs pt-2 shrink-0">
-                            <span class="font-bold text-gray-700" x-text="(mediaItems.length + pendingFiles.length) + ' photo(s) selected'"></span>
-                            <span class="text-[11px] text-gray-400">Click ★ to set main cover photo</span>
+                            <span class="font-bold text-gray-700" x-text="(mediaItems.length + pendingFiles.length) + ' / ' + mediaLimits.maxImages + ' photos'"></span>
+                            <span class="text-[11px] text-gray-400">★ = main cover photo</span>
                         </div>
 
-                        {{-- Image Cards Grid — internally scrollable, independent of the left panel --}}
-                        <div class="mt-2 space-y-2.5 flex-1 min-h-0 overflow-y-auto pr-1">
-                            {{-- Already Uploaded Media --}}
+                        <div class="mt-2 space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
+                            {{-- Saved photos --}}
                             <template x-for="(media, index) in mediaItems" :key="'uploaded_' + media.id">
-                                <div class="flex items-center gap-3 p-2.5 rounded-xl border bg-white shadow-2xs transition-all"
+                                <div class="flex items-center gap-3 p-2 rounded-xl border bg-white shadow-2xs transition-all"
                                      :class="media.is_primary ? 'border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'">
-                                    <img :src="media.url" class="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0">
+                                    <img :src="media.thumb_url || media.url" class="w-16 h-12 rounded-lg object-cover border border-gray-200 shrink-0" alt="">
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs font-medium text-gray-900 truncate" x-text="media.file_name"></p>
                                         <span x-show="media.is_primary" class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 mt-0.5">
                                             <i class="fa-solid fa-star text-amber-500"></i> Main Cover Photo
                                         </span>
+                                        <span x-show="!media.is_primary" class="text-[10px] text-gray-400" x-text="media.size + ' · ' + (media.banner_fit || 'cover')"></span>
                                     </div>
-                                    <div class="flex items-center gap-1">
-                                        <button type="button" x-show="!media.is_primary" @click="setAsCover(media.id)" title="Set as Main Cover"
+                                    <div class="flex items-center gap-0.5">
+                                        <button type="button" @click="openSavedCrop(index)" title="Adjust crop & fit"
+                                                class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-indigo-600 text-xs transition">
+                                            <i class="fa-solid fa-crop-simple"></i>
+                                        </button>
+                                        <button type="button" x-show="!media.is_primary" @click="setAsCover(media.id)" title="Set as main cover"
                                                 class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-indigo-600 text-xs transition">
                                             <i class="fa-regular fa-star"></i>
                                         </button>
-                                        <button type="button" @click="deleteMedia(media.id, index)" title="Delete image"
+                                        <button type="button" @click="deleteMedia(media.id, index)" title="Delete photo"
                                                 class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 text-xs transition">
                                             <i class="fa-regular fa-trash-can"></i>
                                         </button>
@@ -267,19 +286,23 @@ class="space-y-6">
                                 </div>
                             </template>
 
-                            {{-- Pending Local Files (Newly selected before save) --}}
-                            <template x-for="(file, fIdx) in pendingFiles" :key="'pending_' + fIdx">
-                                <div class="flex items-center gap-3 p-2.5 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/20 shadow-2xs">
-                                    <img :src="file.previewUrl" class="w-12 h-12 rounded-lg object-cover border border-indigo-200 shrink-0">
+                            {{-- Cropped, not yet saved --}}
+                            <template x-for="(file, fIdx) in pendingFiles" :key="'pending_' + file.key">
+                                <div class="flex items-center gap-3 p-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/20 shadow-2xs">
+                                    <img :src="file.previewUrl" class="w-16 h-12 rounded-lg object-cover border border-indigo-200 shrink-0" alt="">
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs font-medium text-gray-900 truncate" x-text="file.name"></p>
-                                        <span class="text-[10px] text-gray-400" x-text="file.formattedSize"></span>
+                                        <span class="text-[10px] text-gray-400" x-text="file.formattedSize + ' · ' + file.fit + ' · not saved yet'"></span>
                                         <span x-show="file.isCover" class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 block">
                                             <i class="fa-solid fa-star text-amber-500"></i> Selected as Cover
                                         </span>
                                     </div>
-                                    <div class="flex items-center gap-1">
-                                        <button type="button" @click="setPendingCover(fIdx)" title="Set as Cover"
+                                    <div class="flex items-center gap-0.5">
+                                        <button type="button" @click="openPendingCrop(fIdx)" title="Adjust crop & fit"
+                                                class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-indigo-600 text-xs">
+                                            <i class="fa-solid fa-crop-simple"></i>
+                                        </button>
+                                        <button type="button" @click="setPendingCover(fIdx)" title="Set as cover"
                                                 class="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
                                                 :class="file.isCover ? 'text-amber-500 bg-amber-50' : 'text-gray-400 hover:text-indigo-600'">
                                             <i :class="file.isCover ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
@@ -293,6 +316,174 @@ class="space-y-6">
                             </template>
                         </div>
                     </x-backend.form-card>
+
+                    {{-- ── Product Videos: short clips, ≤ 2 MB each, stored as uploaded ── --}}
+                    @if($mediaLimits['maxVideos'] > 0) {{-- 0 = product videos turned off in System Settings --}}
+                    <x-backend.form-card title="Product Videos">
+                        <p class="text-xs text-gray-500 mb-3">
+                            Short demo clips — <span x-text="mediaLimits.videoExtensionsLabel"></span>, up to <span x-text="mediaLimits.videoMaxLabel"></span> each,
+                            <span x-text="mediaLimits.maxVideos"></span> videos max.
+                        </p>
+
+                        <label class="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-3 text-xs font-semibold text-gray-600 hover:border-indigo-400 hover:text-indigo-600 cursor-pointer transition"
+                               :class="(fieldErrors['videos'] || fieldErrors['videos.0']) ? 'border-red-400 bg-red-50/30' : ''">
+                            <i class="fa-solid fa-video"></i> Add videos
+                            <input type="file" multiple :accept="mediaLimits.videoExtensions.map(e => '.' + e).join(',')" class="sr-only" @change="handleVideoSelect($event)">
+                        </label>
+                        <p x-show="fieldErrors['videos'] || fieldErrors['videos.0']" x-text="fieldErrors['videos'] ? fieldErrors['videos'][0] : (fieldErrors['videos.0'] ? fieldErrors['videos.0'][0] : '')" class="text-xs text-red-600 mt-1 font-semibold"></p>
+
+                        <div class="mt-3 space-y-2" x-show="videoItems.length + pendingVideos.length > 0">
+                            <template x-for="(video, vIdx) in videoItems" :key="'video_' + video.id">
+                                <div class="flex items-center gap-3 p-2 rounded-xl border border-gray-200 bg-white">
+                                    <div class="relative w-16 h-12 rounded-lg overflow-hidden bg-gray-900 shrink-0 flex items-center justify-center">
+                                        <img x-show="video.poster_url" :src="video.poster_url" class="absolute inset-0 w-full h-full object-cover opacity-90" alt="">
+                                        <i class="fa-solid fa-play relative text-white text-[11px]"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-medium text-gray-900 truncate" x-text="video.file_name"></p>
+                                        <span class="text-[10px] text-gray-400" x-text="video.size"></span>
+                                    </div>
+                                    <a :href="video.url" target="_blank" rel="noopener" title="Play"
+                                       class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-indigo-600 text-xs"><i class="fa-solid fa-up-right-from-square"></i></a>
+                                    <button type="button" @click="deleteVideo(video.id, vIdx)" title="Delete video"
+                                            class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 text-xs">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-for="(video, pvIdx) in pendingVideos" :key="'pvideo_' + video.key">
+                                <div class="flex items-center gap-3 p-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/20">
+                                    <div class="relative w-16 h-12 rounded-lg overflow-hidden bg-gray-900 shrink-0 flex items-center justify-center">
+                                        <img x-show="video.posterUrl" :src="video.posterUrl" class="absolute inset-0 w-full h-full object-cover opacity-90" alt="">
+                                        <i class="fa-solid fa-play relative text-white text-[11px]"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-medium text-gray-900 truncate" x-text="video.name"></p>
+                                        <span class="text-[10px] text-gray-400" x-text="video.formattedSize + ' · not saved yet'"></span>
+                                    </div>
+                                    <button type="button" @click="removePendingVideo(pvIdx)" title="Remove"
+                                            class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 text-xs">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </x-backend.form-card>
+                    @endif
+
+                    {{-- ── Photo dialog (Cropper.js), two steps — new, unsaved and saved photos:
+                         1. Product page: full image width, drag the top/bottom edge to pick the
+                            height, choose how it fills the page (cover/contain/fill) + previews.
+                         2. Card: the 4:3 frame used in product cards and thumbnails. ── --}}
+                    <template x-teleport="body">
+                        <div x-show="crop.open" x-cloak x-transition.opacity class="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center sm:p-4"
+                             @keydown.escape.window="crop.open && cancelCrop()">
+                            <div class="bg-white w-full h-full sm:h-auto sm:max-h-[94vh] sm:max-w-4xl sm:rounded-2xl flex flex-col overflow-hidden">
+                                <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900" x-text="crop.step === 'banner' ? 'Product page photo' : 'Card photo (4:3)'"></p>
+                                        <p class="text-xs text-gray-400 mt-0.5 truncate">
+                                            <span x-text="crop.fileName"></span>
+                                            <span x-show="crop.queueTotal > 1" x-text="' · ' + crop.queueIndex + ' of ' + crop.queueTotal"></span>
+                                        </p>
+                                    </div>
+                                    {{-- Step indicator --}}
+                                    <div class="hidden sm:flex items-center gap-2 text-[11px] font-semibold ml-auto mr-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                                              :class="crop.step === 'banner' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700'">
+                                            <i class="fa-solid" :class="crop.step === 'banner' ? 'fa-1' : 'fa-check'"></i> Product page
+                                        </span>
+                                        <i class="fa-solid fa-chevron-right text-gray-300 text-[9px]"></i>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                                              :class="crop.step === 'card' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'">
+                                            <i class="fa-solid fa-2"></i> Card
+                                        </span>
+                                    </div>
+                                    <button type="button" @click="cancelCrop()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+                                </div>
+
+                                <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4">
+                                    <div class="product-cropper w-full bg-gray-900 rounded-lg overflow-hidden" :class="crop.step === 'banner' && crop.fit !== 'cover' ? 'vertical-only-crop' : ''" style="height:min(46vh,380px)">
+                                        <div x-show="crop.loading" class="w-full h-full flex items-center justify-center text-gray-300 text-sm">
+                                            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Preparing photo…
+                                        </div>
+                                        <img id="product-crop-image" :src="crop.src" x-show="!crop.loading" style="display:block;max-width:100%;" alt="">
+                                    </div>
+                                    <div class="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
+                                        <span x-show="crop.step === 'banner' && crop.fit === 'cover'"><i class="fa-solid fa-up-down-left-right mr-1"></i> The frame has the product page's shape — move or resize it; exactly this part shows on the product page (desktop).</span>
+                                        <span x-show="crop.step === 'banner' && crop.fit !== 'cover'"><i class="fa-solid fa-arrows-up-down mr-1"></i> The full width is used — drag the top or bottom edge (or the box) to choose how much height shows.</span>
+                                        <span x-show="crop.step === 'card' && crop.skippedBanner" class="text-emerald-600"><i class="fa-solid fa-circle-check mr-1"></i> This photo already fits the product page — use Back to change it.</span>
+                                        <span x-show="crop.step === 'card' && !crop.skippedBanner"><i class="fa-solid fa-crop-simple mr-1"></i> Drag to move · scroll or pinch to zoom · this 4:3 frame is used in product cards and thumbnails.</span>
+                                        <button type="button" @click="resetCrop()" class="ml-auto font-medium text-gray-600 hover:text-gray-900 shrink-0">Reset</button>
+                                    </div>
+
+                                    {{-- Step 1: fit + how it looks on the product page --}}
+                                    <div x-show="crop.step === 'banner'" class="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                                        <div class="lg:col-span-4">
+                                            <p class="text-xs font-semibold text-gray-700 mb-2">How it fills the product page</p>
+                                            <div class="space-y-2">
+                                                <template x-for="opt in fitOptions" :key="opt.v">
+                                                    <button type="button" @click="setFit(opt.v)"
+                                                            class="w-full flex items-start gap-2.5 p-2.5 rounded-xl border text-left transition"
+                                                            :class="crop.fit === opt.v ? 'border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'">
+                                                        <span class="w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0"
+                                                              :class="crop.fit === opt.v ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'">
+                                                            <i class="fa-solid" :class="opt.icon"></i>
+                                                        </span>
+                                                        <span class="min-w-0">
+                                                            <span class="block text-xs font-semibold text-gray-900">
+                                                                <span x-text="opt.t"></span>
+                                                                <span x-show="opt.v === 'cover'" class="ml-1 text-[10px] font-medium text-gray-400">default</span>
+                                                            </span>
+                                                            <span class="block text-[11px] text-gray-500 leading-snug" x-text="opt.d"></span>
+                                                        </span>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <div class="lg:col-span-8">
+                                            <p class="text-xs font-semibold text-gray-700 mb-2">Preview on the product page</p>
+                                            <div class="flex flex-col sm:flex-row items-start gap-3">
+                                                <div class="flex-1 w-full min-w-0">
+                                                    <p class="text-[10px] uppercase tracking-wide text-gray-400 mb-1"><i class="fa-solid fa-desktop mr-1"></i> Desktop</p>
+                                                    <div class="relative w-full rounded-lg overflow-hidden bg-gray-100 border border-gray-200"
+                                                         :style="'aspect-ratio:' + mediaLimits.stage.desktop.width + ' / ' + mediaLimits.stage.desktop.height">
+                                                        <img x-show="crop.bannerPreview && crop.fit === 'contain'" :src="crop.bannerPreview" class="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60" alt="">
+                                                        <img x-show="crop.bannerPreview" :src="crop.bannerPreview" class="absolute inset-0 w-full h-full" :style="'object-fit:' + crop.fit" alt="">
+                                                    </div>
+                                                </div>
+                                                <div class="shrink-0" style="width:130px">
+                                                    <p class="text-[10px] uppercase tracking-wide text-gray-400 mb-1"><i class="fa-solid fa-mobile-screen mr-1"></i> Mobile</p>
+                                                    <div class="relative w-full rounded-lg overflow-hidden bg-gray-100 border border-gray-200"
+                                                         :style="'aspect-ratio:' + mediaLimits.stage.mobile.width + ' / ' + mediaLimits.stage.mobile.height">
+                                                        <img x-show="crop.bannerPreview && crop.fit === 'contain'" :src="crop.bannerPreview" class="absolute inset-0 w-full h-full object-cover scale-110 blur-lg opacity-60" alt="">
+                                                        <img x-show="crop.bannerPreview" :src="crop.bannerPreview" class="absolute inset-0 w-full h-full" :style="'object-fit:' + crop.fit" alt="">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 shrink-0">
+                                    <button type="button" x-show="crop.step === 'card'" @click="backToBanner()" class="mr-auto text-sm font-medium px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
+                                        <i class="fa-solid fa-arrow-left mr-1"></i> Back
+                                    </button>
+                                    <button type="button" @click="cancelCrop()" class="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                                            x-text="crop.mode === 'new' ? 'Skip photo' : 'Cancel'"></button>
+                                    <button type="button" x-show="crop.step === 'banner'" @click="toCardStep()" :disabled="crop.loading"
+                                            class="inline-flex items-center gap-1.5 text-sm font-medium px-5 py-2 rounded-lg text-white disabled:opacity-60" style="background:var(--theme-primary)">
+                                        Next: card photo <i class="fa-solid fa-arrow-right"></i>
+                                    </button>
+                                    <button type="button" x-show="crop.step === 'card'" @click="confirmCrop()" :disabled="crop.loading || crop.saving"
+                                            class="inline-flex items-center gap-1.5 text-sm font-medium px-5 py-2 rounded-lg text-white disabled:opacity-60" style="background:var(--theme-primary)">
+                                        <i class="fa-solid" :class="crop.saving ? 'fa-spinner fa-spin' : 'fa-check'"></i>
+                                        <span x-text="crop.mode === 'new' && crop.queueIndex < crop.queueTotal ? 'Save & next photo' : 'Save photo'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -1486,6 +1677,8 @@ function productListingWizard(config) {
         wasServiceOnLoad: (config.isEdit && config.listingType == config.serviceTypeId) || false,
         primaryImageId: config.primaryImageId || null,
         mediaItems: config.mediaItems || [],
+        videoItems: config.videoItems || [],
+        mediaLimits: config.mediaLimits || { cropRatio: [4, 3], bannerRatio: 2.11, coverTolerance: 1.2, stage: { desktop: { width: 845, height: 400 }, mobile: { width: 375, height: 260 } }, maxImages: 15, maxVideos: 5, videoMaxKb: 2048, videoMaxLabel: '2 MB', videoExtensions: ['mp4', 'webm'], videoExtensionsLabel: 'MP4, WebM' },
         pricingType: config.pricingType || '',
         hasTierPricing: config.hasTierPricing || false,
         tierPrices: config.tierPrices || [],
@@ -2152,10 +2345,26 @@ function productListingWizard(config) {
             this.variantPage = Math.min(this.variantPage, this.totalVariantPages);
         },
 
+        // ── Product photos: every photo goes through the two-step photo dialog ──
+        // 1. product page box ("banner": full width, chosen height) + fit,
+        // 2. 4:3 card box ("card"). pendingFiles: not yet saved ({file: shrunk
+        // JPEG, bannerCrop, crop, fit, sourceUrl for re-cropping}). Saved
+        // photos re-crop on the server.
         pendingFiles: [],
+        pendingVideos: [],
+        cropQueue: [],
+        cropper: null,
+        mediaKeySeq: 0,
+        crop: { open: false, loading: false, saving: false, src: null, mode: 'new', step: 'banner', fileName: '', target: null, banner: null, card: null, fit: 'cover', autoFit: false, skipIfFits: false, skippedBanner: false, bannerPreview: null, queueIndex: 0, queueTotal: 0 },
+        fitOptions: [
+            { v: 'cover', icon: 'fa-expand', t: 'Cover', d: 'Fills the whole area — you choose exactly which part shows.' },
+            { v: 'contain', icon: 'fa-compress', t: 'Contain', d: 'The whole photo stays visible, on a soft blurred background.' },
+            { v: 'fill', icon: 'fa-arrows-left-right', t: 'Fill', d: 'Stretched to the exact area — may distort the photo.' },
+        ],
 
         handleFileSelect(event) {
             this.processFiles(event.target.files);
+            event.target.value = '';
         },
 
         handleFileDrop(event) {
@@ -2164,18 +2373,295 @@ function productListingWizard(config) {
 
         processFiles(fileList) {
             if (!fileList || fileList.length === 0) return;
-            for (let i = 0; i < fileList.length; i++) {
-                const f = fileList[i];
-                if (!f.type.startsWith('image/')) continue;
-                const isFirst = this.mediaItems.length === 0 && this.pendingFiles.length === 0;
-                this.pendingFiles.push({
-                    file: f,
-                    name: f.name,
-                    formattedSize: (f.size / (1024 * 1024)).toFixed(2) + ' MB',
-                    previewUrl: URL.createObjectURL(f),
-                    isCover: isFirst
-                });
+            const images = Array.from(fileList).filter(f => ['image/jpeg', 'image/png', 'image/webp'].includes(f.type));
+            const room = this.mediaLimits.maxImages - this.mediaItems.length - this.pendingFiles.length;
+            if (room <= 0) {
+                this.mediaNotice('Photo limit reached', 'A product can have at most ' + this.mediaLimits.maxImages + ' photos.');
+                return;
             }
+            if (images.length > room) {
+                this.mediaNotice('Some photos were skipped', 'Only ' + room + ' more photo(s) can be added (limit ' + this.mediaLimits.maxImages + ').');
+            }
+            this.cropQueue = images.slice(0, room);
+            this.crop.queueTotal = this.cropQueue.length;
+            this.crop.queueIndex = 0;
+            this.nextQueuedCrop();
+        },
+
+        // Shrink the next picked photo in the browser (≤2400px JPEG), then crop it.
+        async nextQueuedCrop() {
+            const file = this.cropQueue.shift();
+            if (!file) { this.closeCrop(); return; }
+
+            this.crop.queueIndex++;
+            Object.assign(this.crop, { mode: 'new', fileName: file.name, target: null, banner: null, card: null, fit: 'cover', autoFit: true, skipIfFits: true, skippedBanner: false, bannerPreview: null, open: true, loading: true });
+            try {
+                const blob = await productShrinkImage(file);
+                const baseName = file.name.replace(/\.[^.]+$/, '');
+                this.crop.target = {
+                    file: new File([blob], baseName + '.jpg', { type: 'image/jpeg' }),
+                    sourceUrl: URL.createObjectURL(blob),
+                    originalName: file.name,
+                };
+                this.startCropper(this.crop.target.sourceUrl);
+            } catch (e) {
+                this.mediaNotice('Photo could not be opened', file.name + ' is not a supported image.');
+                this.nextQueuedCrop();
+            }
+        },
+
+        openPendingCrop(index) {
+            const p = this.pendingFiles[index];
+            Object.assign(this.crop, { mode: 'pending', fileName: p.name, target: index, banner: p.bannerCrop, card: p.crop, fit: p.fit || 'cover', autoFit: false, skipIfFits: false, skippedBanner: false, queueIndex: 0, queueTotal: 0, open: true });
+            this.startCropper(p.sourceUrl);
+        },
+
+        openSavedCrop(index) {
+            const m = this.mediaItems[index];
+            Object.assign(this.crop, { mode: 'saved', fileName: m.file_name, target: index, banner: m.banner_crop, card: m.crop, fit: m.banner_fit || 'cover', autoFit: false, skipIfFits: false, skippedBanner: false, queueIndex: 0, queueTotal: 0, open: true });
+            this.startCropper(m.original_url);
+        },
+
+        startCropper(src) {
+            this.crop.loading = false;
+            this.crop.bannerPreview = null;
+            this.crop.src = src;
+            this.startBannerStep();
+        },
+
+        // (Re)creates the Cropper on the dialog image with the given options.
+        mountCropper(options) {
+            this.$nextTick(() => {
+                const img = document.getElementById('product-crop-image');
+                if (this.cropper) this.cropper.destroy();
+                this.cropper = new Cropper(img, Object.assign({
+                    viewMode: 1,
+                    autoCropArea: 1,
+                    background: true,
+                    guides: true,
+                    center: true,
+                    responsive: true,
+                    checkOrientation: false,
+                    toggleDragModeOnDblclick: false,
+                }, options));
+            });
+        },
+
+        // Step 1 — the product page box.
+        //  cover:        stage-shaped box (what's selected is exactly what the
+        //                desktop page shows), moved/resized anywhere.
+        //  contain/fill: full image width (side handles hidden, x/width forced
+        //                back), only the top/bottom edges and position move.
+        // A new photo first gets its default fit from its shape (autoFit), and
+        // skips straight to the card step when it already has the stage's shape.
+        startBannerStep() {
+            this.crop.step = 'banner';
+            const cover = this.crop.fit === 'cover';
+            let fixing = false;
+            this.mountCropper({
+                aspectRatio: cover ? this.mediaLimits.bannerRatio : NaN,
+                dragMode: 'none',
+                zoomable: false,
+                movable: false,
+                scalable: false,
+                rotatable: false,
+                ready: () => {
+                    const { naturalWidth: w, naturalHeight: h } = this.cropper.getImageData();
+                    if (this.crop.autoFit) {
+                        this.crop.autoFit = false;
+                        const fit = this.defaultFitFor(w, h);
+                        if (fit !== this.crop.fit) { this.crop.fit = fit; this.startBannerStep(); return; }
+                    }
+                    this.cropper.setData(this.bannerBoxFor(this.crop.banner));
+                    this.queueBannerPreview();
+                    if (this.crop.skipIfFits) {
+                        this.crop.skipIfFits = false;
+                        if (cover && Math.abs((w / h) / this.mediaLimits.bannerRatio - 1) < 0.05) {
+                            this.crop.skippedBanner = true;
+                            this.toCardStep();
+                        }
+                    }
+                },
+                crop: (e) => {
+                    if (!this.cropper || fixing) return;
+                    if (!cover) {
+                        const width = this.cropper.getImageData().naturalWidth;
+                        if (width && (Math.round(e.detail.x) !== 0 || Math.abs(e.detail.width - width) > 1)) {
+                            fixing = true;
+                            this.cropper.setData({ x: 0, width });
+                            fixing = false;
+                        }
+                    }
+                    this.queueBannerPreview();
+                },
+            });
+        },
+
+        // Cover when the photo's shape is close to the product page area's,
+        // otherwise contain (panoramas / tall photos: nothing gets cut off).
+        defaultFitFor(w, h) {
+            const r = (w / h) / this.mediaLimits.bannerRatio;
+            const t = this.mediaLimits.coverTolerance || 1.2;
+            return r >= 1 / t && r <= t ? 'cover' : 'contain';
+        },
+
+        // Switch fit; the box keeps its centre and takes the new mode's shape.
+        setFit(fit) {
+            if (fit === this.crop.fit) return;
+            if (this.cropper) this.crop.banner = this.cropper.getData(true);
+            this.crop.fit = fit;
+            this.startBannerStep();
+        },
+
+        // A box (or none → default) in the current fit's shape, inside the photo.
+        bannerBoxFor(box) {
+            const { naturalWidth: w, naturalHeight: h } = this.cropper.getImageData();
+            const R = this.mediaLimits.bannerRatio;
+            const cx = box ? box.x + box.width / 2 : w / 2;
+            const cy = box ? box.y + box.height / 2 : h / 2;
+            const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+            if (this.crop.fit !== 'cover') {
+                // Full width; keep the chosen height (default: stage-shaped, capped by the photo).
+                const height = box ? Math.min(h, box.height) : Math.min(h, w / R);
+                return { x: 0, y: clamp(cy - height / 2, 0, h - height), width: w, height };
+            }
+            // Stage-shaped; keep the chosen size when it already has the shape, else the largest.
+            let width = Math.min(w, h * R);
+            if (box && Math.abs((box.width / box.height) / R - 1) < 0.02) width = Math.min(width, box.width);
+            const height = width / R;
+            return { x: clamp(cx - width / 2, 0, w - width), y: clamp(cy - height / 2, 0, h - height), width, height };
+        },
+
+        // Live preview image of the chosen part (throttled to one per frame).
+        queueBannerPreview() {
+            if (this._previewFrame) return;
+            this._previewFrame = requestAnimationFrame(() => {
+                this._previewFrame = null;
+                if (!this.cropper || this.crop.step !== 'banner') return;
+                const canvas = this.cropper.getCroppedCanvas({ width: 800, imageSmoothingQuality: 'high' });
+                if (canvas) this.crop.bannerPreview = canvas.toDataURL('image/jpeg', 0.8);
+            });
+        },
+
+        // Step 2 — 4:3 card box. Starts as 90% of the largest 4:3 frame,
+        // centred on the product page box.
+        toCardStep() {
+            if (!this.cropper) return;
+            const d = this.cropper.getData(true);
+            this.crop.banner = { x: d.x, y: d.y, width: d.width, height: d.height };
+            this.crop.step = 'card';
+            const [rw, rh] = this.mediaLimits.cropRatio;
+            this.mountCropper({
+                aspectRatio: rw / rh,
+                dragMode: 'move',
+                ready: () => this.cropper.setData(this.crop.card || this.cardDefault()),
+            });
+        },
+
+        cardDefault() {
+            const [rw, rh] = this.mediaLimits.cropRatio;
+            const { naturalWidth: w, naturalHeight: h } = this.cropper.getImageData();
+            // 90% of the largest 4:3 frame, so the dimmed edge shows it's a movable frame.
+            const height = Math.min(h, w * rh / rw) * 0.9;
+            const width = height * rw / rh;
+            const b = this.crop.banner || { x: 0, y: 0, width: w, height: h };
+            const x = Math.max(0, Math.min(w - width, b.x + b.width / 2 - width / 2));
+            const y = Math.max(0, Math.min(h - height, b.y + b.height / 2 - height / 2));
+            return { x, y, width, height };
+        },
+
+        backToBanner() {
+            if (this.cropper) this.crop.card = this.cropper.getData(true);
+            this.crop.skippedBanner = false;
+            this.startBannerStep();
+        },
+
+        resetCrop() {
+            if (!this.cropper) return;
+            if (this.crop.step === 'banner') {
+                this.cropper.setData(this.bannerBoxFor(null));
+            } else {
+                this.cropper.reset();
+                this.cropper.setData(this.cardDefault());
+            }
+        },
+
+        async confirmCrop() {
+            if (!this.cropper) return;
+            const d = this.cropper.getData(true);
+            const card = { x: d.x, y: d.y, width: d.width, height: d.height };
+            const banner = this.crop.banner;
+            const fit = this.crop.fit;
+
+            if (this.crop.mode === 'saved') {
+                await this.saveRecrop(this.crop.target, { card, banner: { x: banner.x, y: banner.y, width: banner.width, height: banner.height }, fit });
+                return;
+            }
+
+            const canvas = this.cropper.getCroppedCanvas({ width: 320, imageSmoothingQuality: 'high' });
+            const preview = canvas ? canvas.toDataURL('image/jpeg', 0.8) : null;
+
+            if (this.crop.mode === 'pending') {
+                const p = this.pendingFiles[this.crop.target];
+                Object.assign(p, { crop: card, bannerCrop: banner, fit, previewUrl: preview || p.previewUrl });
+                this.closeCrop();
+                return;
+            }
+
+            const t = this.crop.target;
+            const isFirst = this.mediaItems.length === 0 && this.pendingFiles.length === 0;
+            this.pendingFiles.push({
+                key: ++this.mediaKeySeq,
+                file: t.file,
+                name: t.originalName,
+                formattedSize: (t.file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                previewUrl: preview || t.sourceUrl,
+                sourceUrl: t.sourceUrl,
+                crop: card,
+                bannerCrop: banner,
+                fit,
+                isCover: isFirst,
+            });
+            this.nextQueuedCrop();
+        },
+
+        // Saved photo: send the new boxes + fit; the server regenerates its copies.
+        async saveRecrop(index, payload) {
+            const media = this.mediaItems[index];
+            this.crop.saving = true;
+            try {
+                const res = await fetch('{{ supplier_route('catalog.listings.index') }}/' + this.listingId + '/media/' + media.id + '/crop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'Could not save the crop.');
+                this.mediaItems.splice(index, 1, data.media);
+                this.rebuildMediaIndex();
+                this.closeCrop();
+            } catch (e) {
+                this.mediaNotice('Crop not saved', e.message);
+            } finally {
+                this.crop.saving = false;
+            }
+        },
+
+        // "Skip photo" on a new one moves on to the next; otherwise just close.
+        cancelCrop() {
+            if (this.crop.mode === 'new') {
+                if (this.crop.target?.sourceUrl) URL.revokeObjectURL(this.crop.target.sourceUrl);
+                this.nextQueuedCrop();
+                return;
+            }
+            this.closeCrop();
+        },
+
+        closeCrop() {
+            if (this.cropper) { this.cropper.destroy(); this.cropper = null; }
+            this.cropQueue = [];
+            Object.assign(this.crop, { open: false, loading: false, saving: false, src: null, step: 'banner', target: null, banner: null, card: null, fit: 'cover', autoFit: false, skipIfFits: false, skippedBanner: false, bannerPreview: null, queueIndex: 0, queueTotal: 0 });
         },
 
         setPendingCover(index) {
@@ -2184,9 +2670,60 @@ function productListingWizard(config) {
         },
 
         removePendingFile(index) {
-            this.pendingFiles.splice(index, 1);
+            const [removed] = this.pendingFiles.splice(index, 1);
+            if (removed?.sourceUrl) URL.revokeObjectURL(removed.sourceUrl);
             if (this.pendingFiles.length > 0 && !this.pendingFiles.some(f => f.isCover) && this.mediaItems.length === 0) {
                 this.pendingFiles[0].isCover = true;
+            }
+        },
+
+        // ── Product videos: ≤ videoMaxKb each, poster frame captured in the browser ──
+        handleVideoSelect(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            const maxBytes = this.mediaLimits.videoMaxKb * 1024;
+            let room = this.mediaLimits.maxVideos - this.videoItems.length - this.pendingVideos.length;
+
+            for (const f of files) {
+                const ext = (f.name.split('.').pop() || '').toLowerCase();
+                if (!this.mediaLimits.videoExtensions.includes(ext)) {
+                    this.mediaNotice('Unsupported video', f.name + ' — allowed file types: ' + this.mediaLimits.videoExtensionsLabel + '.');
+                    continue;
+                }
+                if (f.size > maxBytes) {
+                    this.mediaNotice('Video too large', f.name + ' is ' + (f.size / 1048576).toFixed(1) + ' MB — the limit is ' + this.mediaLimits.videoMaxLabel + ' per video.');
+                    continue;
+                }
+                if (room <= 0) {
+                    this.mediaNotice('Video limit reached', 'A product can have at most ' + this.mediaLimits.maxVideos + ' videos.');
+                    break;
+                }
+                room--;
+                const key = ++this.mediaKeySeq;
+                this.pendingVideos.push({ key, file: f, name: f.name, formattedSize: (f.size / 1048576).toFixed(2) + ' MB', posterBlob: null, posterUrl: null });
+                productVideoPoster(f).then((blob) => {
+                    const item = this.pendingVideos.find(v => v.key === key);
+                    if (blob && item) { item.posterBlob = blob; item.posterUrl = URL.createObjectURL(blob); }
+                });
+            }
+        },
+
+        removePendingVideo(index) {
+            this.pendingVideos.splice(index, 1);
+        },
+
+        async deleteVideo(mediaId, index) {
+            if (!confirm('Remove this video from the listing?')) return;
+            if (await this.deleteMediaRequest(mediaId)) {
+                this.videoItems.splice(index, 1);
+            }
+        },
+
+        mediaNotice(title, text) {
+            if (window.Swal) {
+                Swal.fire({ icon: 'warning', title: title, text: text, confirmButtonColor: '#4f46e5' });
+            } else {
+                alert(title + '\n' + text);
             }
         },
 
@@ -2218,19 +2755,30 @@ function productListingWizard(config) {
 
         async deleteMedia(mediaId, index) {
             if (!confirm('Remove this image from listing?')) return;
-            try {
-                const deleteUrl = '{{ url('supplier/catalog/listings') }}/' + this.listingId + '/media/' + mediaId;
-                const res = await fetch(deleteUrl, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    }
-                });
+            if (await this.deleteMediaRequest(mediaId)) {
                 this.mediaItems.splice(index, 1);
                 this.rebuildMediaIndex();
+            }
+        },
+
+        // DELETE one image/video; true once the server confirmed. A deleted
+        // cover makes the server pick the next photo — mirror that here.
+        async deleteMediaRequest(mediaId) {
+            try {
+                const res = await fetch('{{ supplier_route('catalog.listings.index') }}/' + this.listingId + '/media/' + mediaId, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) throw new Error(data.message || 'Could not delete.');
+                if ('primary_image_media_id' in data) {
+                    this.primaryImageId = data.primary_image_media_id;
+                    this.mediaItems.forEach(m => m.is_primary = (m.id === data.primary_image_media_id));
+                }
+                return true;
             } catch (err) {
-                console.error(err);
+                this.mediaNotice('Not deleted', err.message);
+                return false;
             }
         },
 
@@ -2268,21 +2816,28 @@ function productListingWizard(config) {
 
         async saveStep1(isDraftOnly = false) {
             const form = document.getElementById('step1Form');
+            listingSummaryEditorSync(); // copy the Summernote HTML into its textarea first
             const formData = new FormData(form);
             if (this.listingId) {
                 formData.append('listing_id', this.listingId);
             }
 
-            // Append all locally added pending files
-            if (this.pendingFiles.length > 0) {
-                formData.delete('images[]');
-                this.pendingFiles.forEach((item, idx) => {
-                    formData.append('images[]', item.file);
-                    if (item.isCover) {
-                        formData.append('cover_image_index', idx);
-                    }
-                });
-            }
+            // Cropped photos (+ their crop boxes) and videos (+ poster frames),
+            // with explicit indexes so each box/poster stays with its file.
+            formData.delete('images[]');
+            this.pendingFiles.forEach((item, idx) => {
+                formData.append('images[' + idx + ']', item.file, item.file.name);
+                formData.append('image_crops[' + idx + ']', JSON.stringify(item.crop));
+                formData.append('image_banner_crops[' + idx + ']', JSON.stringify(item.bannerCrop));
+                formData.append('image_fits[' + idx + ']', item.fit);
+                if (item.isCover) formData.append('cover_image_index', idx);
+            });
+            this.pendingVideos.forEach((video, idx) => {
+                formData.append('videos[' + idx + ']', video.file, video.name);
+                if (video.posterBlob) {
+                    formData.append('video_posters[' + idx + ']', new File([video.posterBlob], 'poster.jpg', { type: 'image/jpeg' }));
+                }
+            });
 
             this.isSaving = true;
             this.errorMessage = '';
@@ -2311,13 +2866,15 @@ function productListingWizard(config) {
                 this.isEdit = true;
                 this.maxCompletedStep = Math.max(this.maxCompletedStep, 2);
                 this.mediaItems = data.media || [];
+                this.videoItems = data.videos || [];
                 this.rebuildMediaIndex();
                 this.pendingFiles = [];
+                this.pendingVideos = [];
                 this.lastSavedTime = data.last_autosaved_at || 'Just now';
-                this.step2Url = '{{ url('supplier/catalog/listings') }}/' + data.listing_id + '/wizard/step-2';
-                this.step3Url = '{{ url('supplier/catalog/listings') }}/' + data.listing_id + '/wizard/step-3';
-                this.step4Url = '{{ url('supplier/catalog/listings') }}/' + data.listing_id + '/wizard/step-4';
-                this.setCoverUrl = '{{ url('supplier/catalog/listings') }}/' + data.listing_id + '/media/primary';
+                this.step2Url = '{{ supplier_route('catalog.listings.index') }}/' + data.listing_id + '/wizard/step-2';
+                this.step3Url = '{{ supplier_route('catalog.listings.index') }}/' + data.listing_id + '/wizard/step-3';
+                this.step4Url = '{{ supplier_route('catalog.listings.index') }}/' + data.listing_id + '/wizard/step-4';
+                this.setCoverUrl = '{{ supplier_route('catalog.listings.index') }}/' + data.listing_id + '/media/primary';
 
                 if (!isDraftOnly) {
                     this.currentStep = 2;
@@ -2525,7 +3082,7 @@ function productListingWizard(config) {
             this.isLoadingPreview = true;
             this.previewHtml = '';
             try {
-                const previewUrl = '{{ url('supplier/catalog/listings') }}/' + this.listingId + '/preview';
+                const previewUrl = '{{ supplier_route('catalog.listings.index') }}/' + this.listingId + '/preview';
                 const res = await fetch(previewUrl, { headers: { 'Accept': 'application/json' } });
                 const data = await res.json();
                 this.previewHtml = data.success ? data.html : '<p class="text-xs text-red-600 text-center py-8">Could not load the preview.</p>';
@@ -2610,3 +3167,174 @@ function productListingWizard(config) {
     };
 }
 </script>
+
+{{-- ── Summary Description of Product: Summernote rich-text editor (no images) ── --}}
+@push('styles')
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css">
+    <style>
+        /* Inside the bordered wrapper — drop the editor's own frame. */
+        #step1Form .note-editor.note-frame { border: 0; margin: 0; }
+        #step1Form .note-editable ul { list-style: disc; padding-left: 1.5rem; }
+        #step1Form .note-editable ol { list-style: decimal; padding-left: 1.5rem; }
+        #step1Form .note-editable h2 { font-size: 1.25rem; font-weight: 700; }
+        #step1Form .note-editable h3 { font-size: 1.1rem; font-weight: 700; }
+        #step1Form .note-editable h4 { font-size: 1rem; font-weight: 600; }
+        #step1Form .note-editable table td, #step1Form .note-editable table th { border: 1px solid #e5e7eb; padding: 4px 8px; }
+    </style>
+@endpush
+@push('scripts')
+    <script>window.jQuery || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"><\/script>')</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.js"></script>
+    <script>
+        // Images are not allowed in the summary: no image/video buttons, no
+        // drag-drop, pasted/uploaded images are rejected — and the server strips
+        // any that slip through (App\Support\RichText).
+        function listingSummaryEditorSync() {
+            const $el = window.jQuery && jQuery('#listing-summary-editor');
+            if (! $el || ! $el.length || ! $el.data('summernote')) return;
+            $el.val($el.summernote('isEmpty') ? '' : $el.summernote('code'));
+        }
+
+        jQuery(function ($) {
+            const $editor = $('#listing-summary-editor');
+            if (! $editor.length) return;
+
+            const stripImages = (html) => html.replace(/<(img|picture|video|iframe)\b[^>]*>(<\/\1>)?/gi, '');
+
+            $editor.summernote({
+                height: 220,
+                placeholder: 'Describe the product: key features, specifications, package contents, suitability…',
+                disableDragAndDrop: true,
+                dialogsInBody: true,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'strikethrough', 'clear']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link', 'hr']],
+                    ['view', ['fullscreen']],
+                ],
+                styleTags: ['p', 'h2', 'h3', 'h4', 'blockquote'],
+                callbacks: {
+                    // Pasted or dropped image files: refuse instead of embedding base64.
+                    onImageUpload: function () {
+                        if (window.Swal) Swal.fire({ icon: 'info', title: 'Images are not allowed here', text: 'Add product photos in the Media section instead.', confirmButtonColor: '#4f46e5' });
+                    },
+                    // Pasted HTML that contains images: keep the text, drop the images.
+                    onChange: function (contents) {
+                        if (/<(img|picture|video|iframe)\b/i.test(contents)) {
+                            $(this).summernote('code', stripImages(contents));
+                        }
+                    },
+                },
+            });
+        });
+    </script>
+@endpush
+
+{{-- ── Product photos & videos: Cropper.js + browser-side helpers ── --}}
+@push('styles')
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+    <style>
+        /* Make the crop frame obvious: dimmed outside, white frame, rule-of-thirds
+           guides and large handles (Cropper's defaults are a 1px blue line). */
+        .product-cropper .cropper-modal { background: #000; opacity: .6; }
+        .product-cropper .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+        .product-cropper .cropper-dashed { border-color: rgba(255,255,255,.75); opacity: 1; }
+        .product-cropper .cropper-center::before,
+        .product-cropper .cropper-center::after { background-color: #fff; }
+        .product-cropper .cropper-line { background-color: #fff; opacity: 0; }
+        .product-cropper .cropper-point {
+            width: 14px; height: 14px; opacity: 1; background: #fff;
+            border: 2px solid var(--theme-primary, #4f46e5); border-radius: 9999px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.4);
+        }
+        .product-cropper .cropper-point.point-n, .product-cropper .cropper-point.point-s { left: 50%; margin-left: -7px; }
+        .product-cropper .cropper-point.point-e, .product-cropper .cropper-point.point-w { top: 50%; margin-top: -7px; }
+        .product-cropper .cropper-point.point-n, .product-cropper .cropper-point.point-ne, .product-cropper .cropper-point.point-nw { top: -8px; }
+        .product-cropper .cropper-point.point-s, .product-cropper .cropper-point.point-se, .product-cropper .cropper-point.point-sw { bottom: -8px; }
+        .product-cropper .cropper-point.point-e, .product-cropper .cropper-point.point-ne, .product-cropper .cropper-point.point-se { right: -8px; }
+        .product-cropper .cropper-point.point-w, .product-cropper .cropper-point.point-nw, .product-cropper .cropper-point.point-sw { left: -8px; }
+        .product-cropper .cropper-point.point-se { width: 14px; height: 14px; }
+        .product-cropper .cropper-point.point-se::before { display: none; }
+        /* Product page step: top/bottom handles become wide grab bars. */
+        .vertical-only-crop .cropper-point.point-n,
+        .vertical-only-crop .cropper-point.point-s { width: 56px; height: 10px; margin-left: -28px; border-radius: 6px; }
+        .vertical-only-crop .cropper-point.point-n { top: -6px; }
+        .vertical-only-crop .cropper-point.point-s { bottom: -6px; }
+
+        /* Product page step: full width only — just the top/bottom handles. */
+        .vertical-only-crop .cropper-point.point-e,
+        .vertical-only-crop .cropper-point.point-w,
+        .vertical-only-crop .cropper-point.point-ne,
+        .vertical-only-crop .cropper-point.point-nw,
+        .vertical-only-crop .cropper-point.point-se,
+        .vertical-only-crop .cropper-point.point-sw,
+        .vertical-only-crop .cropper-line.line-e,
+        .vertical-only-crop .cropper-line.line-w {
+            display: none !important;
+        }
+    </style>
+@endpush
+@push('scripts')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+    <script>
+        // Picked photo → upright JPEG, longest side ≤ maxSide, transparent areas
+        // on white. This is what gets cropped and uploaded (the server stores
+        // it as the "_original", ≤2000px), so huge camera files never upload.
+        async function productShrinkImage(file, maxSide = 2400) {
+            const url = URL.createObjectURL(file);
+            try {
+                const img = await new Promise((resolve, reject) => {
+                    const i = new Image();
+                    i.onload = () => resolve(i);
+                    i.onerror = reject;
+                    i.src = url; // browsers apply EXIF orientation when drawing
+                });
+                const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.naturalWidth * scale);
+                canvas.height = Math.round(img.naturalHeight * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+                if (!blob) throw new Error('encode failed');
+                return blob;
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // A still frame (~1s in, ≤640px wide) to use as the video's poster.
+        // Resolves null when the browser can't decode the video.
+        function productVideoPoster(file) {
+            return new Promise((resolve) => {
+                const url = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                let done = false;
+                const finish = (blob) => { if (done) return; done = true; URL.revokeObjectURL(url); resolve(blob || null); };
+                video.muted = true;
+                video.playsInline = true;
+                video.preload = 'auto';
+                video.onloadeddata = () => { video.currentTime = Math.min(1, (video.duration || 2) / 2); };
+                video.onseeked = () => {
+                    try {
+                        const scale = Math.min(1, 640 / (video.videoWidth || 640));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.round((video.videoWidth || 640) * scale);
+                        canvas.height = Math.round((video.videoHeight || 360) * scale);
+                        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                        canvas.toBlob(finish, 'image/jpeg', 0.8);
+                    } catch (e) { finish(null); }
+                };
+                video.onerror = () => finish(null);
+                setTimeout(() => finish(null), 8000);
+                video.src = url;
+            });
+        }
+    </script>
+@endpush

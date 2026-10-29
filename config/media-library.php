@@ -136,7 +136,8 @@ return [
     /*
      * This is the class that is responsible for naming generated files.
      */
-    'file_namer' => DefaultFileNamer::class,
+    // Readable product image names: …_original.jpg → …_product_banner / _card / _thumb.webp
+    'file_namer' => App\Support\Media\ProductFileNamer::class,
 
     /*
      * The class that contains the strategy for determining a media file's path.

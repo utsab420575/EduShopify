@@ -92,5 +92,6 @@ Route::prefix('catalog/listings')->name('catalog.listings.')->group(function () 
     // Media
     Route::post('/{listing}/media', [\App\Http\Controllers\Backend\Supplier\Catalog\MediaController::class, 'store'])->name('media.store');
     Route::post('/{listing}/media/primary', [\App\Http\Controllers\Backend\Supplier\Catalog\ListingController::class, 'setPrimaryMedia'])->name('media.primary');
+    Route::post('/{listing}/media/{media}/crop', [\App\Http\Controllers\Backend\Supplier\Catalog\MediaController::class, 'crop'])->name('media.crop');
     Route::delete('/{listing}/media/{media}', [\App\Http\Controllers\Backend\Supplier\Catalog\MediaController::class, 'destroy'])->name('media.destroy');
 });

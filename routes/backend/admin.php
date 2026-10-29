@@ -442,7 +442,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsurePlatformAdmin:
         /* System & Settings */
         Route::prefix('system')->name('system.')->group(function () {
             Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
-            Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
+            Route::post('/settings', [SettingController::class, 'store'])->name('settings.store');
+            Route::put('/settings/{setting}', [SettingController::class, 'update'])->name('settings.update');
+            Route::delete('/settings/{setting}', [SettingController::class, 'destroy'])->name('settings.destroy');
 
             Route::get('/hero-section', [HomepageHeroController::class, 'edit'])->name('hero-section.edit');
             Route::put('/hero-section', [HomepageHeroController::class, 'update'])->name('hero-section.update');

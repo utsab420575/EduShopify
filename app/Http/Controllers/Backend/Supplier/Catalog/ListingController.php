@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Backend\Supplier\Catalog;
 
 use App\Http\Controllers\Backend\Supplier\Concerns\InteractsWithSupplierAccount;
 use App\Http\Controllers\Controller;
+use App\Support\Media\ProductMediaLimits;
+use App\Support\RichText;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Currency;
@@ -20,6 +22,7 @@ use App\Models\ProductDetail;
 use App\Models\SalesMode;
 use App\Models\ServiceDetail;
 use App\Models\Unit;
+use App\Services\Catalog\ProductMediaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -174,8 +177,8 @@ class ListingController extends Controller
             'main_category_id' => ['required', 'exists:categories,id'],
             'brand_id' => ['nullable', 'exists:brands,id'],
             'sku' => ['nullable', 'string', 'max:100'],
-            'short_description' => ['nullable', 'string', 'max:500'],
-            'description' => ['nullable', 'string'],
+            // "Summary Description of Product" — rich-text editor HTML, sanitized on save.
+            'short_description' => ['nullable', 'string', 'max:20000'],
             'pricing_type_id' => ['required', 'exists:pricing_types,id'],
             'base_price' => ['nullable', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0'],
@@ -210,8 +213,8 @@ class ListingController extends Controller
                 'name' => $validated['name'],
                 'slug' => Str::slug($validated['name']) . '-' . strtolower(Str::random(5)),
                 'sku' => $validated['sku'] ?? null,
-                'short_description' => $validated['short_description'] ?? null,
-                'description' => $validated['description'] ?? null,
+                'short_description' => RichText::sanitize($validated['short_description'] ?? null) ?: null,
+                'description' => null, // no longer collected — the summary is the product description
                 'pricing_type_id' => $validated['pricing_type_id'],
                 'base_price' => $validated['base_price'] ?? null,
                 'compare_at_price' => $validated['compare_at_price'] ?? null,
@@ -283,13 +286,11 @@ class ListingController extends Controller
                 }
             }
 
-            // Attach uploaded media
+            // Attach uploaded media (original + cropped copies, centred crop)
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $file) {
                     if ($file->isValid()) {
-                        $listing->addMedia($file)
-                            ->usingFileName(\App\Support\Media\ProductImagePathGenerator::supplierFileName($account->id, $file->getClientOriginalName()))
-                            ->toMediaCollection('gallery');
+                        app(ProductMediaService::class)->storeImage($listing, $account->id, $file);
                     }
                 }
             }
@@ -734,10 +735,30 @@ class ListingController extends Controller
                     ->where('supplier_account_id', $account->id)
                     ->ignore($listing?->id),
             ],
-            'short_description' => ['nullable', 'string', 'max:500'],
-            'description'       => ['nullable', 'string'],
-            'images.*'          => ['nullable', 'image', 'max:10240'],
+            // "Summary Description of Product" — rich-text editor HTML, sanitized on save.
+            'short_description' => ['nullable', 'string', 'max:20000'],
+            'images'            => ['nullable', 'array', 'max:'.ProductMediaLimits::maxImages()],
+            'images.*'          => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:'.config('product_media.images.max_upload_kb')],
+            // Crop box per image (JSON {x,y,width,height}, uploaded-image pixels).
+            'image_crops'       => ['nullable', 'array'],
+            'image_crops.*'     => ['nullable', 'json'],
+            // Product page box per image (full width, chosen height) + how it fills the stage.
+            'image_banner_crops'   => ['nullable', 'array'],
+            'image_banner_crops.*' => ['nullable', 'json'],
+            'image_fits'        => ['nullable', 'array'],
+            'image_fits.*'      => ['nullable', 'in:'.implode(',', config('product_media.images.fits'))],
+            'videos'            => ['nullable', 'array', 'max:'.ProductMediaLimits::maxVideos()],
+            // mimes = type detected from the file's content (MP4 can report video/mp4 or application/mp4).
+            // Size + file types come from System Settings (ProductMediaLimits).
+            'videos.*'          => ['file', 'mimes:'.implode(',', ProductMediaLimits::videoExtensions()), 'max:'.ProductMediaLimits::videoMaxKb()],
+            'video_posters'     => ['nullable', 'array'],
+            'video_posters.*'   => ['nullable', 'image', 'max:'.config('product_media.videos.poster_max_kb')],
+        ], [
+            'videos.*.max'       => 'Each video must be '.ProductMediaLimits::videoMaxLabel().' or smaller.',
+            'videos.*.mimes'     => 'Videos must be '.ProductMediaLimits::videoExtensionsLabel().'.',
         ]);
+
+        $this->assertMediaLimits($listing, $request);
 
         $listing = DB::transaction(function () use ($account, $listing, $validated, $request) {
             if (! $listing) {
@@ -753,8 +774,8 @@ class ListingController extends Controller
                     'slug'                => $slug,
                     'brand_id'            => $validated['brand_id'] ?? null,
                     'sku'                 => $validated['sku'] ?? null,
-                    'short_description'   => $validated['short_description'] ?? null,
-                    'description'         => $validated['description'] ?? null,
+                    'short_description'   => RichText::sanitize($validated['short_description'] ?? null) ?: null,
+                    'description'         => null, // no longer collected — the summary is the product description
                     'approval_status'     => 'draft',
                     'setup_step'          => 2,
                     'last_autosaved_at'   => now(),
@@ -772,24 +793,32 @@ class ListingController extends Controller
                     'name'              => $validated['name'],
                     'brand_id'          => $validated['brand_id'] ?? null,
                     'sku'               => $validated['sku'] ?? null,
-                    'short_description' => $validated['short_description'] ?? null,
-                    'description'       => $validated['description'] ?? null,
+                    'short_description' => RichText::sanitize($validated['short_description'] ?? null) ?: null,
+                    // description is no longer edited here — an older listing keeps its value
                     'setup_step'        => max($listing->setup_step, 2),
                     'last_autosaved_at' => now(),
                 ]);
             }
 
-            // Process uploaded images
+            // Product images: stored as an uncropped original + cropped
+            // product_banner / card / thumb copies (ProductMediaService).
+            $mediaService = app(ProductMediaService::class);
             if ($request->hasFile('images')) {
                 $coverIdx = $request->input('cover_image_index');
+                $crops = (array) $request->input('image_crops', []);
+                $bannerCrops = (array) $request->input('image_banner_crops', []);
+                $fits = (array) $request->input('image_fits', []);
                 $newMediaItems = [];
                 foreach ($request->file('images') as $idx => $file) {
                     if ($file->isValid()) {
-                        $media = $listing->addMedia($file)
-                            ->usingFileName(\App\Support\Media\ProductImagePathGenerator::supplierFileName($account->id, $file->getClientOriginalName()))
-                            ->toMediaCollection('gallery');
-
-                        $newMediaItems[$idx] = $media;
+                        $crop = isset($crops[$idx]) ? json_decode((string) $crops[$idx], true) : null;
+                        $bannerCrop = isset($bannerCrops[$idx]) ? json_decode((string) $bannerCrops[$idx], true) : null;
+                        $newMediaItems[$idx] = $mediaService->storeImage(
+                            $listing, $account->id, $file,
+                            is_array($crop) ? $crop : null,
+                            is_array($bannerCrop) ? $bannerCrop : null,
+                            $fits[$idx] ?? null,
+                        );
                     }
                 }
 
@@ -797,6 +826,16 @@ class ListingController extends Controller
                     $listing->update(['primary_image_media_id' => $newMediaItems[$coverIdx]->id]);
                 } elseif (! $listing->primary_image_media_id && ! empty($newMediaItems)) {
                     $listing->update(['primary_image_media_id' => reset($newMediaItems)->id]);
+                }
+            }
+
+            // Product videos (+ the poster frame captured in the browser, same index).
+            if ($request->hasFile('videos')) {
+                $posters = (array) $request->file('video_posters', []);
+                foreach ($request->file('videos') as $idx => $file) {
+                    if ($file->isValid()) {
+                        $mediaService->storeVideo($listing, $account->id, $file, $posters[$idx] ?? null);
+                    }
                 }
             }
 
@@ -810,19 +849,36 @@ class ListingController extends Controller
                 'listing_id'             => $listing->id,
                 'setup_step'             => $listing->setup_step,
                 'primary_image_media_id' => $listing->primary_image_media_id,
-                'media'                  => $listing->getMedia('gallery')->map(fn ($m) => [
-                    'id'         => $m->id,
-                    'url'        => $m->getUrl(),
-                    'file_name'  => $m->file_name,
-                    'size'       => $m->human_readable_size,
-                    'is_primary' => $m->id === $listing->primary_image_media_id,
-                ]),
+                ...app(ProductMediaService::class)->payload($listing->fresh()),
                 'last_autosaved_at'      => $listing->last_autosaved_at?->toISOString() ?? now()->toISOString(),
             ]);
         }
 
         return redirect()->supplierRoute('catalog.listings.edit', ['listing' => $listing, 'step' => 2])
             ->with('success', 'Product basics saved.');
+    }
+
+    /**
+     * Image/video count limits (System Settings, ProductMediaLimits) across what the listing
+     * already has plus this upload.
+     */
+    private function assertMediaLimits(?Listing $listing, Request $request): void
+    {
+        $existingImages = $listing ? $listing->getMedia('gallery')->count() : 0;
+        $existingVideos = $listing ? $listing->getMedia('videos')->count() : 0;
+        $maxImages = ProductMediaLimits::maxImages();
+        $maxVideos = ProductMediaLimits::maxVideos();
+
+        $errors = [];
+        if ($existingImages + count((array) $request->file('images', [])) > $maxImages) {
+            $errors['images'] = "A product can have at most {$maxImages} images.";
+        }
+        if ($existingVideos + count((array) $request->file('videos', [])) > $maxVideos) {
+            $errors['videos'] = "A product can have at most {$maxVideos} videos.";
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     public function setPrimaryMedia(Request $request, Listing $listing)
@@ -834,7 +890,8 @@ class ListingController extends Controller
             'media_id' => ['required', 'exists:media,id'],
         ]);
 
-        $media = $listing->media()->findOrFail($request->integer('media_id'));
+        // Only a gallery image can be the cover (not a video or poster).
+        $media = $listing->media()->where('collection_name', 'gallery')->findOrFail($request->integer('media_id'));
         $listing->update(['primary_image_media_id' => $media->id]);
 
         return response()->json([

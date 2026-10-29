@@ -42,10 +42,19 @@ class ProductController extends Controller
             }
         }
 
+        // Gallery: cover image first, then the rest; product videos (+ posters) follow.
         $images = $listing->getMedia('gallery');
         if ($images->isEmpty() && $listing->primaryImage) {
             $images = collect([$listing->primaryImage]);
         }
+        if ($cover = $listing->coverMedia()) {
+            $images = $images->sortBy(fn ($m) => (int) $m->id === (int) $cover->id ? 0 : 1)->values();
+        }
+        $posters = $listing->getMedia('video_posters')->keyBy('id');
+        $videos = $listing->getMedia('videos')->map(fn ($video) => [
+            'url' => $video->getUrl(),
+            'poster' => ($poster = $posters->get($video->getCustomProperty('poster_id'))) ? $poster->getUrl() : null,
+        ]);
 
         $priceMin = $listing->allTierPrices->min('unit_price') ?? $listing->base_price;
         $priceMax = $listing->allTierPrices->max('unit_price') ?? $listing->base_price;
@@ -74,6 +83,7 @@ class ProductController extends Controller
         return view('frontend_new.products.show', [
             'listing' => $listing,
             'images' => $images,
+            'videos' => $videos,
             'priceMin' => $priceMin,
             'priceMax' => $priceMax,
             'supplierProfile' => $supplierProfile,

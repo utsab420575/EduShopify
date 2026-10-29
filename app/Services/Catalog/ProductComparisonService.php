@@ -3,6 +3,7 @@
 namespace App\Services\Catalog;
 
 use App\Models\Attribute;
+use App\Models\Listing;
 use App\Models\ListingVariantAttribute;
 use Illuminate\Support\Collection;
 
@@ -137,11 +138,12 @@ class ProductComparisonService
             // never Spatie's getFirstMediaUrl(), which always issues its own
             // fresh query regardless of what's already been loaded.
             $thumbUrl = null;
+            // "card" copy (600×450) — a compare column is card-sized.
             if ($listing->primaryImage) {
-                $thumbUrl = $listing->primaryImage->getUrl();
+                $thumbUrl = Listing::mediaUrl($listing->primaryImage, 'card');
             } elseif ($listing->relationLoaded('media') && $listing->media->isNotEmpty()) {
-                $first = $listing->media->where('collection_name', 'gallery')->first() ?? $listing->media->first();
-                $thumbUrl = $first?->getUrl();
+                $first = $listing->media->where('collection_name', 'gallery')->first();
+                $thumbUrl = Listing::mediaUrl($first, 'card');
             }
 
             return [

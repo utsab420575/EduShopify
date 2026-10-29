@@ -11,7 +11,7 @@
                 <h1 class="text-xl font-bold text-gray-900">{{ $listing->name }}</h1>
                 <p class="text-sm text-gray-500 mt-1">{{ $listing->mainCategory?->name }}</p>
                 @if($listing->short_description)
-                    <p class="text-sm text-gray-600 mt-3">{{ $listing->short_description }}</p>
+                    <x-rich-text :html="$listing->summaryHtml()" class="text-sm text-gray-600 mt-3" />
                 @endif
             </div>
 

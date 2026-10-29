@@ -236,7 +236,7 @@
             {{-- Short description --}}
             @if($listing->short_description)
                 <p class="mt-4 text-sm leading-relaxed" style="color:var(--fe-text-muted);">
-                    {{ $listing->short_description }}
+                    {{ $listing->summaryText() }}
                 </p>
             @endif
 

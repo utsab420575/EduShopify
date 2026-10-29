@@ -53,7 +53,7 @@
                     <td class="px-5 py-3.5">
                         <a href="{{ route('buyer.marketplace.services.show', $listing) }}" class="text-sm font-medium text-gray-900 hover:underline line-clamp-2">{{ $listing->name }}</a>
                         @if($listing->short_description)
-                            <p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{ $listing->short_description }}</p>
+                            <p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{ $listing->summaryText() }}</p>
                         @endif
                     </td>
                     <td class="px-5 py-3.5 text-sm text-gray-600">{{ $listing->mainCategory?->name ?? '—' }}</td>

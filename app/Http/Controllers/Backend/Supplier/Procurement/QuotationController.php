@@ -619,7 +619,7 @@ class QuotationController extends Controller
                 'marketplace_product_id' => $listing->id,
                 'item_name' => $listing->name,
                 'product_name' => $listing->name,
-                'description' => $listing->short_description ?: $listing->description,
+                'description' => $listing->summaryText() ?: $listing->description,
                 'quantity' => (string) ($listing->min_order_quantity ?: 1),
                 'unit_id' => $listing->unit_id,
                 'unit_price' => $listing->base_price,
